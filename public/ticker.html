@@ -33,7 +33,7 @@ body{display:flex;align-items:stretch;-webkit-app-region:drag;border-bottom:1px 
 const COL={krim:'#ef5155',forsvar:'#4f8ef7',politikk:'#e0a526',vaer:'#14b8a6',samferdsel:'#9b6bff',kongehus:'#d946a8',sport:'#f97316',annet:'#7c8a9c'};
 const track=document.getElementById('track'),view=document.getElementById('view');
 const tf=new Intl.DateTimeFormat('nb-NO',{hour:'2-digit',minute:'2-digit'});
-let x=0,paused=false,w=0;
+let x=0,paused=false,w=0;const SPEED=Math.max(.3,Math.min(3,+new URLSearchParams(location.search).get("speed")||1));
 function events(news){const g=new Map();for(const n of news){const k=n.eid||n.id;if(!g.has(k))g.set(k,[]);g.get(k).push(n)}
   return [...g.values()].map(it=>{const p=it.find(n=>n.lang==='no')||it.find(n=>n.titleNo)||it[0];const srcs=new Set(it.map(n=>n.src)).size;
     const sev=Math.max(...it.map(n=>n.sev||0)),top=it.some(n=>n.top);const last=it.map(n=>n.date).sort().pop();
@@ -44,7 +44,7 @@ function render(news){track.textContent='';
     const b=document.createElement('b');b.style.background=COL[e.cat]||COL.annet;const s=document.createElement('small');s.textContent=tf.format(new Date(e.last))+(e.srcs>1?' · '+e.srcs+' kilder':'');
     a.append(b,e.title,s);a.onclick=ev=>{ev.preventDefault();if(window.nk&&window.nk.openItem)window.nk.openItem(e.id)};track.append(a)}
   w=track.scrollWidth;if(x<-w)x=view.clientWidth}
-function loop(){if(!paused&&w){x-=0.6;if(x<-w)x=view.clientWidth;track.style.transform=`translateX(${x}px)`}requestAnimationFrame(loop)}
+function loop(){if(!paused&&w){x-=0.6*SPEED;if(x<-w)x=view.clientWidth;track.style.transform=`translateX(${x}px)`}requestAnimationFrame(loop)}
 view.addEventListener('mouseenter',()=>paused=true);view.addEventListener('mouseleave',()=>paused=false);
 document.getElementById('x').onclick=()=>{if(window.nk&&window.nk.toggleTicker)window.nk.toggleTicker();else window.close()};
 fetch('/api/news').then(r=>r.json()).then(d=>{x=view.clientWidth;render(d.news||[]);if(!matchMedia('(prefers-reduced-motion: reduce)').matches)loop()});

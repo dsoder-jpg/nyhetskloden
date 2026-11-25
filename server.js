@@ -55,13 +55,36 @@ const MET_ALERTS = 'https://api.met.no/weatherapi/metalerts/2.0/current.json?lan
 
 // ---------- innstillinger ----------
 let SETTINGS_FILE = null;
-let settings = { deeplKey: '', translate: true, watch: [], customFeeds: [], dailyChars: 15000, usage: { day: '', chars: 0 } };
-function loadSettings() { try { settings = { ...settings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) }; } catch {} }
+const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], dailyChars: 15000, usage: { day: '', chars: 0 },
+  pollMin: POLL_MIN, keepHours: KEEP_HOURS, disabledFeeds: [],
+  notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
+  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true };
+let settings = JSON.parse(JSON.stringify(DEFAULTS));
+function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) } }; } catch {} }
 function saveSettings() { try { fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true }); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (e) { console.warn('Kunne ikke lagre innstillinger:', e.message); } }
-const publicSettings = () => ({ hasKey: !!settings.deeplKey, translate: settings.translate, watch: settings.watch, customFeeds: settings.customFeeds,
-  dailyChars: settings.dailyChars, usedToday: settings.usage.day === today() ? settings.usage.chars : 0 });
+const publicSettings = () => {
+  const { deeplKey, usage, ...rest } = settings;
+  return { ...rest, hasKey: !!deeplKey, usedToday: usage.day === today() ? usage.chars : 0,
+    builtinFeeds: BUILTIN_FEEDS.map(f => ({ url: f.url, src: f.src, lang: f.lang })) };
+};
+const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+function applySettings(b) {
+  if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  if (Array.isArray(b.watch)) settings.watch = [...new Set(b.watch.map(String).map(s => s.trim()).filter(Boolean))].slice(0, 50);
+  if (Array.isArray(b.customFeeds)) settings.customFeeds = b.customFeeds.filter(f => f && /^https:\/\//.test(f.url)).slice(0, 40).map(f => ({ src: String(f.src || '').slice(0, 40), url: String(f.url).slice(0, 300) })).filter((f, i, a) => a.findIndex(x => x.url === f.url) === i);
+  if (Array.isArray(b.disabledFeeds)) settings.disabledFeeds = b.disabledFeeds.map(String).slice(0, 100);
+  if (b.dailyChars != null) settings.dailyChars = clampNum(b.dailyChars, 1000, 200000, settings.dailyChars);
+  if (b.pollMin != null) settings.pollMin = clampNum(b.pollMin, 1, 60, settings.pollMin);
+  if (b.keepHours != null) settings.keepHours = clampNum(b.keepHours, 6, 336, settings.keepHours);
+  if (['big', 'top', 'watch'].includes(b.notifyMode)) settings.notifyMode = b.notifyMode;
+  if (b.quiet && typeof b.quiet === 'object') settings.quiet = { on: !!b.quiet.on, from: clampNum(b.quiet.from, 0, 23, 23), to: clampNum(b.quiet.to, 0, 23, 7) };
+  if (['top', 'bottom'].includes(b.tickerPos)) settings.tickerPos = b.tickerPos;
+  if (b.tickerSpeed != null) settings.tickerSpeed = clampNum(b.tickerSpeed, 0.3, 3, 1);
+  saveSettings(); events.emit('settings', settings);
+}
 const today = () => new Date().toISOString().slice(0, 10);
-const feeds = () => [...BUILTIN_FEEDS, ...settings.customFeeds.filter(f => /^https:\/\//.test(f.url)).map(f => ({ src: f.src || new URL(f.url).hostname, url: f.url, custom: true }))];
+const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includes(f.url)), ...settings.customFeeds.filter(f => !settings.disabledFeeds.includes(f.url)).filter(f => /^https:\/\//.test(f.url)).map(f => ({ src: f.src || new URL(f.url).hostname, url: f.url, custom: true }))];
 
 // ---------- steder ----------
 // [navn, lat, lon, type, landkode]  type: c = by/sted, r = region/land, d = adjektiv/person (russisk, Putin …)
@@ -242,6 +265,8 @@ async function fetchFeed(feed) {
   } finally { clearTimeout(t); }
 }
 
+let pollTimer = null;
+function schedule() { clearTimeout(pollTimer); const ms = settings.pollMin * 60e3; nextPoll = new Date(Date.now() + ms); pollTimer = setTimeout(poll, ms); }
 async function poll() {
   if (polling) return; polling = true;
   try {
@@ -275,18 +300,18 @@ async function poll() {
       let match = null; try { match = recent.find(o => o !== n && o.eid && o._tok && sameEvent(n, o)); } catch (e) { match = null; }
       n.eid = match ? match.eid : n.id;
     }
-    const cutoff = Date.now() - KEEP_HOURS * 3600e3;
+    const cutoff = Date.now() - settings.keepHours * 3600e3;
     const isFirst = !lastPoll && !news.length;
     news = [...byId.values()].filter(n => new Date(n.date) > cutoff).sort((a, b) => b.date.localeCompare(a.date)).slice(0, MAX_ITEMS);
     for (const n of news) { if (!n.eid) n.eid = n.id; delete n._tok; }
-    lastPoll = new Date(); nextPoll = new Date(Date.now() + POLL_MIN * 60e3);
+    lastPoll = new Date(); schedule();
     save();
     const ok = Object.values(status).filter(s => s.ok).length;
     console.log(`[${lastPoll.toLocaleTimeString('nb-NO')}] ${ok}/${Object.keys(status).length} kilder ok, ${added.length} nye, ${news.length} totalt`);
     broadcast('update', { added: added.map(a => a.id), news, lastPoll, nextPoll, status });
     if (!isFirst) {
       const fresh = added.filter(a => Date.now() - new Date(a.date) < 2 * 3600e3);
-      const big = fresh.filter(a => (a.top && a.sev >= 2) || a.sev >= 5);
+      const big = fresh.filter(a => a.top || a.sev >= 5);
       const watched = fresh.filter(a => a.watch.length);
       if (big.length) events.emit('top', big);
       if (watched.length) events.emit('watch', watched);
@@ -295,7 +320,7 @@ async function poll() {
     // en feil i én sak skal aldri stoppe henting: logg den og fortsett neste gang
     console.error('Feil under henting:', e);
     status.engine = { src: 'Nyhetsmotor', ok: false, err: String(e && e.message || e).slice(0, 160) };
-    lastPoll = new Date(); nextPoll = new Date(Date.now() + POLL_MIN * 60e3);
+    lastPoll = new Date(); schedule();
     broadcast('update', { added: [], news, lastPoll, nextPoll, status });
   } finally { polling = false; }
 }
@@ -327,24 +352,22 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const json = (o, code = 200) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
-    if (url.pathname === '/api/news') return json({ news, lastPoll, nextPoll, pollMin: POLL_MIN, status });
+    if (url.pathname === '/api/news') return json({ news, lastPoll, nextPoll, pollMin: settings.pollMin, status });
     if (url.pathname === '/api/alerts') return json(alerts);
     if (url.pathname === '/api/settings' && req.method === 'GET') return json(publicSettings());
     if (url.pathname === '/api/settings' && req.method === 'POST') {
       try {
-        const b = await readBody(req); const feedsBefore = JSON.stringify(settings.customFeeds);
-        if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-        if (typeof b.translate === 'boolean') settings.translate = b.translate;
-        if (Array.isArray(b.watch)) settings.watch = b.watch.map(String).map(s => s.trim()).filter(Boolean).slice(0, 50);
-        if (Array.isArray(b.customFeeds)) settings.customFeeds = b.customFeeds.filter(f => f && /^https:\/\//.test(f.url)).slice(0, 40).map(f => ({ src: String(f.src || '').slice(0, 40), url: String(f.url).slice(0, 300) }));
-        if (isFinite(b.dailyChars)) settings.dailyChars = Math.max(1000, Math.min(200000, +b.dailyChars));
-        saveSettings();
+        const b = await readBody(req);
+        const before = JSON.stringify([settings.customFeeds, settings.disabledFeeds]), pollBefore = settings.pollMin;
+        applySettings(b);
         for (const n of news) n.watch = watchHits(n);
-        if (feedsBefore !== JSON.stringify(settings.customFeeds) || (b.deeplKey && settings.translate)) setTimeout(poll, 100);
+        if (settings.pollMin !== pollBefore && lastPoll) schedule();
+        if (before !== JSON.stringify([settings.customFeeds, settings.disabledFeeds]) || (b.deeplKey && settings.translate)) setTimeout(poll, 100);
         broadcast('update', { added: [], news, lastPoll, nextPoll, status });
         return json(publicSettings());
       } catch (e) { return json({ error: e.message }, 400); }
     }
+    if (url.pathname === '/api/clear' && req.method === 'POST') { news = []; save(); setTimeout(poll, 100); broadcast('update', { added: [], news, lastPoll, nextPoll, status }); return json({ ok: true }); }
     if (url.pathname === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
       res.write(`event: hello\ndata: ${JSON.stringify({ lastPoll, nextPoll })}\n\n`);
@@ -366,13 +389,13 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
     server.once('error', reject);
     server.listen(port, '127.0.0.1', () => {
       const actual = server.address().port;
-      console.log(`Nyhetskloden kjører på http://localhost:${actual}  (henter hvert ${POLL_MIN}. minutt)`);
+      console.log(`Nyhetskloden kjører på http://localhost:${actual}  (henter hvert ${settings.pollMin}. minutt)`);
       poll(); pollAlerts();
-      setInterval(poll, POLL_MIN * 60e3); setInterval(pollAlerts, 10 * 60e3);
+      setInterval(pollAlerts, 10 * 60e3);
       resolve(actual);
     });
   });
 }
 
-module.exports = { start, poll, events, parseRss, parseUsgs, findPlace, findPlaces, categorize, severity, tokens, sameEvent };
+module.exports = { start, poll, getSettings: () => settings, applySettings, events, parseRss, parseUsgs, findPlace, findPlaces, categorize, severity, tokens, sameEvent };
 if (require.main === module) start();

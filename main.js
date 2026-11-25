@@ -13,8 +13,10 @@ if (!app.requestSingleInstanceLock()) { app.quit(); }
 const ICON = path.join(__dirname, 'build', 'icon.png');
 const TRAY_ICON = path.join(__dirname, 'build', 'tray.png');
 const PREFERRED_PORT = 37851; // fast port, så innstillinger (lagret per adresse) huskes mellom oppstarter
-let win = null, ticker = null, tray = null, port = null, quitting = false, notifyOn = true, hintShown = false;
+let win = null, ticker = null, tray = null, port = null, quitting = false, hintShown = false;
 const base = () => `http://127.0.0.1:${port}`;
+const S = () => engine.getSettings();
+
 
 function show() {
   if (!win) return createWindow();
@@ -40,6 +42,7 @@ function createWindow() {
   guardLinks(win);
   win.on('close', e => {
     if (quitting) return;
+    if (!S().closeToTray) { quitting = true; app.quit(); return; }
     e.preventDefault(); win.hide();
     if (!hintShown && Notification.isSupported()) {
       hintShown = true;
@@ -53,13 +56,14 @@ function createWindow() {
 function toggleTicker() {
   if (ticker) { ticker.close(); return; }
   const { workArea } = screen.getPrimaryDisplay();
+  const y = S().tickerPos === 'bottom' ? workArea.y + workArea.height - 36 : workArea.y;
   ticker = new BrowserWindow({
-    x: workArea.x, y: workArea.y, width: workArea.width, height: 36, frame: false, resizable: false, movable: true,
+    x: workArea.x, y, width: workArea.width, height: 36, frame: false, resizable: false, movable: true,
     alwaysOnTop: true, skipTaskbar: true, backgroundColor: '#070c14', title: 'Nyhetskloden – ticker', icon: ICON,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   ticker.setAlwaysOnTop(true, 'screen-saver');
-  ticker.loadURL(base() + '/ticker.html');
+  ticker.loadURL(base() + '/ticker.html?speed=' + encodeURIComponent(S().tickerSpeed || 1));
   guardLinks(ticker);
   ticker.on('closed', () => { ticker = null; buildTrayMenu(); });
   buildTrayMenu();
@@ -72,7 +76,8 @@ function buildTrayMenu() {
     { label: ticker ? 'Skjul ticker' : 'Vis ticker', click: toggleTicker },
     { label: 'Hent nyheter nå', click: () => engine.poll() },
     { type: 'separator' },
-    { label: 'Varsler', type: 'checkbox', checked: notifyOn, click: i => { notifyOn = i.checked; } },
+    { label: 'Varsler', type: 'checkbox', checked: S().notify, click: i => engine.applySettings({ notify: i.checked }) },
+    { label: 'Innstillinger …', click: () => { show(); setTimeout(() => win && win.webContents.send('open-settings'), 400); } },
     { label: 'Start med Windows', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
       click: i => app.setLoginItemSettings({ openAtLogin: i.checked, args: ['--hidden'] }) },
     pendingUpdate ? { label: `Start på nytt med versjon ${pendingUpdate.ver}`, click: () => applyUpdate(true) } : { label: 'Se etter oppdateringer', click: () => checkUpdates(true) },
@@ -87,19 +92,26 @@ function buildTray() {
   tray.on('click', show);
 }
 
+function quietNow() { const q = S().quiet; if (!q || !q.on) return false; const h = new Date().getHours(); return q.from <= q.to ? h >= q.from && h < q.to : h >= q.from || h < q.to; }
 function notify(title, body, id) {
-  if (!notifyOn || !Notification.isSupported()) return;
-  const n = new Notification({ title, body, icon: ICON });
+  if (!S().notify || quietNow() || !Notification.isSupported()) return;
+  const n = new Notification({ title, body, icon: ICON, silent: !S().sound });
   n.on('click', () => openItem(id));
   n.show();
 }
 const label = i => i.titleNo || i.title;
-engine.events.on('top', items => {
+engine.events.on('top', all => {
+  const mode = S().notifyMode;
+  if (mode === 'watch') return;
+  const items = mode === 'top' ? all : all.filter(i => (i.top && i.sev >= 2) || i.sev >= 5);
+  if (!items.length) return;
   const first = items.sort((a, b) => (b.sev || 0) - (a.sev || 0))[0];
   if (items.length > 1) notify(`${items.length} store saker`, items.slice(0, 3).map(i => '• ' + label(i)).join('\n'), first.eid || first.id);
-  else notify(`Stor sak · ${first.src}`, label(first), first.eid || first.id);
+  else notify(`${first.sev >= 5 ? 'Stor sak' : 'Toppsak'} · ${first.src}`, label(first), first.eid || first.id);
 });
+engine.events.on('settings', () => buildTrayMenu());
 engine.events.on('watch', items => {
+  if (!S().notifyWatch) return;
   const first = items[0];
   notify(`Følger: ${[...new Set(items.flatMap(i => i.watch))].slice(0, 3).join(', ')}`,
     items.length > 1 ? items.slice(0, 3).map(i => '• ' + label(i)).join('\n') : label(first), first.eid || first.id);
@@ -120,6 +132,9 @@ const UPDATE_REPO = (require('./package.json').nyhetskloden || {}).updateRepo;
 const ELECTRON_MAJOR = String(process.versions.electron || '').split('.')[0];
 const RES = process.resourcesPath;
 let pendingUpdate = null, applying = false;
+// status som vises i appen: idle | checking | downloading | ready | none | error | off
+let upd = { state: 'idle', current: app.getVersion() };
+function setUpd(s) { upd = { ...upd, ...s, current: app.getVersion(), at: new Date().toISOString() }; for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('update', upd); }
 const cmp = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 function plain(title, body, onClick) { if (!Notification.isSupported()) return; const n = new Notification({ title, body, icon: ICON }); if (onClick) n.on('click', onClick); n.show(); }
 const okUrl = u => /^https:\/\/github\.com\//.test(u || '');
@@ -134,8 +149,10 @@ async function download(asset) {
 }
 
 async function checkUpdates(manual) {
-  if (!app.isPackaged || !UPDATE_REPO) { if (manual) plain('Oppdatering er ikke satt opp', 'Se LES-MEG for hvordan du publiserer nye versjoner.'); return; }
-  if (pendingUpdate) { if (manual) plain(`Nyhetskloden ${pendingUpdate.ver} er klar`, 'Den installeres når du lukker appen. Klikk for å starte på nytt nå.', () => applyUpdate(true)); return; }
+  if (!app.isPackaged || !UPDATE_REPO) { setUpd({ state: 'off', msg: 'Oppdatering virker bare i den installerte appen.' }); if (manual === true) plain('Oppdatering er ikke satt opp', 'Se LES-MEG for hvordan du publiserer nye versjoner.'); return; }
+  if (upd.state === 'checking' || upd.state === 'downloading') return;
+  if (pendingUpdate) { setUpd({ state: 'ready', ver: pendingUpdate.ver }); if (manual === true) plain(`Nyhetskloden ${pendingUpdate.ver} er klar`, 'Den installeres når du lukker appen. Klikk for å starte på nytt nå.', () => applyUpdate(true)); return; }
+  setUpd({ state: 'checking', msg: null });
   try {
     const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=10`, { headers: { 'User-Agent': 'Nyhetskloden', Accept: 'application/vnd.github+json' } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -147,13 +164,15 @@ async function checkUpdates(manual) {
       m = a.name.match(/^Nyhetskloden-Setup-(\d+\.\d+\.\d+)\.exe$/i);
       if (m && (!best || cmp(m[1], best.ver) > 0)) best = { ver: m[1], kind: 'setup', asset: a };
     }
-    if (!best || cmp(best.ver, app.getVersion()) <= 0) { if (manual) plain('Ingen oppdatering', `Du har nyeste versjon (${app.getVersion()}).`); return; }
+    if (!best || cmp(best.ver, app.getVersion()) <= 0) { setUpd({ state: 'none', ver: null }); if (manual === true) plain('Ingen oppdatering', `Du har nyeste versjon (${app.getVersion()}).`); return; }
+    setUpd({ state: 'downloading', ver: best.ver, size: best.asset.size, kind: best.kind });
     const buf = await download(best.asset);
     if (best.kind === 'asar') { const file = path.join(RES, 'app.asar.new'); ofs.writeFileSync(file, buf); pendingUpdate = { ...best, file }; }
     else { const file = path.join(app.getPath('temp'), best.asset.name); fs.writeFileSync(file, buf); pendingUpdate = { ...best, file }; }
     buildTrayMenu();
+    setUpd({ state: 'ready', ver: best.ver, kind: best.kind });
     plain(`Nyhetskloden ${best.ver} er klar`, 'Den installeres automatisk når du lukker appen. Klikk her for å starte på nytt med en gang.', () => applyUpdate(true));
-  } catch (e) { if (manual) plain('Kunne ikke se etter oppdateringer', String(e.message || e).slice(0, 120)); }
+  } catch (e) { setUpd({ state: 'error', msg: String(e.message || e).slice(0, 160) }); if (manual === true) plain('Kunne ikke se etter oppdateringer', String(e.message || e).slice(0, 120)); }
 }
 
 // Bytter inn den nye versjonen etter at appen har lukket seg. restart = start appen igjen etterpå.
@@ -174,11 +193,18 @@ function applyUpdate(restart) {
   quitting = true; app.quit();
 }
 
-ipcMain.on('notify', (_e, on) => { notifyOn = !!on; buildTrayMenu(); });
+ipcMain.on('notify', (_e, on) => { engine.applySettings({ notify: !!on }); });
+ipcMain.handle('app-info', () => ({ version: app.getVersion(), electron: process.versions.electron, openAtLogin: app.getLoginItemSettings().openAtLogin, dataDir: app.getPath('userData'), packaged: app.isPackaged, ticker: !!ticker }));
+ipcMain.on('set-login', (_e, on) => { app.setLoginItemSettings({ openAtLogin: !!on, args: ['--hidden'] }); buildTrayMenu(); });
+ipcMain.on('open-data', () => shell.openPath(app.getPath('userData')));
+ipcMain.on('ticker-restart', () => { if (ticker) { ticker.close(); setTimeout(toggleTicker, 300); } });
+ipcMain.handle('update-state', () => ({ ...upd, current: app.getVersion() }));
+ipcMain.on('update-check', () => checkUpdates('ui'));
+ipcMain.on('update-apply', () => applyUpdate(true));
 ipcMain.on('ticker', () => toggleTicker());
 ipcMain.on('open-item', (_e, id) => openItem(String(id)));
 app.on('second-instance', show);
-app.on('before-quit', () => { quitting = true; if (pendingUpdate && !applying) applyUpdate(false); });
+app.on('before-quit', () => { quitting = true; if (pendingUpdate && !applying && S().autoInstall) applyUpdate(false); });
 app.on('window-all-closed', e => e.preventDefault?.());
 
 app.whenReady().then(async () => {
@@ -187,6 +213,7 @@ app.whenReady().then(async () => {
   catch { port = await engine.start({ port: 0, dataDir }); }
   buildTray();
   if (!process.argv.includes('--hidden')) createWindow();
+  if (S().tickerAtStart) setTimeout(toggleTicker, 2500);
   setTimeout(() => checkUpdates(false), 15000);
   setInterval(() => checkUpdates(false), 6 * 3600e3);
 });
