@@ -30,7 +30,8 @@ body{display:flex;align-items:stretch;-webkit-app-region:drag;border-bottom:1px 
 <button class="x" id="x" title="Lukk ticker" aria-label="Lukk ticker">×</button>
 <script>
 {
-const COL={krim:'#ef5155',forsvar:'#4f8ef7',politikk:'#e0a526',vaer:'#14b8a6',samferdsel:'#9b6bff',kongehus:'#d946a8',sport:'#f97316',annet:'#7c8a9c'};
+const COL={krim:'#ef5155',forsvar:'#4f8ef7',politikk:'#e0a526',vaer:'#14b8a6',samferdsel:'#9b6bff',kongehus:'#d946a8',sport:'#f97316',marked:'#22c55e',teknologi:'#38bdf8',helse:'#fb7185',vitenskap:'#a3e635',energi:'#facc15',kultur:'#e879f9',annet:'#7c8a9c'};
+let OFF=new Set();fetch('/api/settings').then(r=>r.json()).then(s=>{OFF=new Set(s.catsOff||[])}).catch(()=>{});
 const track=document.getElementById('track'),view=document.getElementById('view');
 const tf=new Intl.DateTimeFormat('nb-NO',{hour:'2-digit',minute:'2-digit'});
 let x=0,paused=false,w=0;const SPEED=Math.max(.3,Math.min(3,+new URLSearchParams(location.search).get("speed")||1));
@@ -38,7 +39,7 @@ function events(news){const g=new Map();for(const n of news){const k=n.eid||n.id
   return [...g.values()].map(it=>{const p=it.find(n=>n.lang==='no')||it.find(n=>n.titleNo)||it[0];const srcs=new Set(it.map(n=>n.src)).size;
     const sev=Math.max(...it.map(n=>n.sev||0)),top=it.some(n=>n.top);const last=it.map(n=>n.date).sort().pop();
     return{id:p.eid||p.id,title:p.lang==='no'?p.title:(p.titleNo||p.title),cat:p.cat,score:sev+(srcs-1)*1.5+(top?2:0),last,srcs}})
-    .filter(e=>Date.now()-new Date(e.last)<12*3600e3).sort((a,b)=>new Date(b.last)-new Date(a.last)).slice(0,30)}
+    .filter(e=>Date.now()-new Date(e.last)<12*3600e3&&!OFF.has(e.cat)).sort((a,b)=>new Date(b.last)-new Date(a.last)).slice(0,30)}
 function render(news){track.textContent='';
   for(const e of events(news)){const a=document.createElement('a');a.className='it'+(e.score>=6?' big':'');a.href='#';
     const b=document.createElement('b');b.style.background=COL[e.cat]||COL.annet;const s=document.createElement('small');s.textContent=tf.format(new Date(e.last))+(e.srcs>1?' · '+e.srcs+' kilder':'');

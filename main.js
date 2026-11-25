@@ -198,6 +198,20 @@ ipcMain.handle('app-info', () => ({ version: app.getVersion(), electron: process
 ipcMain.on('set-login', (_e, on) => { app.setLoginItemSettings({ openAtLogin: !!on, args: ['--hidden'] }); buildTrayMenu(); });
 ipcMain.on('open-data', () => shell.openPath(app.getPath('userData')));
 ipcMain.on('ticker-restart', () => { if (ticker) { ticker.close(); setTimeout(toggleTicker, 300); } });
+// ---------- daglig oppsummering ----------
+let digestDay = '';
+setInterval(() => {
+  const s = S(); if (!s.digest || !s.notify) return;
+  const now = new Date(), hm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'), day = now.toDateString();
+  if (hm !== s.digestTime || digestDay === day) return;
+  digestDay = day;
+  const top = engine.topEvents();
+  if (!top.length || !Notification.isSupported()) return;
+  const n = new Notification({ title: 'Døgnets viktigste', body: top.map((e, i) => `${i + 1}. ${e.title}`).join('\n'), icon: ICON, silent: !s.sound });
+  n.on('click', () => { show(); setTimeout(() => win && win.webContents.send('open-tab', 'top'), 500); });
+  n.show();
+}, 30e3);
+ipcMain.on('zoom', (e, f) => { const z = Math.max(0.8, Math.min(1.6, +f || 1)); for (const w of BrowserWindow.getAllWindows()) if (w !== ticker) w.webContents.setZoomFactor(z); });
 ipcMain.handle('update-state', () => ({ ...upd, current: app.getVersion() }));
 ipcMain.on('update-check', () => checkUpdates('ui'));
 ipcMain.on('update-apply', () => applyUpdate(true));

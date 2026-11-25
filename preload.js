@@ -15,4 +15,6 @@ contextBridge.exposeInMainWorld('nk', {
   openData: () => ipcRenderer.send('open-data'),
   restartTicker: () => ipcRenderer.send('ticker-restart'),
   onOpenSettings: cb => ipcRenderer.on('open-settings', () => cb()),
+  onOpenTab: cb => ipcRenderer.on('open-tab', (_e, t) => cb(String(t))),
+  setZoom: f => ipcRenderer.send('zoom', +f),
 });

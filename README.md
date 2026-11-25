@@ -1,60 +1,84 @@
 # Nyhetskloden
 
-En Windows-app som viser nyheter fra hele verden på en 3D-klode, oppdatert hvert 5. minutt.
+Nyhetskloden er en gratis Windows-app som viser nyheter fra hele verden på en 3D-klode. Hver sak plasseres der den skjer, og kloden oppdateres automatisk hvert 5. minutt.
 
-## Installere
+## Last ned
 
-Last ned `Nyhetskloden-Setup-<versjon>.exe` fra [Releases](https://github.com/dsoder-jpg/nyhetskloden/releases/latest) og kjør den. Appen installeres bare for deg (uten administrator) i
-`%LOCALAPPDATA%\Programs\Nyhetskloden`, med snarvei i startmenyen og på skrivebordet. Den avinstalleres
-fra Innstillinger → Apper. Windows SmartScreen kan advare fordi programmet ikke er signert: velg **Mer info → Kjør likevel**.
+1. Gå til [siste utgivelse](https://github.com/dsoder-jpg/nyhetskloden/releases/latest).
+2. Last ned `Nyhetskloden-Setup-<versjon>.exe` og kjør filen.
+3. Windows kan vise «Windows beskyttet PCen». Det skjer fordi appen ikke er signert. Trykk **Mer info → Kjør likevel**.
 
-## Hva den kan
+Appen installeres bare for din bruker, uten administratortilgang. Den får snarvei i startmenyen og på skrivebordet, og kan avinstalleres fra **Innstillinger → Apper** i Windows.
 
-- **Hendelser:** Saker fra flere kilder om det samme slås sammen til én markør, for eksempel «4 kilder».
-- **Viktighetsscore:** Antall kilder, toppsak-status og alvor (dødsfall, jordskjelvstørrelse, røde varsler) gir markørstørrelse. Store saker vises i den røde «Siste nytt»-stripa og gir varsel.
-- **Tidslinje:** Spill av siste time, døgn eller uke (▶ eller mellomromstasten).
-- **Buer mellom land** som nevnes i samme sak.
-- **Landpanel:** Klikk på et land for å se sakene derfra og en kurve over omtale siste 7 døgn.
-- **Farevarsler fra MET:** Gule, oransje og røde områder i Norge.
-- **Følger:** Ord og steder du vil følge (Innstillinger). Treff merkes og gir varsel.
-- **Lest og lagret:** Åpnede saker dimmes. Stjerna lagrer en sak under «Lagret».
-- **Ticker:** En stripe øverst på skjermen som alltid ligger over andre vinduer. Slå den av og på med knappen eller fra menyen ved klokka.
-- **Norske titler:** Lim inn en gratis DeepL-nøkkel under Innstillinger (DeepL API Free).
-- **Egne kilder:** Legg til hvilken som helst RSS-feed under Innstillinger.
+Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt.
 
-## Oppdateringer
+## Funksjoner
 
-Appen oppdaterer seg selv fra GitHub Releases i repoet som står i `package.json` → `nyhetskloden.updateRepo`
-(`dsoder-jpg/nyhetskloden`). Den sjekker ved oppstart og hver sjette time, laster ned i bakgrunnen og installerer
-når appen lukkes. Klikker man på varselet, startes appen på nytt med en gang.
+**Kloden**
+- Satellittbilde eller kart, med natt-skygge der det er mørkt akkurat nå.
+- Land farges etter hvor mye de er omtalt, og buer viser land som nevnes i samme sak.
+- Saker om det samme fra flere kilder slås sammen til én markør. Store saker får større markør.
+- Tidslinje for siste time, 6 timer, døgn eller uke, med avspilling.
 
-Versjonen leses fra filnavnene i utgivelsen, så taggen og tittelen kan være hva som helst:
+**Nyheter**
+- Kategorier: krim og ulykker, krig og sikkerhet, politikk, natur og vær, samferdsel, marked, teknologi, helse, vitenskap, energi, kultur, kongehus og sport.
+- Faner for alle saker, de viktigste siste døgn, saker nær deg, saker du følger og saker du har lagret.
+- Følg ord eller steder og få varsel når de dukker opp.
+- Del en sak med lenke eller QR-kode til mobilen.
+- Norske titler på utenlandske saker med en gratis DeepL-nøkkel (valgfritt).
+- Legg til egne RSS-kilder.
 
-| Fil | Brukes til |
-|---|---|
-| `nyhetskloden-app-<versjon>-e<electron>.asar` | Liten oppdatering (ca. 3 MB, bare appkoden). Velges når Electron-versjonen er den samme. |
-| `Nyhetskloden-Setup-<versjon>.exe` | Full installasjon. Brukes ved nye installasjoner og når Electron er oppgradert. |
+**Marked**
+- Børsindekser (Oslo Børs, S&P 500, Nasdaq, DAX m.fl.), valuta, olje, gull og bitcoin.
+- Dagens største vinnere og tapere på Oslo Børs.
+- Egen liste over aksjer du vil følge.
 
-Slik publiserer du en ny versjon:
-1. Øk `version` i `package.json`, for eksempel til 3.0.3.
-2. Kjør `npm run dist:win`. Det lager begge filene i `dist/installer/`.
-3. Lag en ny utgivelse på GitHub og legg ved begge filene, eller kjør `npm run release` (krever NSIS og GitHub CLI).
+**Vær og varsler**
+- Værvarsel for hjemstedet ditt fra Yr/MET og farevarsler fra MET.
+- Varsel på skrivebordet ved store saker, med stille timer.
+- Daglig oppsummering om morgenen med døgnets viktigste saker.
 
-## Utvikle
+**Annet**
+- Ticker-stripe som ligger øverst eller nederst på skjermen.
+- Flytrafikk på kloden, og skipstrafikk langs norskekysten (krever gratis BarentsWatch-konto).
+- Mobilvisning: åpne kloden på mobilen når den er på samme nettverk som PC-en.
+- Mørkt og lyst tema, og større tekst.
+
+Alt kan slås av og på under **Innstillinger**.
+
+## Personvern
+
+Appen har ingen konto og sender ingen data om deg noe sted. Den henter bare nyheter og data fra kildene under. Innstillinger, lagrede saker og eventuelle nøkler lagres lokalt i `%APPDATA%\Nyhetskloden`.
+
+## Kilder
+
+- Nyheter: RSS-strømmer fra blant annet NRK, VG, Aftenposten, E24, BBC, The Guardian, Al Jazeera, The Verge, NASA og WHO.
+- Jordskjelv: [USGS](https://earthquake.usgs.gov/). Naturkatastrofer: [GDACS](https://www.gdacs.org/).
+- Vær og farevarsler: [MET Norge / Yr](https://api.met.no/).
+- Kurser: Yahoo Finance. Fly: [adsb.lol](https://adsb.lol/). Skip: [BarentsWatch](https://www.barentswatch.no/).
+- Kart: [OpenFreeMap](https://openfreemap.org/) og OpenStreetMap. Satellitt: Esri World Imagery.
+
+Kursene kan være forsinket og er ikke ment som investeringsråd.
+
+## Bygge selv
+
+Krever [Node.js](https://nodejs.org/) 20 eller nyere. For installasjonsfilen trengs også [NSIS](https://nsis.sourceforge.io/).
 
 ```
 npm install
-npm start          # kjør appen
-npm run server     # bare nyhetsmotoren, i nettleseren på http://localhost:3000
-npm run dist:win   # lag dist/Nyhetskloden-win32-x64 og dist/installer/Nyhetskloden-Setup-<versjon>.exe
+npm start          # start appen
+npm run server     # bare nyhetsmotoren, åpne http://localhost:3000 i nettleseren
+npm run dist:win   # lag installasjonsfil i dist/installer/
 ```
 
-| Fil | Hva |
+| Fil | Innhold |
 |---|---|
-| `main.js` | Electron: vindu, ticker, systemstatusfelt, varsler, oppdateringer |
-| `server.js` | Nyhetsmotor: kilder, gruppering, score, steder, oversettelse, følger, MET-varsler, sanntid (SSE) |
+| `main.js` | Electron: vinduer, ticker, varsler, oppdateringer |
+| `server.js` | Nyhetsmotoren: henter og grupperer saker, finner steder, sanntid |
+| `extras.js` | Marked, vær, fly og skip |
 | `public/index.html` | Kloden og sidepanelet (MapLibre GL) |
-| `public/ticker.html` | Tickerstripa |
 | `build/installer.nsi` | Installasjonsprogrammet (NSIS) |
 
-Innstillinger og saker lagres i `%APPDATA%\Nyhetskloden`. De blir liggende hvis appen avinstalleres.
+## Lisens
+
+MIT

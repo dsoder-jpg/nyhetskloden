@@ -8,6 +8,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
+const os = require('os');
+const crypto = require('crypto');
+const X = require('./extras');
 
 const events = new EventEmitter();
 const POLL_MIN = +process.env.POLL_MIN || 5;
@@ -37,7 +40,8 @@ const BUILTIN_FEEDS = [
   { src: 'VG', url: 'https://www.vg.no/rss/feed', lang: 'no' },
   { src: 'Aftenposten', url: 'https://www.aftenposten.no/rss', lang: 'no' },
   { src: 'Dagbladet', url: 'https://www.dagbladet.no/rss', lang: 'no' },
-  { src: 'E24', url: 'https://e24.no/rss2/', lang: 'no', cat: 'politikk' },
+  { src: 'E24', url: 'https://e24.no/rss2/', lang: 'no', cat: 'marked' },
+  { src: 'NRK Kultur', url: 'https://www.nrk.no/kultur/toppsaker.rss', lang: 'no', cat: 'kultur' },
   // Verden
   { src: 'BBC', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', top: true, lang: 'en' },
   { src: 'The Guardian', url: 'https://www.theguardian.com/world/rss', lang: 'en' },
@@ -47,6 +51,16 @@ const BUILTIN_FEEDS = [
   { src: 'France 24', url: 'https://www.france24.com/en/rss', lang: 'en' },
   { src: 'Sky News', url: 'https://feeds.skynews.com/feeds/rss/world.xml', lang: 'en' },
   { src: 'NPR', url: 'https://feeds.npr.org/1004/rss.xml', lang: 'en' },
+  // Temaer
+  { src: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', lang: 'en', cat: 'marked' },
+  { src: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', lang: 'en', cat: 'teknologi' },
+  { src: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', lang: 'en', cat: 'teknologi' },
+  { src: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', lang: 'en', cat: 'teknologi' },
+  { src: 'BBC Science', url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml', lang: 'en', cat: 'vitenskap' },
+  { src: 'NASA', url: 'https://www.nasa.gov/feed/', lang: 'en', cat: 'vitenskap' },
+  { src: 'BBC Health', url: 'https://feeds.bbci.co.uk/news/health/rss.xml', lang: 'en', cat: 'helse' },
+  { src: 'WHO', url: 'https://www.who.int/rss-feeds/news-english.xml', lang: 'en', cat: 'helse' },
+  { src: 'BBC Entertainment', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', lang: 'en', cat: 'kultur' },
   // Naturhendelser med nøyaktige koordinater
   { src: 'USGS', url: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson', type: 'usgs', cat: 'vaer', lang: 'no' },
   { src: 'GDACS', url: 'https://www.gdacs.org/xml/rss.xml', cat: 'vaer', lang: 'en' },
@@ -58,13 +72,17 @@ let SETTINGS_FILE = null;
 const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], dailyChars: 15000, usage: { day: '', chars: 0 },
   pollMin: POLL_MIN, keepHours: KEEP_HOURS, disabledFeeds: [],
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
-  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true };
+  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true,
+  catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false },
+  marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
-function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) } }; } catch {} }
+function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) } }; } catch {} }
 function saveSettings() { try { fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true }); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (e) { console.warn('Kunne ikke lagre innstillinger:', e.message); } }
 const publicSettings = () => {
-  const { deeplKey, usage, ...rest } = settings;
+  const { deeplKey, usage, ships, lanToken, ...rest } = settings;
   return { ...rest, hasKey: !!deeplKey, usedToday: usage.day === today() ? usage.chars : 0,
+    shipsClient: ships.clientId || '', hasShipsSecret: !!ships.clientSecret, lanUrls: lanUrls(),
     builtinFeeds: BUILTIN_FEEDS.map(f => ({ url: f.url, src: f.src, lang: f.lang })) };
 };
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -81,7 +99,31 @@ function applySettings(b) {
   if (b.quiet && typeof b.quiet === 'object') settings.quiet = { on: !!b.quiet.on, from: clampNum(b.quiet.from, 0, 23, 23), to: clampNum(b.quiet.to, 0, 23, 7) };
   if (['top', 'bottom'].includes(b.tickerPos)) settings.tickerPos = b.tickerPos;
   if (b.tickerSpeed != null) settings.tickerSpeed = clampNum(b.tickerSpeed, 0.3, 3, 1);
+  const CATS = ['krim', 'forsvar', 'politikk', 'marked', 'teknologi', 'helse', 'vitenskap', 'energi', 'vaer', 'samferdsel', 'kongehus', 'kultur', 'sport', 'annet'];
+  if (Array.isArray(b.catsOff)) settings.catsOff = b.catsOff.filter(c => CATS.includes(c));
+  if (b.home === null) settings.home = null;
+  else if (b.home && isFinite(b.home.lat) && isFinite(b.home.lon)) settings.home = { name: String(b.home.name || '').slice(0, 60), lat: +b.home.lat, lon: +b.home.lon };
+  if (b.nearKm != null) settings.nearKm = clampNum(b.nearKm, 5, 500, 50);
+  if (typeof b.digest === 'boolean') settings.digest = b.digest;
+  if (/^\d{2}:\d{2}$/.test(b.digestTime || '')) settings.digestTime = b.digestTime;
+  if (b.features && typeof b.features === 'object') for (const [k, v] of Object.entries(b.features)) if (k in settings.features && typeof v === 'boolean') settings.features[k] = v;
+  if (Array.isArray(b.marketWatch)) { settings.marketWatch = [...new Set(b.marketWatch.map(s => String(s).trim().toUpperCase()).filter(s => /^[A-Z0-9^.=\-]{1,15}$/.test(s)))].slice(0, 30); X.resetMarket(); }
+  if (b.ships && typeof b.ships === 'object') { if (typeof b.ships.clientId === 'string') settings.ships.clientId = b.ships.clientId.trim().slice(0, 120); if (typeof b.ships.clientSecret === 'string') settings.ships.clientSecret = b.ships.clientSecret.trim().slice(0, 200); X.resetShips(); }
+  if (typeof b.lan === 'boolean') { settings.lan = b.lan; if (b.lan && !settings.lanToken) settings.lanToken = crypto.randomBytes(9).toString('base64url'); setLan(); }
+  if (b.newLanToken) { settings.lanToken = crypto.randomBytes(9).toString('base64url'); }
   saveSettings(); events.emit('settings', settings);
+}
+// ---------- mobil på samme nett (LAN) ----------
+const LAN_PORT = 37852;
+let lanServer = null, mainHandler = null;
+function lanIps() { return Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal && !/^169\.254\./.test(i.address)).map(i => i.address); }
+function lanUrls() { return settings.lan && lanServer && settings.lanToken ? lanIps().map(ip => `http://${ip}:${LAN_PORT}/?t=${settings.lanToken}`) : []; }
+function setLan() {
+  if (settings.lan && !lanServer && mainHandler) {
+    lanServer = http.createServer((req, res) => mainHandler(req, res, true));
+    lanServer.on('error', e => { console.warn('Mobilvisning kunne ikke starte:', e.message); lanServer = null; status.lan = { src: 'Mobilvisning', ok: false, err: e.message }; });
+    lanServer.listen(LAN_PORT, '0.0.0.0', () => { status.lan = { src: 'Mobilvisning', ok: true, n: lanIps().length }; });
+  } else if (!settings.lan && lanServer) { lanServer.close(); lanServer = null; delete status.lan; }
 }
 const today = () => new Date().toISOString().slice(0, 10);
 const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includes(f.url)), ...settings.customFeeds.filter(f => !settings.disabledFeeds.includes(f.url)).filter(f => /^https:\/\//.test(f.url)).map(f => ({ src: f.src || new URL(f.url).hostname, url: f.url, custom: true }))];
@@ -130,12 +172,24 @@ const CAT_WORDS = {
   kongehus: 'kong kongen dronning* kronprins* prinsesse* prins slottet kongehus* kongefamilie* king queen prince princess royal*',
   politikk: 'regjering* storting* statsminister* minister* statsråd* statsbudsjett* budsjett* parti* frp høyre ap sv krf venstre mdg rødt senterpartiet valg* skatt* rente* norges bank oljefond* økonomi* inflasjon* strømpris* avgift* lovforslag* eu toll* aksje* børs* ' +
             'election* president* minister* parliament* government* vote* voting tariff* economy econom* inflation interest rate* budget* congress senate summit* sanction* trade policy stocks market*',
+  marked: 'aksje* børs* oslo børs osebx kurs* kursfall* kurshopp* kvartalsresultat* kvartalstall* utbytte* rente* renteheving* rentekutt* valuta* kronekurs* dollar* euro euroen inflasjon* finans* bank* investor* fond* bitcoin krypto* ' +
+          'stock* shares market* earnings profit* revenue* investor* nasdaq dow s&p wall street interest rate* currency bitcoin crypto* ipo merger* acquisition* bank*',
+  teknologi: 'teknologi* ki kunstig intelligens chatbot* app appen apper apple google microsoft meta openai anthropic nvidia mobil* smarttelefon* datasenter* hack* dataangrep* cyber* robot* software programvare* chip* brikke* ' +
+             'technology tech ai artificial intelligence chatbot* smartphone* iphone android software hack* hacker* cyber* robot* chip* semiconductor* startup*',
+  helse: 'helse* sykehus* lege* legevakt* sykdom* virus* vaksine* kreft* pandemi* utbrudd* smitte* fhi medisin* pasient* psykisk* ' +
+         'health hospital* doctor* disease* virus* vaccine* cancer pandemic* outbreak* infection* who medicine* patient* mental health',
+  vitenskap: 'forsk* forsker* forskning* romfart* nasa esa romferd* rakett* oppskyting* astronaut* planet* månen mars teleskop* fossil* oppdag* ' +
+             'science scientist* research* space spacecraft rocket* launch* astronaut* planet* moon mars telescope* fossil* discover* study',
+  energi: 'energi* strøm* strømpris* kraft* kraftpris* olje* gass* vindkraft* havvind* solkraft* vannkraft* atomkraft* opec equinor elbil* batteri* ' +
+          'energy oil gas opec renewable* wind power solar nuclear power electricity grid battery batteries',
+  kultur: 'kultur* film* musikk* konsert* festival* artist* bok* forfatter* teater* kjendis* tv-serie* serie* spillfilm* kino* eurovision mgp ' +
+          'film movie* music album* concert* festival* celebrit* actor* actress* oscar* grammy* eurovision book* author* theatre theater',
   sport: 'fotball* ski langrenn* skiskyting* hopp alpin* håndball* vm ol landslag* eliteserien haaland ødegaard finale* cupfinale* medalje* gull sølv bronse sjakk* carlsen ' +
          'football soccer world cup olympic* tennis champions league premier league match goal* medal* tournament',
 };
 const CAT_RE = Object.fromEntries(Object.entries(CAT_WORDS).map(([k, words]) => [k,
   [...new Set(words.split(/\s+/))].filter(Boolean).map(w => new RegExp(`(?<![\\p{L}])${esc(w.replace('*', ''))}${w.endsWith('*') ? '' : '(?![\\p{L}])'}`, 'iu'))]));
-const PRIORITY = ['vaer', 'krim', 'forsvar', 'samferdsel', 'kongehus', 'politikk', 'sport'];
+const PRIORITY = ['vaer', 'krim', 'forsvar', 'helse', 'samferdsel', 'energi', 'marked', 'teknologi', 'vitenskap', 'kongehus', 'kultur', 'politikk', 'sport'];
 function categorize(title, desc, feedCat) {
   if (feedCat) return feedCat;
   let best = 'annet', score = 0;
@@ -310,7 +364,8 @@ async function poll() {
     console.log(`[${lastPoll.toLocaleTimeString('nb-NO')}] ${ok}/${Object.keys(status).length} kilder ok, ${added.length} nye, ${news.length} totalt`);
     broadcast('update', { added: added.map(a => a.id), news, lastPoll, nextPoll, status });
     if (!isFirst) {
-      const fresh = added.filter(a => Date.now() - new Date(a.date) < 2 * 3600e3);
+      const off = new Set(settings.catsOff || []);
+      const fresh = added.filter(a => Date.now() - new Date(a.date) < 2 * 3600e3 && !off.has(a.cat));
       const big = fresh.filter(a => a.top || a.sev >= 5);
       const watched = fresh.filter(a => a.watch.length);
       if (big.length) events.emit('top', big);
@@ -349,9 +404,40 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   loadSettings();
   try { news = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); for (const n of news) if (!n.eid) n.eid = n.id; } catch { news = []; }
   const pub = path.join(__dirname, 'public');
-  const server = http.createServer(async (req, res) => {
+  mainHandler = async (req, res, lan) => {
     const url = new URL(req.url, 'http://localhost');
     const json = (o, code = 200) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
+    if (lan) {
+      // mobil: krever lenken med nøkkel; den lagres som informasjonskapsel. Mobilen kan lese, men ikke endre innstillinger.
+      const tok = settings.lanToken, cookie = (req.headers.cookie || '').match(/nk_t=([\w-]+)/);
+      if (!settings.lan || !tok) { res.writeHead(403); return res.end('Mobilvisning er slått av.'); }
+      if (url.searchParams.get('t') === tok) { res.writeHead(302, { 'Set-Cookie': `nk_t=${tok}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000`, Location: '/' }); return res.end(); }
+      if (!cookie || cookie[1] !== tok) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Åpne lenken fra Nyhetskloden-innstillingene (Mobil) på denne enheten.'); }
+      if (req.method !== 'GET' && url.pathname !== '/api/refresh') { res.writeHead(403); return res.end(); }
+    }
+    if (url.pathname === '/api/market') {
+      if (!settings.features.market && !settings.features.marketGlobe) return json({ off: true });
+      try { return json(await X.getMarket({ watch: settings.marketWatch, movers: settings.features.movers })); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/quote') { // sjekk at en ticker finnes før den legges til
+      try { const m = await X.getMarket({ watch: [String(url.searchParams.get('s') || '')], movers: false }); X.resetMarket(); return json(m.watch[0] || { error: 'fant ikke' }, m.watch[0] ? 200 : 404); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/weather') {
+      if (!settings.features.weather || !settings.home) return json({ off: true, home: settings.home });
+      try { return json(await X.getWeather(settings.home)); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/flights') {
+      if (!settings.features.flights) return json({ off: true });
+      const lat = +url.searchParams.get('lat'), lon = +url.searchParams.get('lon');
+      if (!isFinite(lat) || !isFinite(lon)) return json({ error: 'mangler posisjon' }, 400);
+      try { return json(await X.getFlights(lat, lon)); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/ships') {
+      if (!settings.features.ships) return json({ off: true });
+      try { return json(await X.getShips(settings.ships)); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/places') return json(PLACES.filter(p => p[3] === 'c').map(p => [p[0], p[1], p[2], p[4]]));
+    if (url.pathname === '/api/top') return json(X.topEvents(news, 24, 5, settings.catsOff));
     if (url.pathname === '/api/news') return json({ news, lastPoll, nextPoll, pollMin: settings.pollMin, status });
     if (url.pathname === '/api/alerts') return json(alerts);
     if (url.pathname === '/api/settings' && req.method === 'GET') return json(publicSettings());
@@ -384,7 +470,9 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
       res.end(buf);
     });
-  });
+  };
+  const server = http.createServer((req, res) => mainHandler(req, res, false));
+  setLan();
   return new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, '127.0.0.1', () => {
@@ -397,5 +485,5 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   });
 }
 
-module.exports = { start, poll, getSettings: () => settings, applySettings, events, parseRss, parseUsgs, findPlace, findPlaces, categorize, severity, tokens, sameEvent };
+module.exports = { start, poll, getSettings: () => settings, applySettings, topEvents: () => X.topEvents(news, 24, 5, settings.catsOff), events, parseRss, parseUsgs, findPlace, findPlaces, categorize, severity, tokens, sameEvent };
 if (require.main === module) start();
