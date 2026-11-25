@@ -1,0 +1,62 @@
+# Lager en ny utgivelse automatisk når versjonsnummeret i package.json endres.
+# Push uten nytt versjonsnummer gjør ingenting.
+name: Utgivelse
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Finn versjon
+        id: v
+        run: |
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "$V" >/dev/null 2>&1 || gh release view "v$V" >/dev/null 2>&1; then
+            echo "Versjon $V finnes allerede. Hopper over."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.v.outputs.skip != 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer
+        if: steps.v.outputs.skip != 'true'
+        run: |
+          npm ci
+          choco install nsis -y --no-progress
+          echo "C:\\Program Files (x86)\\NSIS" >> "$GITHUB_PATH"
+
+      - name: Bygg
+        if: steps.v.outputs.skip != 'true'
+        run: node scripts/dist.js
+
+      - name: Publiser
+        if: steps.v.outputs.skip != 'true'
+        run: |
+          V=${{ steps.v.outputs.version }}
+          git log -1 --format=%B > notes.txt
+          gh release create "$V" dist/installer/Nyhetskloden-Setup-$V.exe dist/installer/nyhetskloden-app-$V-e*.asar \
+            --title "Nyhetskloden $V" --notes-file notes.txt --target "$GITHUB_SHA"

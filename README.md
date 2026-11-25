@@ -71,6 +71,8 @@ npm run server     # bare nyhetsmotoren, åpne http://localhost:3000 i nettleser
 npm run dist:win   # lag installasjonsfil i dist/installer/
 ```
 
+Nye utgivelser lages automatisk av GitHub Actions når versjonsnummeret i `package.json` endres på `main`.
+
 | Fil | Innhold |
 |---|---|
 | `main.js` | Electron: vinduer, ticker, varsler, oppdateringer |
