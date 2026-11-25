@@ -34,7 +34,7 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Egen liste over aksjer du vil følge.
 
 **Vær og varsler**
-- Værvarsel for hjemstedet ditt fra Yr/MET og farevarsler fra MET.
+- Værvarsel fra Yr for hjemstedet ditt: nå, time for time og neste dager, med farevarsler fra MET.
 - Varsel på skrivebordet ved store saker, med stille timer.
 - Daglig oppsummering om morgenen med døgnets viktigste saker.
 
@@ -52,7 +52,7 @@ Appen har ingen konto og sender ingen data om deg noe sted. Den henter bare nyhe
 
 ## Kilder
 
-- Nyheter: RSS-strømmer fra blant annet NRK, VG, Aftenposten, E24, BBC, The Guardian, Al Jazeera, The Verge, NASA og WHO.
+- Nyheter: over 60 RSS-strømmer fra hele verden, blant annet NRK, VG, Aftenposten, BBC, The Guardian, Al Jazeera, Washington Post, CBC, Le Monde, Euronews, SVT, DR, Yle, Times of India, South China Morning Post og ABC Australia.
 - Jordskjelv: [USGS](https://earthquake.usgs.gov/). Naturkatastrofer: [GDACS](https://www.gdacs.org/).
 - Vær og farevarsler: [MET Norge / Yr](https://api.met.no/).
 - Kurser: Yahoo Finance. Fly: [adsb.lol](https://adsb.lol/). Skip: [BarentsWatch](https://www.barentswatch.no/).
@@ -70,8 +70,6 @@ npm start          # start appen
 npm run server     # bare nyhetsmotoren, åpne http://localhost:3000 i nettleseren
 npm run dist:win   # lag installasjonsfil i dist/installer/
 ```
-
-Nye utgivelser lages automatisk av GitHub Actions når versjonsnummeret i `package.json` endres på `main`.
 
 | Fil | Innhold |
 |---|---|

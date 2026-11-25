@@ -81,7 +81,21 @@ async function getWeather(home) {
   const ts = (await r.json()).properties.timeseries;
   const pick = t => ({ time: t.time, temp: t.data.instant.details.air_temperature, wind: t.data.instant.details.wind_speed,
     sym: (t.data.next_1_hours || t.data.next_6_hours || {}).summary?.symbol_code || '', rain: (t.data.next_1_hours || {}).details?.precipitation_amount ?? null });
-  wx = { at: new Date().toISOString(), place: home.name, now: pick(ts[0]), hours: ts.slice(1, 13).map(pick) };
+  // dager som på Yr: min/maks, nedbør og symbolet midt på dagen (lokal tid)
+  const days = new Map();
+  for (const t of ts) {
+    const d = new Date(t.time), key = d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
+    const h = +d.toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Europe/Oslo' });
+    if (!days.has(key)) days.set(key, { date: key, min: Infinity, max: -Infinity, rain: 0, sym: '', symH: 99, wind: 0 });
+    const x = days.get(key), det = t.data.instant.details;
+    x.min = Math.min(x.min, det.air_temperature); x.max = Math.max(x.max, det.air_temperature); x.wind = Math.max(x.wind, det.wind_speed || 0);
+    const n1 = t.data.next_1_hours, n6 = t.data.next_6_hours;
+    if (n1) x.rain += n1.details?.precipitation_amount || 0; else if (n6) x.rain += n6.details?.precipitation_amount || 0;
+    const sym = (n6 || n1 || {}).summary?.symbol_code;
+    if (sym && Math.abs(h - 12) < Math.abs(x.symH - 12)) { x.sym = sym; x.symH = h; }
+  }
+  wx = { at: new Date().toISOString(), place: home.name, now: pick(ts[0]), hours: ts.slice(1, 25).map(pick),
+    days: [...days.values()].slice(0, 8).map(({ symH, ...d }) => ({ ...d, min: Math.round(d.min * 10) / 10, max: Math.round(d.max * 10) / 10, rain: Math.round(d.rain * 10) / 10 })) };
   wxKey = key; wxAt = Date.now();
   return wx;
 }

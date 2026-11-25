@@ -18,7 +18,7 @@ const KEEP_HOURS = +process.env.KEEP_HOURS || 168; // 7 dager, så tidslinjen ka
 const MAX_ITEMS = 5000;
 const UA = 'Nyhetskloden/3.0 (privat hobbyapp)';
 
-// lang: språket i feeden (no/en). top: toppsaker. region: reserveplassering.
+// lang: språket i feeden (no/en/sv/da; bare en oversettes). top: toppsaker. region: reserveplassering.
 const BUILTIN_FEEDS = [
   // Norge
   { src: 'NRK', url: 'https://www.nrk.no/toppsaker.rss', top: true, lang: 'no' },
@@ -51,6 +51,33 @@ const BUILTIN_FEEDS = [
   { src: 'France 24', url: 'https://www.france24.com/en/rss', lang: 'en' },
   { src: 'Sky News', url: 'https://feeds.skynews.com/feeds/rss/world.xml', lang: 'en' },
   { src: 'NPR', url: 'https://feeds.npr.org/1004/rss.xml', lang: 'en' },
+  // flere verdenskilder, så Norge ikke dominerer
+  { src: 'BBC Afrika', url: 'https://feeds.bbci.co.uk/news/world/africa/rss.xml', lang: 'en' },
+  { src: 'BBC Asia', url: 'https://feeds.bbci.co.uk/news/world/asia/rss.xml', lang: 'en' },
+  { src: 'BBC Latin-Amerika', url: 'https://feeds.bbci.co.uk/news/world/latin_america/rss.xml', lang: 'en' },
+  { src: 'BBC Midtøsten', url: 'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml', lang: 'en' },
+  { src: 'Washington Post', url: 'https://feeds.washingtonpost.com/rss/world', lang: 'en' },
+  { src: 'ABC News', url: 'https://abcnews.go.com/abcnews/internationalheadlines', lang: 'en' },
+  { src: 'CBS News', url: 'https://www.cbsnews.com/latest/rss/world', lang: 'en' },
+  { src: 'CBC', url: 'https://rss.cbc.ca/lineup/world.xml', lang: 'en' },
+  { src: 'The Independent', url: 'https://www.independent.co.uk/news/world/rss', lang: 'en' },
+  { src: 'Euronews', url: 'https://www.euronews.com/rss?level=theme&name=news', lang: 'en' },
+  { src: 'Politico Europe', url: 'https://www.politico.eu/feed/', lang: 'en' },
+  { src: 'Le Monde', url: 'https://www.lemonde.fr/en/rss/une.xml', lang: 'en' },
+  { src: 'RFI', url: 'https://www.rfi.fr/en/rss', lang: 'en' },
+  { src: 'Kyiv Independent', url: 'https://kyivindependent.com/news-archive/rss/', lang: 'en' },
+  { src: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', lang: 'en' },
+  { src: 'Africanews', url: 'https://www.africanews.com/feed/rss', lang: 'en' },
+  { src: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms', lang: 'en' },
+  { src: 'South China Morning Post', url: 'https://www.scmp.com/rss/91/feed', lang: 'en' },
+  { src: 'CNA', url: 'https://www.channelnewsasia.com/rssfeeds/8395884', lang: 'en' },
+  { src: 'The Japan Times', url: 'https://www.japantimes.co.jp/feed/', lang: 'en' },
+  { src: 'Yonhap', url: 'https://en.yna.co.kr/RSS/news.xml', lang: 'en' },
+  { src: 'ABC Australia', url: 'https://www.abc.net.au/news/feed/52278/rss.xml', lang: 'en' },
+  { src: 'MercoPress', url: 'https://en.mercopress.com/rss/', lang: 'en' },
+  { src: 'SVT', url: 'https://www.svt.se/nyheter/rss.xml', lang: 'sv' },
+  { src: 'DR', url: 'https://www.dr.dk/nyheder/service/feeds/allenyheder', lang: 'da' },
+  { src: 'Yle', url: 'https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_NEWS', lang: 'en' },
   // Temaer
   { src: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', lang: 'en', cat: 'marked' },
   { src: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', lang: 'en', cat: 'teknologi' },

@@ -19,7 +19,7 @@ html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr);-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line);background:linear-gradient(#0b131d,#080e16)}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
 .brand{display:flex;align-items:center;gap:9px;margin-right:8px}
 .brand h1{font:600 16px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;margin:0;letter-spacing:.01em}
 .brand small{display:block;font-size:11px;color:var(--dim);margin-top:3px;letter-spacing:.02em}
@@ -28,7 +28,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed=true]{background:var(--panel3);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
 .live{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-.live b{width:8px;height:8px;border-radius:50%;background:#2fbf71;box-shadow:0 0 0 0 rgba(47,191,113,.6);animation:lv 2s infinite}
+.live b{width:7px;height:7px;border-radius:50%;background:#2fbf71}
 @keyframes lv{70%{box-shadow:0 0 0 7px rgba(47,191,113,0)}100%{box-shadow:0 0 0 0 rgba(47,191,113,0)}}
 .live.off b{background:#e5484d;animation:none}
 .sp{flex:1}
@@ -51,7 +51,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .pt b{display:block;font-weight:600;line-height:1.3}
 .pt span{color:var(--muted)}
 .legend{position:absolute;left:14px;top:14px;width:250px;background:rgba(10,17,25,.82);border:1px solid var(--line);border-radius:12px;padding:12px 14px;backdrop-filter:blur(10px)}
-.legend h2{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);margin:0 0 8px;text-transform:uppercase}
+.legend h2{font-size:13px;font-weight:600;color:var(--ink);margin:0 0 8px}
 .ramp{height:6px;border-radius:3px;background:linear-gradient(90deg,#3a1d12,#9a3412,#ea580c,#fbbf24)}
 .rl{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:3px}
 .hot{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:2px}
@@ -72,11 +72,9 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .src{display:inline-flex;align-items:center;gap:6px;margin-top:10px;color:var(--focus);font-weight:600;font-size:13px;text-decoration:none}
 .src:hover{text-decoration:underline}
 .side{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);background:var(--panel)}
-.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}
-.kpi{padding:12px 14px}
-.kpi+.kpi{border-left:1px solid var(--line)}
-.kpi b{display:block;font:600 22px/1.1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi span{font-size:11.5px;color:var(--muted)}
+.sumline{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);font:400 15px/1.4 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;color:var(--muted);text-wrap:pretty}
+#cMeta{display:flex;flex-wrap:wrap;gap:2px 12px}
+.sumline b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 .sh{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;gap:10px}
 .search{width:100%;min-height:34px;padding:0 12px 0 32px;border-radius:8px;border:1px solid var(--line);background:var(--panel2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%238a9bb0' stroke-width='2'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath d='m9.5 9.5 3.5 3.5'/%3E%3C/svg%3E") no-repeat 11px 50%;color:var(--ink);font:inherit}
 .cats{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;mask-image:linear-gradient(90deg,#000 92%,transparent)}
@@ -89,7 +87,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .filt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px}
 .chipx{display:inline-flex;align-items:center;gap:4px;padding:2px 3px 2px 10px;border-radius:14px;background:rgba(91,155,255,.16);color:#bcd6ff;font-weight:600}
 .chipx button{border:0;background:none;cursor:pointer;width:22px;height:22px;border-radius:11px;color:inherit}
-.lh{display:flex;justify-content:space-between;align-items:baseline;padding:10px 16px 4px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lh{display:flex;justify-content:space-between;align-items:baseline;padding:12px 16px 4px;font-size:13px;font-weight:600;color:var(--ink)}
+.lh #count2{font-weight:400;font-size:12px;color:var(--dim)}
 .list{list-style:none;margin:0;padding:0 6px 8px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#223246 transparent}
 .list button{position:relative;display:block;width:100%;text-align:left;padding:9px 10px 9px 16px;border:0;border-radius:8px;background:none;cursor:pointer}
 .list button::before{content:"";position:absolute;left:6px;top:11px;bottom:11px;width:3px;border-radius:2px;background:var(--cc)}
@@ -98,9 +97,13 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .lt{display:block;font-weight:600;font-size:13.5px;line-height:1.32}
 .lm{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:11.5px;color:var(--muted);margin-top:3px;align-items:center}
 .lm .c{color:var(--cc);font-weight:600}
-.badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:4px;text-transform:uppercase}
-.b-new{background:rgba(229,72,77,.18);color:#ff8a8d}
-.b-top{background:rgba(255,106,61,.14);color:#ffb08f}
+.lm .new{display:inline-flex;align-items:center;gap:5px;color:#ff8a7a;font-weight:600}
+.lm .new::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.lm .big{color:#ffb38a;font-weight:600}
+.lm .wt{color:#7fe0a8}
+.ls{display:block;font-size:11.5px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ls b{font-weight:600;color:var(--muted)}
+.list li.big .lt{font-weight:700}
 .empty{padding:18px;color:var(--muted)}
 .foot{padding:7px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim)}
 .foot summary{cursor:pointer}
@@ -122,10 +125,12 @@ body.has-upd.has-breaking{grid-template-rows:auto auto auto minmax(0,1fr)}
 .updbox{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
 .updbox .row3{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 /* v3: hendelser, siste nytt, tidslinje, lag, landpanel, faner, innstillinger */
-.breaking{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:34px;background:linear-gradient(90deg,#7f1d1d,#b91c1c 40%,#7f1d1d);color:#fff;font-weight:600;cursor:pointer;border:0;width:100%;text-align:left;font-size:13px}
-.breaking b{font-size:11px;letter-spacing:.08em;background:#fff;color:#b91c1c;padding:2px 7px;border-radius:4px}
+.breaking{display:flex;align-items:center;gap:14px;padding:0 14px 0 12px;min-height:36px;background:var(--panel2);box-shadow:inset 3px 0 0 #e5484d;border:0;border-bottom:1px solid var(--line);color:var(--ink);font-weight:600;cursor:pointer;width:100%;text-align:left;font-size:13.5px}
+.breaking:hover{background:var(--panel3)}
+.breaking b{font-weight:700;color:#ff6b6b}
+.breaking small{color:var(--muted)}
 .breaking span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.breaking small{opacity:.85;font-weight:500}
+.breaking small{font-weight:400}
 body.has-breaking{grid-template-rows:auto auto minmax(0,1fr)}
 .tl{position:absolute;left:14px;right:14px;bottom:26px;display:flex;align-items:center;gap:10px;background:rgba(10,17,25,.86);border:1px solid var(--line);border-radius:12px;padding:6px 12px;backdrop-filter:blur(10px)}
 .tl button{min-width:32px;min-height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;color:var(--ink);font-size:12px;padding:0 8px}
@@ -150,9 +155,7 @@ body.has-breaking{grid-template-rows:auto auto minmax(0,1fr)}
 .ctry svg{width:100%;height:46px;display:block}
 .ctry .meta b{color:var(--ink)}
 .list li.read .lt{color:#9aa9ba;font-weight:500}
-.b-src{background:rgba(91,155,255,.16);color:#bcd6ff}
-.b-watch{background:rgba(47,191,113,.16);color:#9ff0c3}
-.b-sev{background:rgba(255,106,61,.22);color:#ffc2a8}
+
 .star{border:0;background:none;cursor:pointer;color:var(--muted);font-size:16px;min-width:30px;min-height:30px;border-radius:8px}
 .star[aria-pressed=true]{color:#fcc419}
 dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:0;width:min(640px,92vw);box-shadow:0 30px 80px rgba(0,0,0,.6)}
@@ -160,7 +163,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dh{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
 .dh h2{margin:0;font:600 17px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
 .db{padding:6px 18px 16px;max-height:70vh;overflow:auto}
-.db h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.db h3{font-size:13px;color:var(--ink);margin:16px 0 6px}
 .db p{margin:4px 0;color:var(--muted);font-size:12.5px}
 .db textarea,.db input[type=text],.db input[type=password],.db input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;padding:8px 10px}
 .db textarea{min-height:80px;resize:vertical}
@@ -187,7 +190,7 @@ dialog.settings{width:min(980px,94vw);height:min(720px,90vh);padding:0}
 .spanes{overflow:auto;padding:6px 18px 22px;flex:1}
 .spanes section{display:none}
 .spanes section.on{display:block}
-.spanes h3{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+.spanes h3{font-size:13.5px;color:var(--ink);margin:22px 0 8px}
 .lead{color:var(--muted);margin:12px 0}
 .opt{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 0;border-bottom:1px solid var(--line)}
 .opt.col{flex-direction:column;align-items:stretch;gap:8px}
@@ -228,7 +231,7 @@ body.is-app .web-only{display:none!important}
 .mkt>summary::-webkit-details-marker{display:none}
 .mkt>summary::before{content:"▸";color:var(--dim);transition:transform .15s}
 .mkt[open]>summary::before{transform:rotate(90deg)}
-.mkt>summary h2{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.mkt>summary h2{margin:0;font-size:13px;font-weight:600;color:var(--ink)}
 .mkt>summary .sum{flex:1;display:flex;gap:10px;justify-content:flex-end;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
 .mb{padding:0 14px 12px;display:grid;gap:8px;max-height:34vh;overflow:auto;scrollbar-width:thin}
 .qg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
@@ -237,7 +240,7 @@ body.is-app .web-only{display:none!important}
 .q .px{font-weight:600;font-variant-numeric:tabular-nums}
 .q svg{grid-column:1/-1;width:100%;height:14px;display:block;margin-top:2px}
 .up{color:#3ddc84}.dn{color:#ff6b6b}.fl{color:var(--muted)}
-.mh{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:2px 0 -4px}
+.mh{font-size:12px;font-weight:600;color:var(--muted);margin:4px 0 -2px}
 .mv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:12px}
 .mv ol{margin:0;padding:0;list-style:none;display:grid;gap:2px}
 .mv li{display:flex;justify-content:space-between;gap:6px}
@@ -247,14 +250,26 @@ body.is-app .web-only{display:none!important}
 .tkb{display:inline-flex;gap:5px;align-items:center;font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--panel3);border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .wxb{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12.5px;color:var(--ink);white-space:nowrap}
 .wxb .warn{width:9px;height:9px;border-radius:50%}
-.wxpop{position:absolute;right:58px;top:14px;width:300px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 12px 36px rgba(0,0,0,.45);z-index:3}
-.wxpop h3{margin:0 30px 2px 0;font:600 15px/1.2 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
-.wxpop .x{top:4px;right:4px}
-.wxnow{display:flex;align-items:center;gap:12px;margin:8px 0}
-.wxnow b{font:600 30px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
-.wxh{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;text-align:center;font-size:11.5px;font-variant-numeric:tabular-nums}
-.wxh div{padding:4px 0;border-radius:6px;background:var(--panel2)}
-.wxh span{display:block;color:var(--muted);font-size:10.5px}
+.wxpop{position:absolute;right:58px;top:14px;width:380px;max-height:calc(100% - 28px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 12px 36px rgba(0,0,0,.45);z-index:3;scrollbar-width:thin}
+.wxpop h3{margin:0 30px 0 0;font:600 17px/1.25 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+.wxpop h4{margin:14px 0 6px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.wxpop .x{top:6px;right:6px}
+.wxnow{display:flex;align-items:center;gap:12px;margin-top:8px}
+.wxnow>b{font:300 44px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.warm{color:#ff7a6b}.cold{color:#6db3ff}
+.wxh{display:flex;gap:2px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;font-variant-numeric:tabular-nums}
+.wxh div{flex:none;width:44px;display:grid;justify-items:center;gap:2px;padding:6px 0;border-radius:8px;font-size:12px}
+.wxh div:first-child{background:var(--panel2)}
+.wxh span{color:var(--muted);font-size:11px}
+.wxh b{font-weight:600}
+.wxh i{font-style:normal;color:#6db3ff;font-size:11px;min-height:14px}
+.wxd{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.wxd th{text-align:left;font-weight:500;padding:5px 0}
+.wxd td{padding:3px 6px;white-space:nowrap}
+.wxd tr+tr{border-top:1px solid var(--line)}
+.wxd .r{color:#6db3ff;text-align:right}.wxd .w{color:var(--muted);text-align:right;padding-right:0}
+.wxi{display:block;flex:none}
+.wxb .wxi{display:inline-block}
 .wxal{display:grid;gap:4px;margin-top:8px}
 .wxal button{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 8px;cursor:pointer;font-size:12px}
 .wxal i{width:10px;height:10px;border-radius:50%;flex:none}
@@ -283,10 +298,9 @@ html[data-theme=light] .btn:hover{border-color:#b6c4d3}
 html[data-theme=light] .tg i{background:#c3cfdb}
 html[data-theme=light] .chips2 span{background:rgba(22,163,74,.12);color:#166534}
 html[data-theme=light] .chipx{color:#1d4ed8}
-html[data-theme=light] .b-src{color:#1d4ed8}
-html[data-theme=light] .b-watch{color:#166534}
-html[data-theme=light] .b-new{color:#b91c1c}
-html[data-theme=light] .b-top,html[data-theme=light] .b-sev{color:#c2410c}
+html[data-theme=light] .lm .new{color:#c0392b}
+html[data-theme=light] .lm .big{color:#b45309}
+html[data-theme=light] .lm .wt{color:#15803d}
 html[data-theme=light] .ok{color:#15803d}html[data-theme=light] .bad{color:#b91c1c}
 html[data-theme=light] .up{color:#15803d}html[data-theme=light] .dn{color:#c62828}
 html[data-theme=light] .list li.read .lt{color:#6b7c8f}
@@ -304,14 +318,14 @@ html[data-theme=light] .saved{color:#15803d}
   <div class="seg" id="period" role="group" aria-label="Tidsrom"><button data-p="1">1 t</button><button data-p="6">6 t</button><button data-p="24">24 t</button><button data-p="168">7 d</button></div>
   <div class="seg" id="basemap" role="group" aria-label="Kartvisning"><button data-b="sat">Satellitt</button><button data-b="map">Kart</button></div>
   <span class="sp"></span>
-  <button class="wxb" id="wxBtn" hidden title="Været der du bor"></button>
+  <button class="wxb" id="wxBtn" hidden title="Været der du bor, fra Yr"></button>
   <span class="live off" id="live"><b></b><span id="liveTxt">Kobler til …</span></span>
   <button class="btn" id="refresh" title="Hent nyheter nå"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></svg>Hent nå</button>
   <button class="btn" id="tickerBtn" hidden title="Vis rullende nyhetsstripe øverst på skjermen">Ticker</button>
   <button class="btn app-only" id="setBtn" title="Innstillinger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Innstillinger</button>
 </header>
 <div class="updbar" id="updbar" hidden><span>🡅</span><span id="updTxt"></span><span class="sp"></span><button class="btn ghost" id="updLater">Senere</button><button class="btn" id="updNow">Start på nytt og oppdater</button></div>
-<button class="breaking" id="breaking" hidden><b>SISTE NYTT</b><span id="brTxt"></span><small id="brMeta"></small></button>
+<button class="breaking" id="breaking" hidden><b>Siste nytt</b><span id="brTxt"></span><small id="brMeta"></small></button>
 
 <div class="app">
   <div class="stage" id="stage">
@@ -357,11 +371,7 @@ html[data-theme=light] .saved{color:#15803d}
     </div>
   </div>
   <aside class="side">
-    <div class="kpis">
-      <div class="kpi"><b id="k1">–</b><span>hendelser siste time</span></div>
-      <div class="kpi"><b id="k2">–</b><span>store saker</span></div>
-      <div class="kpi"><b id="k3">–</b><span>land berørt</span></div>
-    </div>
+    <p class="sumline" id="sumline">Henter nyheter …</p>
     <details class="mkt" id="mkt" hidden><summary><h2>Marked</h2><span class="sum" id="mSum"></span></summary><div class="mb" id="mBody"></div></details>
     <div class="sh">
       <div class="tabs" id="tabs"><button data-t="all">Alle</button><button data-t="top">Viktigst</button><button data-t="near" id="tabNear" hidden>Nær meg</button><button data-t="watch">Følger</button><button data-t="saved">Lagret</button></div>
@@ -531,17 +541,17 @@ html[data-theme=light] .saved{color:#15803d}
 
     <section data-sec="about">
      <div class="about"><svg width="54" height="54" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="url(#lg)" stroke="#9fd0ff" stroke-width="1.2"/><path d="M3.5 16h25M16 3c4 3.6 4 22.4 0 26M16 3c-4 3.6-4 22.4 0 26" fill="none" stroke="#9fd0ff" stroke-opacity=".55" stroke-width="1.1"/><circle cx="22" cy="10" r="3.4" fill="#ff6a3d" stroke="#fff" stroke-width="1.2"/></svg>
-      <div><b style="font-size:18px">Nyhetskloden</b><div class="meta" id="aVer"></div><div class="meta">Laget av Daniel · MIT-lisens · <a href="https://github.com/dsoder-jpg/nyhetskloden" target="_blank" rel="noopener">Kildekode på GitHub</a></div></div></div>
+      <div><b style="font-size:18px">Nyhetskloden</b><div class="meta" id="aVer"></div><div class="meta">Laget av Daniel. MIT-lisens. <a href="https://github.com/dsoder-jpg/nyhetskloden" target="_blank" rel="noopener">Kildekode på GitHub</a></div></div></div>
      <h3>Data og kart</h3>
      <ul class="credits">
       <li>Nyheter: NRK, VG, Aftenposten, Dagbladet, E24, BBC, The Guardian, Al Jazeera, New York Times, DW, France 24, Sky News, NPR, The Verge, Ars Technica, NASA og WHO via deres åpne RSS-feeder</li>
-      <li>Jordskjelv: USGS · Naturkatastrofer: GDACS · Farevarsler: Meteorologisk institutt (MET Norge)</li>
-      <li>Kart: OpenFreeMap, OpenMapTiles og © OpenStreetMap-bidragsytere · Satellittbilder: Esri, Maxar, Earthstar Geographics</li>
-      <li>Landgrenser: Natural Earth · Kartmotor: MapLibre GL · Oversettelse: DeepL (valgfritt)</li>
-      <li>Vær: Yr (MET Norge og NRK) · Kurser: Yahoo Finance · Fly: adsb.lol · Skip: BarentsWatch · QR-koder: qrcode-generator (MIT)</li>
+      <li>Jordskjelv: USGS; Naturkatastrofer: GDACS; Farevarsler: Meteorologisk institutt (MET Norge)</li>
+      <li>Kart: OpenFreeMap, OpenMapTiles og © OpenStreetMap-bidragsytere; Satellittbilder: Esri, Maxar, Earthstar Geographics</li>
+      <li>Landgrenser: Natural Earth; Kartmotor: MapLibre GL; Oversettelse: DeepL (valgfritt)</li>
+      <li>Vær: Yr (MET Norge og NRK); Kurser: Yahoo Finance; Fly: adsb.lol; Skip: BarentsWatch; QR-koder: qrcode-generator (MIT)</li>
      </ul>
      <h3>Hurtigtaster</h3>
-     <ul class="credits"><li><kbd>Mellomrom</kbd> spill av tidslinjen · <kbd>Esc</kbd> lukk sak eller landfilter · <kbd>Ctrl</kbd>+klikk på kategori for å velge flere</li></ul>
+     <ul class="credits"><li><kbd>Mellomrom</kbd> spill av tidslinjen. <kbd>Esc</kbd> lukk sak eller landfilter. <kbd>Ctrl</kbd>+klikk på kategori for å velge flere</li></ul>
     </section>
 
    </div>
@@ -778,7 +788,7 @@ function onLoad(){
   // samspill
   const pop=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:16,maxWidth:'300px'});
   map.on('mousemove','pts',e=>{map.getCanvas().style.cursor='pointer';const f=e.features[0];const ev=EVENTS.find(x=>x.id===f.properties.id);if(!ev)return;
-    pop.setLngLat(f.geometry.coordinates).setHTML(`<div class="pt"><b>${esc(ev.title)}</b><span>${esc(when(ev))} · ${ev.srcs.length>1?ev.srcs.length+' kilder':esc(ev.src)}</span></div>`).addTo(map)});
+    pop.setLngLat(f.geometry.coordinates).setHTML(`<div class="pt"><b>${esc(ev.title)}</b><span>${esc(when(ev))}, ${ev.srcs.length>1?'kilder: '+esc(ev.srcs.slice(0,3).join(', '))+(ev.srcs.length>3?' og '+(ev.srcs.length-3)+' til':''):esc(ev.src)}</span></div>`).addTo(map)});
   map.on('mouseleave','pts',()=>{map.getCanvas().style.cursor='';pop.remove()});
   map.on('mouseenter','clusters',()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave','clusters',()=>map.getCanvas().style.cursor='');
   map.on('click','clusters',async e=>{const f=e.features[0];const z=await map.getSource('news').getClusterExpansionZoom(f.properties.cluster_id);map.easeTo({center:f.geometry.coordinates,zoom:z+.3,duration:reduced?0:700})});
@@ -833,7 +843,7 @@ function updateMap(){
 let cardEv=null;
 function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star}){
   const c=$('card');c.hidden=false;c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
-  $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;$('cMeta').textContent=meta;$('cText').textContent=text||'';$('cText').hidden=!text;
+  $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;const mm=$('cMeta');mm.textContent='';for(const x of (Array.isArray(meta)?meta:[meta]).filter(Boolean)){const sp=document.createElement('span');sp.textContent=x;mm.append(sp)}$('cText').textContent=text||'';$('cText').hidden=!text;
   const ul=$('cSrcs');ul.textContent='';ul.hidden=!(srcs&&srcs.length>1);
   for(const n of (srcs||[])){const li=document.createElement('li');if(n.url&&n.url.startsWith('https://')){const a=document.createElement('a');a.href=n.url;a.target='_blank';a.rel='noopener';a.textContent=n.src+': '+(n.titleNo||n.title);li.append(a)}else li.append(n.src+': '+n.title);
     const s=document.createElement('span');s.textContent=tfmt.format(new Date(n.date));li.append(s);ul.append(li)}
@@ -847,16 +857,16 @@ $('cShare').onclick=()=>{const b=$('cShareBox');if(!shareUrl)return;b.hidden=!b.
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const a=document.createElement('textarea');a.value=t;document.body.append(a);a.select();let ok=false;try{ok=document.execCommand('copy')}catch(x){}a.remove();return ok}}
 $('cCopy').onclick=async()=>{if(!shareUrl)return;const ok=await copyText(shareUrl);$('cCopy').textContent=ok?'Kopiert ✓':'Kunne ikke kopiere';setTimeout(()=>$('cCopy').textContent='Kopier lenke',1800)};
 function cardTickers(e){const box=$('cTk');box.textContent='';const t=tickersFor(e);box.hidden=!t.length;
-  for(const q of t){const s=document.createElement('span');s.className='tkb';s.title=q.name+(q.price!=null?' · '+fmtNum(q.price)+' '+(q.cur||''):'');
+  for(const q of t){const s=document.createElement('span');s.className='tkb';s.title=q.name+(q.price!=null?': '+fmtNum(q.price)+' '+(q.cur||''):'');
     const a=document.createElement('span');a.textContent=q.sym.replace(/\.OL$/,'');const b=document.createElement('span');b.className=q.pct>0?'up':q.pct<0?'dn':'fl';b.textContent=pctTxt(q.pct);s.append(a,b);box.append(s)}}
 function select(id,go){
   const e=EVENTS.find(x=>x.id===id);S.sel=e?e.id:null;
   if(!e){$('card').hidden=true;cardEv=null;list();updateMap();return}
   cardEv=e;READ.add(e.id);saveRead();
   const c=CATS[e.cat];
-  showCard({color:c.c,tag:c.n+(e.score>=7?' · stor sak':e.top?' · toppsak':''),title:e.title,orig:e.orig,
-    meta:[when(e),e.srcs.length>1?e.srcs.length+' kilder':e.src,e.place||(e.lat==null?'uten sted':null),e.watch.length?'følger: '+e.watch.join(', '):null].filter(Boolean).join(' · '),
-    text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden')+' →',star:true});
+  showCard({color:c.c,tag:c.n+(e.score>=7?', stor sak':''),title:e.title,orig:e.orig,
+    meta:[e.place||(e.lat==null?'Uten sted':null),when(e),e.watch.length?'Følger «'+e.watch.join('», «')+'»':null,(e.srcs.length>1?'Kilder: ':'Kilde: ')+e.srcs.join(', ')],
+    text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden'),star:true});
   $('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';cardTickers(e);
   if(go&&e.lat!=null&&map){const no=ccOf(e)==='NO';map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),no?5.2:e.exact?4.5:4),duration:reduced?0:1800,essential:true})}
   list();updateMap();
@@ -866,8 +876,8 @@ $('cStar').onclick=()=>{if(!cardEv)return;const e=cardEv;
   saveSaved();$('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';if(S.tab==='saved')list()};
 function showAlert(p){S.sel=null;cardEv=null;
   const t=p.from&&p.to?`${dfmt.format(new Date(p.from))} – ${dfmt.format(new Date(p.to))}`:'';
-  showCard({color:ALERT_COL[p.level]||ALERT_COL.yellow,tag:'Farevarsel · '+({yellow:'gult',orange:'oransje',red:'rødt'}[p.level]||'')+' nivå',title:p.title,meta:[p.area,t].filter(Boolean).join(' · '),
-    text:[p.desc,p.consequences,p.instruction].filter(Boolean).join(' '),srcs:[],url:'https://www.yr.no/nb/farevarsler',urlText:'Se farevarsler på Yr →',star:false});list();updateMap()}
+  showCard({color:ALERT_COL[p.level]||ALERT_COL.yellow,tag:'Farevarsel, '+({yellow:'gult',orange:'oransje',red:'rødt'}[p.level]||'')+' nivå',title:p.title,meta:[p.area,t].filter(Boolean),
+    text:[p.desc,p.consequences,p.instruction].filter(Boolean).join(' '),srcs:[],url:'https://www.yr.no/nb/farevarsler',urlText:'Se farevarsler på Yr',star:false});list();updateMap()}
 $('cardX').onclick=()=>select(null);
 
 // ---------- panel ----------
@@ -881,7 +891,7 @@ function countryPanel(){const box=$('ctry');box.hidden=!S.cc;if(!S.cc){$('lhName
   const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
   $('ctSpark').innerHTML=`<path d="${line} L${W} ${H} L0 ${H}Z" fill="rgba(255,106,61,.18)"/><path d="${line}" fill="none" stroke="#ff6a3d" stroke-width="1.8"/>`;
   const d24=all.filter(e=>now-ms(e.date)<864e5).length,top=all.filter(e=>e.score>=3.5).length;
-  $('ctMeta').innerHTML=`<b>${all.length}</b> hendelser siste 7 døgn · <b>${d24}</b> siste døgn · <b>${top}</b> store saker`}
+  $('ctMeta').innerHTML=`<b>${all.length}</b> hendelser siste 7 døgn, <b>${d24}</b> siste døgn og <b>${top}</b> store saker`}
 function cats(){const b=base(),all=allOn();
   $('cats').innerHTML=`<button class="cat all" data-c="*" aria-pressed="${all}"><span class="sw" style="background:#33465c"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>Alle<span class="n">${b.length}</span></button>`+
   Object.entries(CATS).filter(([k])=>!OFF.has(k)).map(([k,c])=>`<button class="cat" data-c="${k}" aria-pressed="${!all&&S.cats.has(k)}"><span class="sw" style="background:${c.c}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="${ICON[k]}"/></svg></span>${c.n}<span class="n">${b.filter(e=>e.cat===k).length}</span></button>`).join('')}
@@ -903,17 +913,21 @@ function li(e,saved){
   const c=CATS[e.cat]||CATS.annet,el=document.createElement('li'),b=document.createElement('button');
   if(READ.has(e.id)&&e.id!==S.sel)el.className='read';
   b.style.setProperty('--cc',c.c);b.setAttribute('aria-pressed',e.id===S.sel);
-  b.onclick=()=>{if(EVENTS.some(x=>x.id===e.id))select(e.id,true);else{S.sel=null;showCard({color:c.c,tag:c.n+' · lagret',title:e.title,meta:[dfmt.format(new Date(e.last||e.date)),e.src,e.place].filter(Boolean).join(' · '),text:e.text,srcs:[],url:e.url,urlText:'Les saken hos '+(e.src||'kilden')+' →',star:false});
+  b.onclick=()=>{if(EVENTS.some(x=>x.id===e.id))select(e.id,true);else{S.sel=null;showCard({color:c.c,tag:c.n+', lagret',title:e.title,meta:[e.place,dfmt.format(new Date(e.last||e.date)),e.src?'Kilde: '+e.src:null],text:e.text,srcs:[],url:e.url,urlText:'Les saken hos '+(e.src||'kilden'),star:false});
     if(e.lat!=null&&map)map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),4),duration:reduced?0:1600})}};
   const t=document.createElement('span');t.className='lt';t.textContent=e.title;
   const m=document.createElement('span');m.className='lm';
   const add=(txt,cls)=>{if(!txt)return;const s=document.createElement('span');if(cls)s.className=cls;s.textContent=txt;m.append(s)};
-  if(!saved){if(fresh(e))add('Ny','badge b-new');if(e.score>=7)add('Stor sak','badge b-sev');else if(e.top)add('Topp','badge b-top');
-    if(e.srcs.length>1)add(e.srcs.length+' kilder','badge b-src');if(e.watch.length)add('Følger: '+e.watch[0],'badge b-watch');
-    const tq=tickersFor(e)[0];if(tq)add(tq.sym.replace(/\.OL$/,'')+' '+pctTxt(tq.pct),'badge '+(tq.pct>0?'up':tq.pct<0?'dn':'fl'))}
-  if(SAVED.has(e.id))add('★','');
-  add(c.n,'c');add(saved?dfmt.format(new Date(e.last||e.date)):when(e));if(!saved&&e.srcs.length<2)add(e.src);add(e.place||(e.lat==null&&!saved?'uten sted':''));
-  b.append(t,m);el.append(b);return el}
+  if(!saved&&fresh(e))add('Ny','new');
+  add(c.n,'c');if(!saved&&e.score>=7){add('Stor sak','big');el.classList.add('big')}
+  add(e.place||(e.lat==null&&!saved?'Uten sted':''));add(saved?dfmt.format(new Date(e.last||e.date)):when(e));
+  if(!saved&&e.srcs.length<2)add(e.src);
+  if(!saved){if(e.watch.length)add('Følger «'+e.watch[0]+'»','wt');const tq=tickersFor(e)[0];if(tq)add(tq.sym.replace(/\.OL$/,'')+' '+pctTxt(tq.pct),tq.pct>0?'up':tq.pct<0?'dn':'fl')}
+  if(SAVED.has(e.id))add('★ Lagret','');
+  b.append(t,m);
+  if(!saved&&e.srcs.length>1){const k=document.createElement('span');k.className='ls';const n=e.srcs.length,shown=e.srcs.slice(0,4);
+    k.innerHTML='<b>Kilder:</b> '+esc(shown.join(', '))+(n>4?' og '+(n-4)+' til':'');k.title='Kilder: '+e.srcs.join(', ');b.append(k)}
+  el.append(b);return el}
 function list(){
   const ul=$('list');ul.textContent='';
   if(S.tab==='saved'){const sv=[...SAVED.values()].filter(e=>catOn(e.cat)).reverse();$('count2').textContent=sv.length+(sv.length===1?' sak':' saker');
@@ -923,8 +937,9 @@ function list(){
   if(!ev.length){const l=document.createElement('li');l.className='empty';l.textContent=!EVENTS.length?'Henter nyheter …':S.tab==='watch'?'Ingen saker nevner ordene du følger ennå. Legg til ord under Innstillinger.':S.tab==='near'?'Ingen saker innenfor '+(SET.nearKm||50)+' km fra '+(HOME?HOME.name:'hjemstedet')+' i denne perioden.':'Ingen hendelser med disse filtrene.';ul.append(l);return}
   for(const e of ev.slice(0,300))ul.append(li(e))
 }
-function kpis(){const b=base();$('k1').textContent=EVENTS.filter(e=>{const a=age(e);return a>=0&&a<=60&&inScope(e)}).length;$('k2').textContent=b.filter(e=>e.score>=3.5).length;
-  const h=heatMap();$('k3').textContent=h.size;
+function kpis(){const b=base(),h=heatMap(),n1=EVENTS.filter(e=>{const a=age(e);return a>=0&&a<=60&&inScope(e)}).length,n2=b.filter(e=>e.score>=3.5).length;
+  if(EVENTS.length){const P={1:'siste time',6:'siste seks timer',24:'siste døgn',168:'siste uke'}[S.period]||'';
+    $('sumline').innerHTML=(n1?`<b>${n1}</b> ${n1===1?'ny hendelse':'nye hendelser'} siste time.`:'Ingen nye hendelser siste time.')+` <b>${n2}</b> ${n2===1?'stor sak':'store saker'} i <b>${h.size}</b> ${h.size===1?'land':'land'} ${P}.`}
   const top=[...h.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6),max=top.length?top[0][1]:1,ul=$('hot');ul.textContent='';
   if(!top.length){const l=document.createElement('li');l.className='meta';l.textContent='Ingen hendelser med sted ennå';ul.append(l)}
   for(const[a2,v]of top){const l=document.createElement('li'),b=document.createElement('button');b.onclick=()=>setCountry(a2);
@@ -933,7 +948,7 @@ function kpis(){const b=base();$('k1').textContent=EVENTS.filter(e=>{const a=age
 let brIdx=0,brList=[];
 function breaking(){brList=EVENTS.filter(e=>e.score>=6&&(Date.now()-ms(e.date))/6e4<=90).sort((a,b)=>b.score-a.score).slice(0,5);
   const on=brList.length>0;$('breaking').hidden=!on;document.body.classList.toggle('has-breaking',on);if(on)showBr()}
-function showBr(){if(!brList.length)return;const e=brList[brIdx%brList.length];$('brTxt').textContent=e.title;$('brMeta').textContent=[e.srcs.length>1?e.srcs.length+' kilder':e.src,e.place,when(e)].filter(Boolean).join(' · ');$('breaking').dataset.id=e.id}
+function showBr(){if(!brList.length)return;const e=brList[brIdx%brList.length];$('brTxt').textContent=e.title;$('brMeta').textContent=[e.place,when(e),e.srcs.length>1?e.srcs.length+' kilder':e.src].filter(Boolean).join(', ');$('breaking').dataset.id=e.id}
 setInterval(()=>{brIdx++;showBr()},7000);
 $('breaking').onclick=()=>{const id=$('breaking').dataset.id;if(id){S.cats=new Set(KEYS);S.tab='all';refresh();select(id,true)}};
 function sources(st){if(!st)return;STATUS=st;const v=Object.values(st),ok=v.filter(s=>s.ok).length;$('srcSum').textContent=`Kilder: ${ok} av ${v.length} svarer`;
@@ -960,7 +975,7 @@ $('tlPlay').onclick=()=>{if(playing){stopPlay();return}let t=S.tl??Date.now()-sp
 // ---------- direkte ----------
 function liveText(){if(!meta.lastPoll){$('liveTxt').textContent='Henter første gang …';return}
   const left=Math.max(0,Math.round((new Date(meta.nextPoll)-Date.now())/6e4));
-  $('liveTxt').textContent=`Oppdatert ${tfmt.format(new Date(meta.lastPoll))} · neste om ${left<1?'under 1':left} min`}
+  $('liveTxt').textContent=`Oppdatert ${tfmt.format(new Date(meta.lastPoll))}, neste om ${left<1?'under 1':left} min`}
 setInterval(()=>{liveText();if(!playing){list();updateMap();breaking()}},30e3);
 let toastIds=[];
 function toastMsg(txt){toastIds=[];$('toast').textContent=txt;$('toast').hidden=false;clearTimeout(toastMsg.t);toastMsg.t=setTimeout(()=>$('toast').hidden=true,5000)}
@@ -1008,8 +1023,8 @@ function renderMarket(){const box=$('mkt');box.hidden=!F.market;if(!F.market)ret
   let h=`<div class="qg">${ix.map(q=>qCard(q,q.name.replace('Oslo Børs (OSEBX)','OSEBX'))).join('')}</div>`;
   if((MKT.other||[]).length)h+=`<div class="mh">Valuta og råvarer</div><div class="qg">${MKT.other.map(q=>qCard(q)).join('')}</div>`;
   if(F.movers&&(MKT.up||[]).length)h+=`<div class="mh">Oslo Børs i dag</div><div class="mv"><div><div class="mnote">Best</div>${moverList(MKT.up)}</div><div><div class="mnote">Dårligst</div>${moverList(MKT.down)}</div></div>`;
-  if((MKT.watch||[]).length)h+=`<div class="mh">Aksjer jeg følger</div><div class="qg">${MKT.watch.map(q=>qCard(q,q.sym.replace(/\.OL$/,'')+' · '+q.name)).join('')}</div>`;
-  h+=`<div class="mnote">Yahoo Finance · oppdatert kl. ${tfmt.format(new Date(MKT.at))} · kan være forsinket</div>`;
+  if((MKT.watch||[]).length)h+=`<div class="mh">Aksjer jeg følger</div><div class="qg">${MKT.watch.map(q=>qCard(q,q.name)).join('')}</div>`;
+  h+=`<div class="mnote">Kurser fra Yahoo Finance, oppdatert ${tfmt.format(new Date(MKT.at))}. De kan være forsinket.</div>`;
   $('mBody').innerHTML=h}
 $('mkt').addEventListener('toggle',()=>store.set('nk-mkt-open',$('mkt').open));$('mkt').open=store.get('nk-mkt-open',true);
 // selskaper som nevnes i saker
@@ -1056,14 +1071,14 @@ function extraEvents(){const pop=new maplibregl.Popup({closeButton:false,closeOn
     map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';pop.remove()})}
   map.on('moveend',()=>{clearTimeout(loadFlights.d);loadFlights.d=setTimeout(loadFlights,600)})}
 const trafNote=t=>{$('trafNote').textContent=t||'';$('trafNote').hidden=!t};
-let trafMsg={};const showTraf=()=>trafNote([trafMsg.f,trafMsg.s].filter(Boolean).join(' · '));
+let trafMsg={};const showTraf=()=>trafNote([trafMsg.f,trafMsg.s].filter(Boolean).join('. '));
 async function loadFlights(){clearTimeout(loadFlights.t);if(!ready)return;const src=map.getSource('planes');
   if(!F.flights){src.setData(EMPTY);trafMsg.f='';showTraf();return}
   if(map.getZoom()<3.8){src.setData(EMPTY);trafMsg.f='Zoom inn for å se fly';showTraf();loadFlights.t=setTimeout(loadFlights,30e3);return}
   const c=map.getCenter();
   try{const d=await (await fetch(`/api/flights?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`)).json();if(d.error)throw new Error(d.error);
     src.setData({type:'FeatureCollection',features:(d.ac||[]).map(a=>({type:'Feature',geometry:{type:'Point',coordinates:[a.lon,a.lat]},
-      properties:{r:a.track||0,t:a.cs||a.reg||'Ukjent fly',d:[a.type,a.alt!=null?Math.round(a.alt*0.3048).toLocaleString('nb-NO')+' moh.':'',a.reg&&a.cs?a.reg:''].filter(Boolean).join(' · ')}}))});
+      properties:{r:a.track||0,t:a.cs||a.reg||'Ukjent fly',d:[a.type,a.alt!=null?Math.round(a.alt*0.3048).toLocaleString('nb-NO')+' moh.':'',a.reg&&a.cs?a.reg:''].filter(Boolean).join(', ')}}))});
     trafMsg.f=(d.ac||[]).length+' fly i området'}
   catch(e){trafMsg.f='Fly: fikk ikke kontakt'}
   showTraf();loadFlights.t=setTimeout(loadFlights,30e3)}
@@ -1072,28 +1087,56 @@ async function setShipLayer(){clearTimeout(setShipLayer.t);if(!ready)return;cons
   if(!F.ships){src.setData(EMPTY);trafMsg.s='';showTraf();return}
   try{const d=await (await fetch('/api/ships')).json();if(d.error)throw new Error(d.error);
     src.setData({type:'FeatureCollection',features:(d.ships||[]).map(v=>({type:'Feature',geometry:{type:'Point',coordinates:[v.lon,v.lat]},
-      properties:{r:v.cog||0,t:v.name||'MMSI '+v.mmsi,d:[SHIPT(v.type),v.sog!=null?nf0.format(v.sog)+' knop':''].filter(Boolean).join(' · ')}}))});
+      properties:{r:v.cog||0,t:v.name||'MMSI '+v.mmsi,d:[SHIPT(v.type),v.sog!=null?nf0.format(v.sog)+' knop':''].filter(Boolean).join(', ')}}))});
     trafMsg.s=(d.ships||[]).length+' skip'}
   catch(e){trafMsg.s=/mangler/.test(e.message)?'Skip: legg inn BarentsWatch-klient i Innstillinger':'Skip: '+e.message}
   showTraf();setShipLayer.t=setTimeout(setShipLayer,90e3)}
 
 // ---------- vær ----------
-const WXI=c=>{c=c||'';const n=/_night/.test(c);return/thunder/.test(c)?'⛈️':/snow/.test(c)?'🌨️':/sleet/.test(c)?'🌨️':/showers/.test(c)?'🌦️':/rain/.test(c)?'🌧️':/fog/.test(c)?'🌫️':/^cloudy/.test(c)?'☁️':/partlycloudy/.test(c)?(n?'☁️':'⛅'):/fair/.test(c)?(n?'🌙':'🌤️'):/clearsky/.test(c)?(n?'🌙':'☀️'):'🌡️'};
-const deg=t=>t==null?'–':Math.round(t)+'°';
+// værsymboler tegnet som enkle ikoner (MET symbol_code)
+function wxSvg(c,sz){c=c||'';const n=/_night|polartwilight/.test(c),S=sz||22;
+  const sun='<g stroke="#f5b83d" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="#f5b83d"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></g>';
+  const moon='<path d="M15.5 4.5a7.5 7.5 0 1 0 4 12.6A6 6 0 0 1 15.5 4.5Z" fill="#c9d3df"/>';
+  const cloud=(x,y,k,f)=>`<path transform="translate(${x} ${y}) scale(${k})" d="M7 18h10.5a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.6-1.2A4.5 4.5 0 0 0 7 18Z" fill="${f||'#a9b7c6'}"/>`;
+  const small=n?'<g transform="translate(-2 -3) scale(.62)">'+moon+'</g>':'<g transform="translate(-2 -3) scale(.62)">'+sun+'</g>';
+  const drops=k=>'<g stroke="#4ea1ff" stroke-width="1.7" stroke-linecap="round">'+[[8,19.5],[12,21],[16,19.5],[10,23.5]].slice(0,k).map(([x,y])=>`<path d="M${x} ${y-2.5}l-1 3"/>`).join('')+'</g>';
+  const flakes=k=>'<g fill="#eef3f8">'+[[8,19.5],[12,21.5],[16,19.5]].slice(0,k).map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.6"/>`).join('')+'</g>';
+  let g;
+  const heavy=/heavy/.test(c)?3:/light/.test(c)?1:2,base=/showers/.test(c)?small+cloud(1,-2.5,.95):cloud(0,-2.5,1);
+  if(/thunder/.test(c))g=cloud(0,-3,1,'#8e9caa')+'<path d="M12.5 14 9.5 19h3l-1.5 4 4.5-6h-3l1.5-3Z" fill="#f5b83d"/>';
+  else if(/sleet/.test(c))g=base+drops(1)+'<g transform="translate(4 0)">'+flakes(1).replace('cx="8"','cx="10"')+'</g>';
+  else if(/snow/.test(c))g=base+flakes(heavy);
+  else if(/rain/.test(c))g=base+drops(heavy+(heavy===3?1:0));
+  else if(/fog/.test(c))g='<g stroke="#a9b7c6" stroke-width="1.8" stroke-linecap="round"><path d="M4 9h16M6 13h12M4 17h16"/></g>';
+  else if(/^cloudy/.test(c))g=cloud(-1,-1,1.05,'#8e9caa');
+  else if(/partlycloudy/.test(c))g=small+cloud(1,0,.95);
+  else if(/fair/.test(c))g=(n?'<g transform="translate(-1 -1) scale(.85)">'+moon+'</g>':'<g transform="translate(-1 -1) scale(.85)">'+sun+'</g>')+cloud(6,6,.6);
+  else if(/clearsky/.test(c))g=n?moon:sun;
+  else g=cloud(0,-1,1);
+  return`<svg class="wxi" width="${S}" height="${S}" viewBox="0 0 24 24" aria-hidden="true">${g}</svg>`}
+const WXTXT=c=>{c=(c||'').replace(/_(day|night|polartwilight)$/,'');return({clearsky:'Klarvær',fair:'Lettskyet',partlycloudy:'Delvis skyet',cloudy:'Skyet',fog:'Tåke'})[c]||
+  (/thunder/.test(c)?'Torden':'')+(/thunder/.test(c)&&/(rain|snow|sleet)/.test(c)?' og ':'')+(/heavy/.test(c)?'kraftig ':/light/.test(c)?'lett ':'')+(/rainshowers/.test(c)?'regnbyger':/rain/.test(c)?'regn':/snowshowers/.test(c)?'snøbyger':/snow/.test(c)?'snø':/sleet/.test(c)?'sludd':'')||''};
+const deg=t=>{if(t==null)return'–';const r=Math.round(t)||0;return(r<0?'−':'')+Math.abs(r)+'°'};
+const tcol=t=>t==null?'':Math.round(t)>0?'warm':'cold';
+const WD=new Intl.DateTimeFormat('nb-NO',{weekday:'long',day:'numeric',month:'long'});
+function dayName(iso,i){if(i===0)return'I dag';if(i===1)return'I morgen';const d=new Date(iso+'T12:00:00');const t=WD.format(d);return t[0].toUpperCase()+t.slice(1)}
 function homeAlerts(){if(!HOME)return[];const pt=[HOME.lon,HOME.lat];return (ALERTS.features||[]).filter(f=>{const g=f.geometry;if(!g)return false;const ps=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];return ps.some(p=>inPoly(pt,p))})}
-function renderWx(){const b=$('wxBtn'),on=F.weather&&HOME;b.hidden=!on;if(!on){$('wxPop').hidden=true;return}
+function renderWx(){const b=$('wxBtn');b.hidden=!F.weather;if(!F.weather){$('wxPop').hidden=true;return}
+  if(!HOME){b.innerHTML=wxSvg('partlycloudy_day',18)+'<span>Vær: velg sted</span>';$('wxPop').hidden=true;return}
   const al=homeAlerts(),lvl=al.some(f=>f.properties.level==='red')?'red':al.some(f=>f.properties.level==='orange')?'orange':al.length?'yellow':null;
-  b.innerHTML=(WX&&WX.now?`<span>${WXI(WX.now.sym)}</span><b>${deg(WX.now.temp)}</b>`:'<span>🌡️</span>')+`<span>${esc(HOME.name)}</span>`+(lvl?`<span class="warn" style="background:${ALERT_COL[lvl]}" title="Farevarsel"></span>`:'');
+  b.innerHTML=(WX&&WX.now?wxSvg(WX.now.sym,18)+`<b class="${tcol(WX.now.temp)}">${deg(WX.now.temp)}</b>`:wxSvg('',18))+`<span>${esc(HOME.name)}</span>`+(lvl?`<span class="warn" style="background:${ALERT_COL[lvl]}" title="Farevarsel"></span>`:'');
   if($('wxPop').hidden)return;
   let h=`<button class="x" id="wxX" aria-label="Lukk">×</button><h3>${esc(HOME.name)}</h3>`;
-  if(!WX||!WX.now)h+=`<div class="meta">${WX&&WX.error?'Fikk ikke kontakt med Yr. Prøver igjen snart.':'Henter været …'}</div>`;
-  else{h+=`<div class="wxnow"><span style="font-size:34px">${WXI(WX.now.sym)}</span><b>${deg(WX.now.temp)}</b><div class="meta">Vind ${nf0.format(WX.now.wind||0)} m/s${WX.now.rain?'<br>Nedbør '+String(WX.now.rain).replace('.',',')+' mm neste time':''}</div></div>`;
-    h+=`<div class="wxh">${WX.hours.map(x=>`<div><span>${new Date(x.time).getHours().toString().padStart(2,'0')}</span>${WXI(x.sym)}<br>${deg(x.temp)}</div>`).join('')}</div>`}
-  if(al.length)h+=`<div class="wxal">${al.map((f,i)=>`<button data-i="${i}"><i style="background:${ALERT_COL[f.properties.level]||ALERT_COL.yellow}"></i>${esc(f.properties.title||'Farevarsel')}</button>`).join('')}</div>`;
-  h+=`<div class="mnote" style="margin-top:8px">Vær fra Yr, levert av MET og NRK${WX&&WX.at?' · kl. '+tfmt.format(new Date(WX.at)):''}</div>`;
+  if(!WX||!WX.now)h+=`<p class="meta">${WX&&WX.error?'Fikk ikke kontakt med Yr. Prøver igjen om noen minutter.':'Henter været …'}</p>`;
+  else{const nw=WX.now;
+    h+=`<div class="wxnow">${wxSvg(nw.sym,48)}<b class="${tcol(nw.temp)}">${deg(nw.temp)}</b><div><div>${esc(WXTXT(nw.sym))}</div><div class="meta">Vind ${nf0.format(nw.wind||0)} m/s${nw.rain?', '+String(nw.rain).replace('.',',')+' mm neste time':''}</div></div></div>`;
+    h+=`<h4>Time for time</h4><div class="wxh">${WX.hours.map(x=>`<div><span>${String(new Date(x.time).getHours()).padStart(2,'0')}</span>${wxSvg(x.sym,24)}<b class="${tcol(x.temp)}">${deg(x.temp)}</b><i>${x.rain?String(x.rain).replace('.',','):''}</i></div>`).join('')}</div>`;
+    if((WX.days||[]).length)h+=`<h4>Neste dager</h4><table class="wxd"><tbody>${WX.days.map((d,i)=>`<tr><th>${dayName(d.date,i)}</th><td>${wxSvg(d.sym,24)}</td><td><b class="${tcol(d.max)}">${deg(d.max)}</b> / <span class="${tcol(d.min)}">${deg(d.min)}</span></td><td class="r">${d.rain?String(d.rain).replace('.',',')+' mm':''}</td><td class="w">${nf0.format(d.wind)} m/s</td></tr>`).join('')}</tbody></table>`}
+  if(al.length)h+=`<h4>Farevarsler</h4><div class="wxal">${al.map((f,i)=>`<button data-i="${i}"><i style="background:${ALERT_COL[f.properties.level]||ALERT_COL.yellow}"></i>${esc(f.properties.title||'Farevarsel')}</button>`).join('')}</div>`;
+  h+=`<p class="mnote">Værvarsel fra Yr, levert av Meteorologisk institutt og NRK.${WX&&WX.at?' Oppdatert '+tfmt.format(new Date(WX.at))+'.':''}</p>`;
   $('wxPop').innerHTML=h;$('wxX').onclick=()=>{$('wxPop').hidden=true};
   for(const x of $('wxPop').querySelectorAll('.wxal button'))x.onclick=()=>showAlert(al[+x.dataset.i].properties)}
-$('wxBtn').onclick=()=>{$('wxPop').hidden=!$('wxPop').hidden;renderWx()};
+$('wxBtn').onclick=()=>{if(!HOME){openSettings('home');return}$('wxPop').hidden=!$('wxPop').hidden;renderWx()};
 async function loadWeather(){clearTimeout(loadWeather.t);if(!(F.weather&&HOME)){WX=null;renderWx();return}
   try{const d=await (await fetch('/api/weather')).json();WX=d.off?null:d}catch(e){WX={error:true}}
   renderWx();loadWeather.t=setTimeout(loadWeather,20*60e3)}
@@ -1132,7 +1175,7 @@ function showSec(id){for(const b of $('snav').querySelectorAll('button'))b.setAt
   for(const s of document.querySelectorAll('.spanes section'))s.classList.toggle('on',s.dataset.sec===id);$('sTitle').textContent=SECS[id];store.set('nk-sec',id)}
 $('snav').addEventListener('click',e=>{const b=e.target.closest('button[data-sec]');if(b)showSec(b.dataset.sec)});
 async function openSettings(sec){await loadSettings();renderSettings();applyFeatures();if(IS_APP){const info=await window.nk.appInfo();$('sLogin').checked=info.openAtLogin;$('tNow').checked=info.ticker;
-    $('dDir').textContent='Innstillinger og saker lagres i '+info.dataDir+'.';$('aVer').textContent='Versjon '+info.version+' · Electron '+info.electron}
+    $('dDir').textContent='Innstillinger og saker lagres i '+info.dataDir+'.';$('aVer').textContent='Versjon '+info.version+' (Electron '+info.electron+')'}
   else $('aVer').textContent='Nettleserversjon';
   showSec(sec||store.get('nk-sec','general'));if(!$('dlg').open)$('dlg').showModal()}
 $('setBtn').onclick=()=>openSettings();
@@ -1221,7 +1264,7 @@ $('tkForm').onsubmit=async e=>{e.preventDefault();const v=$('tkIn').value.trim()
   if((SET.marketWatch||[]).includes(v)){$('tkStatus').textContent=v+' er allerede lagt til.';return}
   $('tkStatus').textContent='Sjekker '+v+' …';
   try{const r=await fetch('/api/quote?s='+encodeURIComponent(v));const q=await r.json();if(!r.ok)throw 0;
-    $('tkStatus').textContent='✓ '+q.name+' · '+fmtNum(q.price)+' '+(q.cur||'');$('tkIn').value='';postSet({marketWatch:[...(SET.marketWatch||[]),v]},true)}
+    $('tkStatus').textContent='✓ '+q.name+', '+fmtNum(q.price)+' '+(q.cur||'');$('tkIn').value='';postSet({marketWatch:[...(SET.marketWatch||[]),v]},true)}
   catch(x){$('tkStatus').textContent='Fant ikke '+v+' hos Yahoo Finance. Sjekk at du har med børsendelsen, for eksempel .OL.'}};
 $('hForm').onsubmit=e=>{e.preventDefault();const v=$('hIn').value.trim().toLowerCase();if(!v)return;
   const m=PLACES.find(p=>(p[0]+(p[3]&&p[3]!=='NO'?', '+p[3]:'')).toLowerCase()===v)||PLACES.find(p=>p[0].toLowerCase()===v)||PLACES.find(p=>p[0].toLowerCase().startsWith(v));
@@ -1245,7 +1288,7 @@ document.querySelectorAll('#dlg [data-confirm]').forEach(b=>{const label=b.textC
   renderSettings();savedFlash()}});
 // ---------- oppdateringer i appen ----------
 function updUI(s){if(!s)return;const fmtMB=b=>b?' ('+(b/1048576).toFixed(b>1e7?0:1)+' MB)':'';
-  $('verTxt').textContent=s.current?' · v'+s.current:'';$('uVer').textContent='Versjon '+(s.current||'–');
+  $('verTxt').textContent='';$('uVer').textContent='Versjon '+(s.current||'–');
   const txt={idle:'Klar til å se etter oppdateringer.',checking:'Ser etter oppdateringer …',downloading:'Laster ned versjon '+s.ver+fmtMB(s.size)+' …',
     ready:'Versjon '+s.ver+' er lastet ned. Den installeres når du lukker appen, eller med en gang om du starter på nytt.',none:'Du har nyeste versjon.',
     error:'Kunne ikke se etter oppdateringer: '+(s.msg||'ukjent feil'),off:s.msg||'Oppdatering er ikke tilgjengelig her.'}[s.state]||'';
