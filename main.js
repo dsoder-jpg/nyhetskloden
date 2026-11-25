@@ -1,7 +1,7 @@
 // Nyhetskloden – Electron-app (v3)
 // Starter nyhetsmotoren (server.js), viser kloden i eget vindu, legger seg i systemstatusfeltet,
 // har en ticker-stripe som alltid ligger øverst, varsler om store saker og overvåkede ord,
-// og ser etter nye versjoner på GitHub Releases (se LES-MEG).
+// og oppdaterer seg selv fra GitHub Releases (se LES-MEG).
 
 const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, shell, nativeImage, screen } = require('electron');
 const path = require('path');
@@ -75,7 +75,7 @@ function buildTrayMenu() {
     { label: 'Varsler', type: 'checkbox', checked: notifyOn, click: i => { notifyOn = i.checked; } },
     { label: 'Start med Windows', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
       click: i => app.setLoginItemSettings({ openAtLogin: i.checked, args: ['--hidden'] }) },
-    pendingUpdate ? { label: `Installer versjon ${pendingUpdate.ver}`, click: installUpdate } : { label: 'Se etter oppdateringer', click: () => checkUpdates(true) },
+    pendingUpdate ? { label: `Start på nytt med versjon ${pendingUpdate.ver}`, click: () => applyUpdate(true) } : { label: 'Se etter oppdateringer', click: () => checkUpdates(true) },
     { type: 'separator' },
     { label: 'Avslutt', click: () => { quitting = true; app.quit(); } },
   ]));
@@ -106,38 +106,71 @@ engine.events.on('watch', items => {
 });
 
 // ---------- oppdateringer ----------
-// Ser etter ny versjon under GitHub Releases i repoet som står i package.json (nyhetskloden.updateRepo).
-// Finnes en nyere «Nyhetskloden-Setup-x.y.z.exe», lastes den ned og kan installeres med ett klikk.
+// Ser etter nye versjoner under GitHub Releases i repoet som står i package.json (nyhetskloden.updateRepo).
+// Versjonen leses fra filnavnene, så taggen på utgivelsen spiller ingen rolle:
+//   nyhetskloden-app-<versjon>-e<electron>.asar  → liten oppdatering (bare appkoden, ca. 3 MB)
+//   Nyhetskloden-Setup-<versjon>.exe              → full installasjon (brukes når Electron er byttet ut)
+// Oppdateringen lastes ned i bakgrunnen og installeres automatisk når appen lukkes,
+// eller med en gang hvis brukeren klikker på varselet.
 const fs = require('fs');
+const ofs = require('original-fs'); // vanlig fs behandler .asar som mapper; original-fs skriver dem som filer
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const UPDATE_REPO = (require('./package.json').nyhetskloden || {}).updateRepo;
-let pendingUpdate = null;
-const newer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+const ELECTRON_MAJOR = String(process.versions.electron || '').split('.')[0];
+const RES = process.resourcesPath;
+let pendingUpdate = null, applying = false;
+const cmp = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 function plain(title, body, onClick) { if (!Notification.isSupported()) return; const n = new Notification({ title, body, icon: ICON }); if (onClick) n.on('click', onClick); n.show(); }
+const okUrl = u => /^https:\/\/github\.com\//.test(u || '');
+
+async function download(asset) {
+  const res = await fetch(asset.browser_download_url, { headers: { 'User-Agent': 'Nyhetskloden' } });
+  if (!res.ok) throw new Error('nedlasting HTTP ' + res.status);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (asset.size && buf.length !== asset.size) throw new Error('nedlastingen ble ufullstendig');
+  if (/^sha256:/.test(asset.digest || '') && crypto.createHash('sha256').update(buf).digest('hex') !== asset.digest.slice(7)) throw new Error('kontrollsummen stemmer ikke');
+  return buf;
+}
+
 async function checkUpdates(manual) {
   if (!app.isPackaged || !UPDATE_REPO) { if (manual) plain('Oppdatering er ikke satt opp', 'Se LES-MEG for hvordan du publiserer nye versjoner.'); return; }
+  if (pendingUpdate) { if (manual) plain(`Nyhetskloden ${pendingUpdate.ver} er klar`, 'Den installeres når du lukker appen. Klikk for å starte på nytt nå.', () => applyUpdate(true)); return; }
   try {
-    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { 'User-Agent': 'Nyhetskloden', Accept: 'application/vnd.github+json' } });
-    if (r.status === 404) { if (manual) plain('Ingen oppdateringer publisert ennå', `Fant ingen utgivelser i ${UPDATE_REPO}.`); return; }
+    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=10`, { headers: { 'User-Agent': 'Nyhetskloden', Accept: 'application/vnd.github+json' } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const rel = await r.json(), ver = String(rel.tag_name || '').replace(/^v/i, '');
-    if (!newer(ver, app.getVersion())) { if (manual) plain('Ingen oppdatering', `Du har nyeste versjon (${app.getVersion()}).`); return; }
-    const asset = (rel.assets || []).find(a => /^Nyhetskloden-Setup-.*\.exe$/i.test(a.name) && /^https:\/\/github\.com\//.test(a.browser_download_url));
-    if (!asset) return;
-    const file = path.join(app.getPath('temp'), asset.name);
-    if (!fs.existsSync(file) || fs.statSync(file).size !== asset.size) {
-      const res = await fetch(asset.browser_download_url, { headers: { 'User-Agent': 'Nyhetskloden' } });
-      if (!res.ok) throw new Error('nedlasting HTTP ' + res.status);
-      fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    const assets = (await r.json()).filter(rel => !rel.draft).flatMap(rel => rel.assets || []).filter(a => okUrl(a.browser_download_url));
+    let best = null;
+    for (const a of assets) {
+      let m = a.name.match(/^nyhetskloden-app-(\d+\.\d+\.\d+)-e(\d+)\.asar$/i);
+      if (m && m[2] === ELECTRON_MAJOR) { if (!best || cmp(m[1], best.ver) > 0 || (cmp(m[1], best.ver) === 0 && best.kind === 'setup')) best = { ver: m[1], kind: 'asar', asset: a }; continue; }
+      m = a.name.match(/^Nyhetskloden-Setup-(\d+\.\d+\.\d+)\.exe$/i);
+      if (m && (!best || cmp(m[1], best.ver) > 0)) best = { ver: m[1], kind: 'setup', asset: a };
     }
-    pendingUpdate = { file, ver };
+    if (!best || cmp(best.ver, app.getVersion()) <= 0) { if (manual) plain('Ingen oppdatering', `Du har nyeste versjon (${app.getVersion()}).`); return; }
+    const buf = await download(best.asset);
+    if (best.kind === 'asar') { const file = path.join(RES, 'app.asar.new'); ofs.writeFileSync(file, buf); pendingUpdate = { ...best, file }; }
+    else { const file = path.join(app.getPath('temp'), best.asset.name); fs.writeFileSync(file, buf); pendingUpdate = { ...best, file }; }
     buildTrayMenu();
-    plain(`Nyhetskloden ${ver} er klar`, 'Klikk her for å installere nå. Du finner det også i menyen ved klokka.', installUpdate);
+    plain(`Nyhetskloden ${best.ver} er klar`, 'Den installeres automatisk når du lukker appen. Klikk her for å starte på nytt med en gang.', () => applyUpdate(true));
   } catch (e) { if (manual) plain('Kunne ikke se etter oppdateringer', String(e.message || e).slice(0, 120)); }
 }
-function installUpdate() {
-  if (!pendingUpdate) return;
-  spawn(pendingUpdate.file, ['/S'], { detached: true, stdio: 'ignore' }).unref(); // installerer stille og starter appen igjen
+
+// Bytter inn den nye versjonen etter at appen har lukket seg. restart = start appen igjen etterpå.
+function applyUpdate(restart) {
+  if (!pendingUpdate || applying) return;
+  applying = true;
+  const exe = process.execPath;
+  if (pendingUpdate.kind === 'asar') {
+    const target = path.join(RES, 'app.asar');
+    // venter til appen har sluppet filen, bytter den ut (prøver i opptil ~30 s), og starter appen igjen om ønsket
+    const done = restart ? `(start "" "${exe}" & exit)` : 'exit';
+    const script = `for /l %i in (1,1,15) do @(ping -n 3 127.0.0.1 >nul & move /y "${pendingUpdate.file}" "${target}" >nul 2>&1 && ${done})`;
+    // samme måte som Node selv starter cmd (shell: true): /s /c "…" med uendrede argumenter, ellers ødelegges anførselstegnene
+    spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `"${script}"`], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+  } else {
+    spawn(pendingUpdate.file, restart ? ['/S'] : ['/S', '/norun'], { detached: true, stdio: 'ignore' }).unref();
+  }
   quitting = true; app.quit();
 }
 
@@ -145,7 +178,7 @@ ipcMain.on('notify', (_e, on) => { notifyOn = !!on; buildTrayMenu(); });
 ipcMain.on('ticker', () => toggleTicker());
 ipcMain.on('open-item', (_e, id) => openItem(String(id)));
 app.on('second-instance', show);
-app.on('before-quit', () => { quitting = true; });
+app.on('before-quit', () => { quitting = true; if (pendingUpdate && !applying) applyUpdate(false); });
 app.on('window-all-closed', e => e.preventDefault?.());
 
 app.whenReady().then(async () => {

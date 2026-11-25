@@ -1,10 +1,10 @@
-# Nyhetskloden 3.0
+# Nyhetskloden
 
 En Windows-app som viser nyheter fra hele verden på en 3D-klode, oppdatert hvert 5. minutt.
 
 ## Installere
 
-Kjør `Nyhetskloden-Setup-3.0.0.exe`. Appen installeres bare for deg (uten administrator) i
+Last ned `Nyhetskloden-Setup-<versjon>.exe` fra [Releases](https://github.com/dsoder-jpg/nyhetskloden/releases/latest) og kjør den. Appen installeres bare for deg (uten administrator) i
 `%LOCALAPPDATA%\Programs\Nyhetskloden`, med snarvei i startmenyen og på skrivebordet. Den avinstalleres
 fra Innstillinger → Apper. Windows SmartScreen kan advare fordi programmet ikke er signert: velg **Mer info → Kjør likevel**.
 
@@ -24,15 +24,21 @@ fra Innstillinger → Apper. Windows SmartScreen kan advare fordi programmet ikk
 
 ## Oppdateringer
 
-Appen ser etter nye versjoner under GitHub Releases i repoet som står i `package.json` → `nyhetskloden.updateRepo`
-(nå `dsoder-jpg/nyhetskloden`). Slik publiserer du en ny versjon:
+Appen oppdaterer seg selv fra GitHub Releases i repoet som står i `package.json` → `nyhetskloden.updateRepo`
+(`dsoder-jpg/nyhetskloden`). Den sjekker ved oppstart og hver sjette time, laster ned i bakgrunnen og installerer
+når appen lukkes. Klikker man på varselet, startes appen på nytt med en gang.
 
-1. Lag repoet på GitHub hvis det ikke finnes. Er brukernavnet ditt et annet, endrer du `updateRepo`.
-2. Øk `version` i `package.json`, for eksempel til 3.0.1.
-3. Kjør `npm run release`. Dette krever [NSIS](https://nsis.sourceforge.io) og [GitHub CLI](https://cli.github.com) (`gh auth login`).
+Versjonen leses fra filnavnene i utgivelsen, så taggen og tittelen kan være hva som helst:
 
-Appene som er installert, finner versjonen innen 6 timer, eller med en gang via «Se etter oppdateringer» i menyen ved klokka.
-Da lastes installasjonsprogrammet ned og installeres stille med ett klikk.
+| Fil | Brukes til |
+|---|---|
+| `nyhetskloden-app-<versjon>-e<electron>.asar` | Liten oppdatering (ca. 3 MB, bare appkoden). Velges når Electron-versjonen er den samme. |
+| `Nyhetskloden-Setup-<versjon>.exe` | Full installasjon. Brukes ved nye installasjoner og når Electron er oppgradert. |
+
+Slik publiserer du en ny versjon:
+1. Øk `version` i `package.json`, for eksempel til 3.0.3.
+2. Kjør `npm run dist:win`. Det lager begge filene i `dist/installer/`.
+3. Lag en ny utgivelse på GitHub og legg ved begge filene, eller kjør `npm run release` (krever NSIS og GitHub CLI).
 
 ## Utvikle
 

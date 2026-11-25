@@ -1,2 +1,4 @@
-data/news.json
 node_modules/
+dist/
+data/
+*.log

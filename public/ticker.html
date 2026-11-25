@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<title>Nyhetskloden – ticker</title>
+<link rel="icon" href="data:,">
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#070c14;color:#e6edf5;font:600 13.5px/1 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+body{display:flex;align-items:stretch;-webkit-app-region:drag;border-bottom:1px solid #1a2635}
+.lab{display:flex;align-items:center;gap:8px;padding:0 12px;background:#b91c1c;font-size:11px;letter-spacing:.08em;white-space:nowrap}
+.lab i{width:7px;height:7px;border-radius:50%;background:#fff;animation:b 1.4s infinite}
+@keyframes b{50%{opacity:.2}}
+.view{flex:1;overflow:hidden;position:relative;mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+.track{position:absolute;top:0;bottom:0;display:flex;align-items:center;gap:34px;white-space:nowrap;will-change:transform}
+.it{display:inline-flex;align-items:center;gap:8px;cursor:pointer;-webkit-app-region:no-drag;color:#e6edf5;text-decoration:none}
+.it:hover{color:#fff;text-decoration:underline}
+.it b{width:8px;height:8px;border-radius:50%;flex:none}
+.it small{color:#8a9bb0;font-weight:500}
+.it.big{color:#ffd2c2}
+.x{-webkit-app-region:no-drag;border:0;background:none;color:#8a9bb0;font-size:18px;width:38px;cursor:pointer}
+.x:hover{color:#fff;background:#1a2635}
+@media(prefers-reduced-motion:reduce){.track{position:static;overflow-x:auto}}
+</style>
+</head>
+<body>
+<div class="lab"><i></i>DIREKTE</div>
+<div class="view" id="view"><div class="track" id="track"></div></div>
+<button class="x" id="x" title="Lukk ticker" aria-label="Lukk ticker">×</button>
+<script>
+{
+const COL={krim:'#ef5155',forsvar:'#4f8ef7',politikk:'#e0a526',vaer:'#14b8a6',samferdsel:'#9b6bff',kongehus:'#d946a8',sport:'#f97316',annet:'#7c8a9c'};
+const track=document.getElementById('track'),view=document.getElementById('view');
+const tf=new Intl.DateTimeFormat('nb-NO',{hour:'2-digit',minute:'2-digit'});
+let x=0,paused=false,w=0;
+function events(news){const g=new Map();for(const n of news){const k=n.eid||n.id;if(!g.has(k))g.set(k,[]);g.get(k).push(n)}
+  return [...g.values()].map(it=>{const p=it.find(n=>n.lang==='no')||it.find(n=>n.titleNo)||it[0];const srcs=new Set(it.map(n=>n.src)).size;
+    const sev=Math.max(...it.map(n=>n.sev||0)),top=it.some(n=>n.top);const last=it.map(n=>n.date).sort().pop();
+    return{id:p.eid||p.id,title:p.lang==='no'?p.title:(p.titleNo||p.title),cat:p.cat,score:sev+(srcs-1)*1.5+(top?2:0),last,srcs}})
+    .filter(e=>Date.now()-new Date(e.last)<12*3600e3).sort((a,b)=>new Date(b.last)-new Date(a.last)).slice(0,30)}
+function render(news){track.textContent='';
+  for(const e of events(news)){const a=document.createElement('a');a.className='it'+(e.score>=6?' big':'');a.href='#';
+    const b=document.createElement('b');b.style.background=COL[e.cat]||COL.annet;const s=document.createElement('small');s.textContent=tf.format(new Date(e.last))+(e.srcs>1?' · '+e.srcs+' kilder':'');
+    a.append(b,e.title,s);a.onclick=ev=>{ev.preventDefault();if(window.nk&&window.nk.openItem)window.nk.openItem(e.id)};track.append(a)}
+  w=track.scrollWidth;if(x<-w)x=view.clientWidth}
+function loop(){if(!paused&&w){x-=0.6;if(x<-w)x=view.clientWidth;track.style.transform=`translateX(${x}px)`}requestAnimationFrame(loop)}
+view.addEventListener('mouseenter',()=>paused=true);view.addEventListener('mouseleave',()=>paused=false);
+document.getElementById('x').onclick=()=>{if(window.nk&&window.nk.toggleTicker)window.nk.toggleTicker();else window.close()};
+fetch('/api/news').then(r=>r.json()).then(d=>{x=view.clientWidth;render(d.news||[]);if(!matchMedia('(prefers-reduced-motion: reduce)').matches)loop()});
+const es=new EventSource('/api/stream');es.addEventListener('update',m=>render(JSON.parse(m.data).news||[]));
+}
+</script>
+</body>
+</html>

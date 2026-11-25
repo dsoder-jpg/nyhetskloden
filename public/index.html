@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="nb" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nyhetskloden</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/vendor/maplibre-gl.css">
+<style>
+/* VOICE: vaktsentral – rolig, presis, nyhetene først
+   IDEA: en operasjonsskjerm der jorda henger i mørket, natten glir over og land gløder når det skjer noe
+   PICTURE: WebGL-klode med vektorkart fra OpenStreetMap, atmosfære, myk dag/natt, klynger og ikoner per kategori
+   COLOUR and TYPE: dypt verdensrom, grafittland, varmt glør for nyhetstrykk, én farge per kategori; Segoe UI
+   LAYOUT: tynn toppstripe, kloden fyller vinduet, sidepanel med nøkkeltall, mest omtalte land og saker */
+:root{color-scheme:dark;--bg:#05080e;--ink:#e6edf5;--muted:#8a9bb0;--dim:#5d6e82;--panel:#0a1119;--panel2:#0f1823;--panel3:#142131;--line:#1a2635;--accent:#ff6a3d;--focus:#5b9bff}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:13.5px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line);background:linear-gradient(#0b131d,#080e16)}
+.brand{display:flex;align-items:center;gap:9px;margin-right:8px}
+.brand h1{font:600 16px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;margin:0;letter-spacing:.01em}
+.brand small{display:block;font-size:11px;color:var(--dim);margin-top:3px;letter-spacing:.02em}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2)}
+.seg button{min-height:30px;padding:0 11px;border:0;background:none;cursor:pointer;font-size:12.5px;white-space:nowrap;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--panel3);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.live{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.live b{width:8px;height:8px;border-radius:50%;background:#2fbf71;box-shadow:0 0 0 0 rgba(47,191,113,.6);animation:lv 2s infinite}
+@keyframes lv{70%{box-shadow:0 0 0 7px rgba(47,191,113,0)}100%{box-shadow:0 0 0 0 rgba(47,191,113,0)}}
+.live.off b{background:#e5484d;animation:none}
+.sp{flex:1}
+.btn{min-height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.btn:hover{color:var(--ink);border-color:#2a3a4e}
+.btn[aria-pressed=true]{color:var(--ink)}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 400px;min-height:0}
+.stage{position:relative;overflow:hidden;background:radial-gradient(60% 70% at 50% 50%,#0c1a2c 0%,#060b14 55%,#03050a 100%)}
+.stars{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 12% 18%,#fff8,transparent),radial-gradient(1px 1px at 78% 12%,#fff6,transparent),radial-gradient(1px 1px at 34% 82%,#fff5,transparent),radial-gradient(1px 1px at 88% 64%,#fff7,transparent),radial-gradient(1.5px 1.5px at 6% 58%,#fff6,transparent),radial-gradient(1px 1px at 52% 6%,#fff5,transparent),radial-gradient(1px 1px at 66% 92%,#fff4,transparent),radial-gradient(1px 1px at 94% 30%,#fff5,transparent),radial-gradient(1px 1px at 22% 40%,#fff3,transparent);pointer-events:none}
+#map{position:absolute;inset:0}
+.maplibregl-ctrl-attrib{background:rgba(5,8,14,.6)!important;color:var(--dim)!important;font-size:10.5px}
+.maplibregl-ctrl-attrib a{color:var(--muted)!important}
+.maplibregl-ctrl-group{background:var(--panel)!important;border:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.35)!important}
+.maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:invert(.85)}
+.maplibregl-ctrl-group button.nk span{filter:none;display:grid;place-items:center;color:var(--ink)}
+.maplibregl-ctrl-group button[aria-pressed=true]{background:var(--panel3)}
+.maplibregl-popup-content{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 11px;box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:12.5px;max-width:300px}
+.maplibregl-popup-tip{display:none}
+.pt b{display:block;font-weight:600;line-height:1.3}
+.pt span{color:var(--muted)}
+.legend{position:absolute;left:14px;top:14px;width:250px;background:rgba(10,17,25,.82);border:1px solid var(--line);border-radius:12px;padding:12px 14px;backdrop-filter:blur(10px)}
+.legend h2{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);margin:0 0 8px;text-transform:uppercase}
+.ramp{height:6px;border-radius:3px;background:linear-gradient(90deg,#3a1d12,#9a3412,#ea580c,#fbbf24)}
+.rl{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:3px}
+.hot{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:2px}
+.hot button{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 6px;margin:0 -6px;border:0;background:none;border-radius:6px;cursor:pointer;text-align:left;font-size:12.5px}
+.hot button:hover{background:var(--panel3)}
+.hot .bars{display:flex;align-items:center;gap:6px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hot i{display:block;height:4px;border-radius:2px;background:var(--accent)}
+.ln{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11.5px;color:var(--dim)}
+.ln span{width:14px;height:10px;border-radius:2px;background:linear-gradient(90deg,rgba(0,8,25,.0),rgba(0,8,25,.75))}
+.card{position:absolute;left:14px;bottom:80px;width:min(440px,calc(100% - 80px));background:rgba(10,17,25,.94);border:1px solid var(--line);border-radius:14px;padding:14px 16px 14px 18px;box-shadow:0 16px 50px rgba(0,0,0,.5);backdrop-filter:blur(10px);overflow:hidden}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cc,#5d6e82)}
+.card h3{font:600 17px/1.3 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;margin:6px 36px 4px 0;text-wrap:balance}
+.card p{margin:8px 0 0;font-size:13.5px;color:#c9d4e0}
+.meta{font-size:12px;color:var(--muted)}
+.tag{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px;color:var(--cc)}
+.x{position:absolute;top:6px;right:6px;width:36px;height:36px;border:0;background:none;color:var(--muted);font-size:19px;cursor:pointer;border-radius:8px}
+.x:hover{background:var(--panel3);color:var(--ink)}
+.src{display:inline-flex;align-items:center;gap:6px;margin-top:10px;color:var(--focus);font-weight:600;font-size:13px;text-decoration:none}
+.src:hover{text-decoration:underline}
+.side{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);background:var(--panel)}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.kpi{padding:12px 14px}
+.kpi+.kpi{border-left:1px solid var(--line)}
+.kpi b{display:block;font:600 22px/1.1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi span{font-size:11.5px;color:var(--muted)}
+.sh{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.search{width:100%;min-height:34px;padding:0 12px 0 32px;border-radius:8px;border:1px solid var(--line);background:var(--panel2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%238a9bb0' stroke-width='2'%3E%3Ccircle cx='6' cy='6' r='4.5'/%3E%3Cpath d='m9.5 9.5 3.5 3.5'/%3E%3C/svg%3E") no-repeat 11px 50%;color:var(--ink);font:inherit}
+.cats{display:flex;flex-wrap:wrap;gap:5px}
+.cat{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 9px 0 5px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12px;color:var(--ink)}
+.cat[aria-pressed=true]{border-color:#7f93ab;background:var(--panel3)}
+.cats:has(.cat[aria-pressed=true]:not(.all)) .cat[aria-pressed=false]{opacity:.45}
+.cat .sw{width:18px;height:18px;border-radius:50%;display:grid;place-items:center}
+.cat .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.filt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px}
+.chipx{display:inline-flex;align-items:center;gap:4px;padding:2px 3px 2px 10px;border-radius:14px;background:rgba(91,155,255,.16);color:#bcd6ff;font-weight:600}
+.chipx button{border:0;background:none;cursor:pointer;width:22px;height:22px;border-radius:11px;color:inherit}
+.lh{display:flex;justify-content:space-between;align-items:baseline;padding:10px 16px 4px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.list{list-style:none;margin:0;padding:0 6px 8px;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#223246 transparent}
+.list button{position:relative;display:block;width:100%;text-align:left;padding:9px 10px 9px 16px;border:0;border-radius:8px;background:none;cursor:pointer}
+.list button::before{content:"";position:absolute;left:6px;top:11px;bottom:11px;width:3px;border-radius:2px;background:var(--cc)}
+.list button:hover{background:var(--panel2)}
+.list button[aria-pressed=true]{background:var(--panel3)}
+.lt{display:block;font-weight:600;font-size:13.5px;line-height:1.32}
+.lm{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:11.5px;color:var(--muted);margin-top:3px;align-items:center}
+.lm .c{color:var(--cc);font-weight:600}
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:4px;text-transform:uppercase}
+.b-new{background:rgba(229,72,77,.18);color:#ff8a8d}
+.b-top{background:rgba(255,106,61,.14);color:#ffb08f}
+.empty{padding:18px;color:var(--muted)}
+.foot{padding:7px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim)}
+.foot summary{cursor:pointer}
+.foot ul{margin:6px 0 0;padding-left:18px;max-height:150px;overflow:auto}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#f2f5f9;color:#0a1119;padding:9px 16px;border-radius:10px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.4);border:0;cursor:pointer;min-height:38px;z-index:5}
+.boot{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);pointer-events:none;font-size:13px}
+@media(max-width:1000px){.app{grid-template-columns:minmax(0,1fr) 330px}.legend{width:210px}}
+@media(max-width:760px){body{overflow:auto;display:block}.app{grid-template-columns:minmax(0,1fr)}.stage{height:70vh}.side{border-left:0;border-top:1px solid var(--line)}.list{overflow:visible}.legend{display:none}}
+
+/* v3: hendelser, siste nytt, tidslinje, lag, landpanel, faner, innstillinger */
+.breaking{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:34px;background:linear-gradient(90deg,#7f1d1d,#b91c1c 40%,#7f1d1d);color:#fff;font-weight:600;cursor:pointer;border:0;width:100%;text-align:left;font-size:13px}
+.breaking b{font-size:11px;letter-spacing:.08em;background:#fff;color:#b91c1c;padding:2px 7px;border-radius:4px}
+.breaking span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.breaking small{opacity:.85;font-weight:500}
+body.has-breaking{grid-template-rows:auto auto minmax(0,1fr)}
+.tl{position:absolute;left:14px;right:14px;bottom:26px;display:flex;align-items:center;gap:10px;background:rgba(10,17,25,.86);border:1px solid var(--line);border-radius:12px;padding:6px 12px;backdrop-filter:blur(10px)}
+.tl button{min-width:32px;min-height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;color:var(--ink);font-size:12px;padding:0 8px}
+.tl input{flex:1;accent-color:var(--accent)}
+.tl .when{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:118px;text-align:right}
+.tl .liveb[aria-pressed=true]{background:#1f3b2b;border-color:#2fbf71;color:#9ff0c3}
+.layers{position:absolute;right:14px;bottom:80px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12px;display:grid;gap:2px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.layers label{display:flex;align-items:center;gap:7px;cursor:pointer;min-height:24px;white-space:nowrap}
+.layers input{accent-color:var(--accent)}
+.card .srcs{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;max-height:140px;overflow:auto}
+.card .srcs a{color:#bcd6ff;text-decoration:none;font-size:12.5px}
+.card .srcs a:hover{text-decoration:underline}
+.card .srcs span{color:var(--muted);font-size:11.5px;margin-left:6px}
+.card .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.card .orig{font-size:12px;color:var(--dim);margin-top:4px;font-style:italic}
+.tabs{display:flex;gap:4px}
+.tabs button{flex:1;min-height:30px;border:1px solid var(--line);background:var(--panel2);border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--muted)}
+.tabs button[aria-pressed=true]{color:var(--ink);background:var(--panel3);border-color:#2a3a4e}
+.ctry{display:grid;gap:6px;padding:10px 12px;border:1px solid #284466;border-radius:10px;background:rgba(91,155,255,.07)}
+.ctry header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ctry h3{margin:0;font:600 16px/1.2 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+.ctry svg{width:100%;height:46px;display:block}
+.ctry .meta b{color:var(--ink)}
+.list li.read .lt{color:#9aa9ba;font-weight:500}
+.b-src{background:rgba(91,155,255,.16);color:#bcd6ff}
+.b-watch{background:rgba(47,191,113,.16);color:#9ff0c3}
+.b-sev{background:rgba(255,106,61,.22);color:#ffc2a8}
+.star{border:0;background:none;cursor:pointer;color:var(--muted);font-size:16px;min-width:30px;min-height:30px;border-radius:8px}
+.star[aria-pressed=true]{color:#fcc419}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:0;width:min(640px,92vw);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dh h2{margin:0;font:600 17px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+.db{padding:6px 18px 16px;max-height:70vh;overflow:auto}
+.db h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.db p{margin:4px 0;color:var(--muted);font-size:12.5px}
+.db textarea,.db input[type=text],.db input[type=password],.db input[type=number]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:inherit;padding:8px 10px}
+.db textarea{min-height:80px;resize:vertical}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;gap:6px;margin-top:6px}
+.df{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0a04;font-weight:600}
+.ok{color:#9ff0c3}.bad{color:#ff8a8d}
+@media(max-height:760px){.layers{display:none}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><defs><radialGradient id="lg" cx="35%" cy="30%"><stop offset="0" stop-color="#3b82c4"/><stop offset="1" stop-color="#0c2a4a"/></radialGradient></defs><circle cx="16" cy="16" r="13" fill="url(#lg)" stroke="#9fd0ff" stroke-width="1.2"/><path d="M3.5 16h25M16 3c4 3.6 4 22.4 0 26M16 3c-4 3.6-4 22.4 0 26" fill="none" stroke="#9fd0ff" stroke-opacity=".55" stroke-width="1.1"/><circle cx="22" cy="10" r="3.4" fill="#ff6a3d" stroke="#fff" stroke-width="1.2"/></svg>
+    <div><h1>Nyhetskloden</h1><small>Verden akkurat nå</small></div></div>
+  <div class="seg" id="scope" role="group" aria-label="Område"><button data-s="all">Hele verden</button><button data-s="no">Norge</button><button data-s="abroad">Utland</button></div>
+  <div class="seg" id="period" role="group" aria-label="Tidsrom"><button data-p="1">1 t</button><button data-p="6">6 t</button><button data-p="24">24 t</button><button data-p="168">7 d</button></div>
+  <div class="seg" id="basemap" role="group" aria-label="Kartvisning"><button data-b="sat">Satellitt</button><button data-b="map">Kart</button></div>
+  <span class="sp"></span>
+  <span class="live off" id="live"><b></b><span id="liveTxt">Kobler til …</span></span>
+  <button class="btn" id="refresh" title="Hent nyheter nå"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></svg>Hent nå</button>
+  <button class="btn" id="tickerBtn" hidden title="Vis rullende nyhetsstripe øverst på skjermen">Ticker</button>
+  <button class="btn" id="notify" hidden aria-pressed="true" title="Varsel ved store saker og overvåkede ord">Varsler på</button>
+  <button class="btn" id="setBtn" title="Innstillinger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Innstillinger</button>
+</header>
+<button class="breaking" id="breaking" hidden><b>SISTE NYTT</b><span id="brTxt"></span><small id="brMeta"></small></button>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="stars"></div>
+    <div id="map" role="region" aria-label="Kart"></div>
+    <div class="boot" id="boot">Laster kart …</div>
+    <div class="legend">
+      <h2>Mest omtalt</h2>
+      <div class="ramp"></div><div class="rl"><span>få hendelser</span><span>mange</span></div>
+      <ul class="hot" id="hot"></ul>
+      <div class="ln"><span></span>Skygge = natt akkurat nå</div>
+    </div>
+    <div class="tl" id="tl">
+      <button id="tlPlay" title="Spill av perioden" aria-label="Spill av">▶</button>
+      <input type="range" id="tlRange" min="0" max="1000" value="1000" aria-label="Tidslinje">
+      <span class="when" id="tlWhen">Direkte</span>
+      <button class="liveb" id="tlLive" aria-pressed="true">Direkte</button>
+    </div>
+    <div class="layers" id="layers">
+      <label><input type="checkbox" data-l="heat" checked>Landfarger</label>
+      <label><input type="checkbox" data-l="arcs" checked>Buer mellom land</label>
+      <label><input type="checkbox" data-l="alerts" checked>Farevarsler (MET)</label>
+      <label><input type="checkbox" data-l="night" checked>Natt</label>
+    </div>
+    <div class="card" id="card" hidden>
+      <button class="x" id="cardX" aria-label="Lukk">×</button>
+      <span class="tag" id="cTag"></span>
+      <h3 id="cTitle"></h3>
+      <div class="orig" id="cOrig"></div>
+      <div class="meta" id="cMeta"></div>
+      <p id="cText"></p>
+      <ul class="srcs" id="cSrcs"></ul>
+      <div class="acts"><a class="src" id="cSrc" target="_blank" rel="noopener"></a><span class="sp"></span><button class="star" id="cStar" aria-pressed="false" title="Lagre saken" aria-label="Lagre saken">☆</button></div>
+    </div>
+  </div>
+  <aside class="side">
+    <div class="kpis">
+      <div class="kpi"><b id="k1">–</b><span>hendelser siste time</span></div>
+      <div class="kpi"><b id="k2">–</b><span>store saker</span></div>
+      <div class="kpi"><b id="k3">–</b><span>land berørt</span></div>
+    </div>
+    <div class="sh">
+      <div class="tabs" id="tabs"><button data-t="all">Alle</button><button data-t="watch">Følger</button><button data-t="saved">Lagret</button></div>
+      <input class="search" id="q" type="search" placeholder="Søk i sakene" aria-label="Søk i sakene">
+      <div class="cats" id="cats" role="group" aria-label="Kategorier" title="Klikk for å vise bare én kategori. Ctrl-klikk for å velge flere."></div>
+      <div class="ctry" id="ctry" hidden>
+        <header><h3 id="ctName"></h3><button class="btn" id="ctX">Vis alle land</button></header>
+        <div class="meta" id="ctMeta"></div>
+        <svg id="ctSpark" viewBox="0 0 280 46" preserveAspectRatio="none" aria-label="Omtale siste 7 døgn"></svg>
+        <div class="rl"><span>for 7 døgn siden</span><span>nå</span></div>
+      </div>
+    </div>
+    <div class="lh"><span id="lhName">Hendelser</span><span id="count2"></span></div>
+    <ul class="list" id="list"></ul>
+    <div class="foot"><details><summary id="srcSum">Kilder</summary><ul id="srcList"></ul></details></div>
+  </aside>
+</div>
+<button class="toast" id="toast" hidden></button>
+
+<dialog id="dlg">
+  <div class="dh"><h2>Innstillinger</h2><button class="x" id="dlgX" style="position:static" aria-label="Lukk">×</button></div>
+  <div class="db">
+    <h3>Overvåkning</h3>
+    <p>Ett ord eller sted per linje. Saker som nevner dem, merkes «Følger» og gir varsel.</p>
+    <textarea id="sWatch" placeholder="Bergen&#10;strømpris&#10;Ukraina"></textarea>
+    <h3>Oversettelse til norsk</h3>
+    <p>Engelske titler oversettes med DeepL. Lag en gratis nøkkel på deepl.com (DeepL API Free, 500 000 tegn i måneden) og lim den inn her.</p>
+    <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="sTr"> Oversett engelske titler</label>
+    <input type="password" id="sKey" placeholder="DeepL-nøkkel" autocomplete="off">
+    <p style="margin-top:8px">Maks tegn per dag: <input type="number" id="sDaily" min="1000" max="200000" step="1000" style="width:110px;display:inline-block"> <span id="sUsed"></span></p>
+    <h3>Egne kilder</h3>
+    <p>Legg til hvilken som helst RSS-feed (https). Navn er valgfritt.</p>
+    <div id="sFeeds"></div>
+    <button class="btn" id="sAdd" style="margin-top:8px">+ Legg til kilde</button>
+    <h3>Status for kildene</h3>
+    <ul id="sStatus" style="margin:0;padding-left:18px;font-size:12.5px;max-height:160px;overflow:auto"></ul>
+  </div>
+  <div class="df"><span class="meta" id="sMsg" style="margin-right:auto"></span><button class="btn" id="sCancel">Avbryt</button><button class="btn primary" id="sSave">Lagre</button></div>
+</dialog>
+
+<script src="/vendor/maplibre-gl.js"></script>
+<script src="/vendor/topojson-client.min.js"></script>
+<script>
+{
+const CATS={
+  krim:{n:'Krim og ulykker',c:'#ef5155'},forsvar:{n:'Krig og sikkerhet',c:'#4f8ef7'},
+  politikk:{n:'Politikk og økonomi',c:'#e0a526'},vaer:{n:'Natur og vær',c:'#14b8a6'},
+  samferdsel:{n:'Samferdsel',c:'#9b6bff'},kongehus:{n:'Kongehus',c:'#d946a8'},
+  sport:{n:'Sport',c:'#f97316'},annet:{n:'Annet',c:'#7c8a9c'}
+};
+const ICON={
+  krim:'M12 3.5 21.5 20h-19Z M12 9.5v4.5 M12 17v.5',
+  politikk:'M3 9 12 4l9 5 M5.5 10.5v7 M10 10.5v7 M14 10.5v7 M18.5 10.5v7 M3 20h18',
+  forsvar:'M12 3 20 6v5.5c0 4.5-3.3 8-8 9.5-4.7-1.5-8-5-8-9.5V6Z',
+  vaer:'M10 4.5a2 2 0 0 1 4 0v9.2a4.2 4.2 0 1 1-4 0Z M12 9v7',
+  samferdsel:'M8 3.5h8a2.5 2.5 0 0 1 2.5 2.5v8.5A2.5 2.5 0 0 1 16 17H8a2.5 2.5 0 0 1-2.5-2.5V6A2.5 2.5 0 0 1 8 3.5Z M5.5 10.5h13 M9 21l1.5-4 M15 21l-1.5-4',
+  kongehus:'M4 18 3 7.5l5 3.5 4-6 4 6 5-3.5L20 18Z',
+  sport:'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17Z M12 7.5 15.8 10.3 14.4 14.8H9.6L8.2 10.3Z',
+  annet:'M5 5h14v14H5Z M8 9h8 M8 12h8 M8 15h5'
+};
+const ALERT_COL={yellow:'#facc15',orange:'#fb923c',red:'#ef4444'};
+const NOR_BOUNDS=[[4.3,57.8],[31.3,71.3]];
+const $=id=>document.getElementById(id);
+const tfmt=new Intl.DateTimeFormat('nb-NO',{hour:'2-digit',minute:'2-digit'});
+const dfmt=new Intl.DateTimeFormat('nb-NO',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ms=d=>new Date(d).getTime();
+
+let NEWS=[],EVENTS=[],meta={},CMETA={},A2ID={},COUNTRIES=null,BOUNDS=[],ALERTS={type:'FeatureCollection',features:[]},ready=false,STATUS={};
+const KEYS=Object.keys(CATS);
+const S={cats:new Set(store.get('nk-cats',KEYS)),period:String(store.get('nk-period','24')),scope:store.get('nk-scope','all'),sel:null,cc:null,q:'',
+  base:store.get('nk-base','sat'),tab:'all',tl:null,layers:store.get('nk-layers',{heat:true,arcs:true,alerts:true,night:true})};
+if(S.period==='all')S.period='168';
+const READ=new Set(store.get('nk-read',[])),SAVED=new Map(store.get('nk-saved',[]).map(s=>[s.id,s]));
+const saveRead=()=>store.set('nk-read',[...READ].slice(-3000));const saveSaved=()=>store.set('nk-saved',[...SAVED.values()]);
+const SHORT={PS:'Palestina',US:'USA',GB:'Storbritannia',RU:'Russland',KR:'Sør-Korea',KP:'Nord-Korea',CD:'DR Kongo',CG:'Kongo',IR:'Iran',SY:'Syria',VE:'Venezuela',BO:'Bolivia',TZ:'Tanzania',MD:'Moldova',VN:'Vietnam',LA:'Laos',TW:'Taiwan',CZ:'Tsjekkia'};
+const cname=a2=>SHORT[a2]||(CMETA[A2ID[a2]]||{}).nb||a2;
+const REF=()=>S.tl??Date.now();
+const age=e=>(REF()-ms(e.date))/6e4;            // minutter siden hendelsen startet
+const fresh=e=>S.tl==null?(Date.now()-ms(e.last))/6e4<=60:(age(e)>=0&&age(e)<=60);
+const when=e=>{const m=(Date.now()-ms(e.last||e.date))/6e4;return m<1?'nå':m<60?Math.round(m)+' min siden':m<1440?'kl. '+tfmt.format(new Date(e.last||e.date)):dfmt.format(new Date(e.last||e.date))};
+
+// ---------- land ----------
+function inRing(p,r){let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const[xi,yi]=r[i],[xj,yj]=r[j];if((yi>p[1])!==(yj>p[1])&&p[0]<(xj-xi)*(p[1]-yi)/(yj-yi)+xi)c=!c}return c}
+function inPoly(p,poly){if(!inRing(p,poly[0]))return false;for(let k=1;k<poly.length;k++)if(inRing(p,poly[k]))return false;return true}
+function countryAt(lon,lat){for(const b of BOUNDS){if(lon<b.bb[0]||lon>b.bb[2]||lat<b.bb[1]||lat>b.bb[3])continue;
+  const g=b.f.geometry,ps=g.type==='Polygon'?[g.coordinates]:g.coordinates;if(ps.some(p=>inPoly([lon,lat],p)))return b.a2}return null}
+const ccOf=e=>e.cc?e.cc:(e.lat!=null&&BOUNDS.length?(e.cc=countryAt(e.lon,e.lat)||''):'');
+const centroid=a2=>{const m=CMETA[A2ID[a2]];return m?[m.lon,m.lat]:null};
+
+// ---------- hendelser ----------
+function buildEvents(){
+  const g=new Map();
+  for(const n of NEWS){const k=n.eid||n.id;if(!g.has(k))g.set(k,[]);g.get(k).push(n)}
+  EVENTS=[...g].map(([id,it])=>{
+    it.sort((a,b)=>ms(a.date)-ms(b.date));
+    const srcs=[...new Set(it.map(n=>n.src))];
+    const prim=it.find(n=>n.lang==='no'&&n.top)||it.find(n=>n.lang==='no')||it.find(n=>n.titleNo)||it.find(n=>n.top)||it[0];
+    const geo=it.find(n=>n.exact)||it.find(n=>n.lat!=null&&!n.approx)||it.find(n=>n.lat!=null);
+    const cc={};for(const n of it)if(n.cat!=='annet')cc[n.cat]=(cc[n.cat]||0)+1;
+    const cat=Object.entries(cc).sort((a,b)=>b[1]-a[1])[0]?.[0]||prim.cat||'annet';
+    const top=it.some(n=>n.top),sev=Math.max(...it.map(n=>n.sev||0));
+    const translated=prim.lang!=='no'&&prim.titleNo;
+    return{id,items:it,title:translated?prim.titleNo:prim.title,orig:translated?prim.title:null,text:prim.text,url:prim.url,src:prim.src,srcs,
+      date:it[0].date,last:it[it.length-1].date,cat:CATS[cat]?cat:'annet',top,sev,score:+(sev+(srcs.length-1)*1.5+(top?2:0)).toFixed(1),
+      lat:geo?geo.lat:null,lon:geo?geo.lon:null,place:geo?geo.place:prim.place,approx:geo&&geo.approx,cc:geo?geo.cc:null,exact:geo&&geo.exact,
+      ccs:[...new Set(it.flatMap(n=>n.ccs||[]))],watch:[...new Set(it.flatMap(n=>n.watch||[]))],src0:prim.src}});
+  EVENTS.sort((a,b)=>ms(b.last)-ms(a.last));
+}
+function inScope(e){if(S.scope==='all')return true;const no=ccOf(e)==='NO'||(e.lat==null&&/^(NRK|VG|Aftenposten|Dagbladet|E24)/.test(e.src||''));return S.scope==='no'?no:!no&&e.lat!=null}
+function base(){const q=S.q.toLowerCase(),P=+S.period*60;
+  return EVENTS.filter(e=>{const a=age(e);return a>=0&&a<=P&&inScope(e)&&(S.tab!=='watch'||e.watch.length)&&
+    (!q||e.items.some(n=>(n.title+' '+(n.titleNo||'')+' '+(n.text||'')+' '+(n.place||'')).toLowerCase().includes(q)))})}
+const shown=()=>base().filter(e=>S.cats.has(e.cat)&&(!S.cc||ccOf(e)===S.cc||e.ccs.includes(S.cc)));
+const size=e=>e.score>=7?'x':(e.score>=3.5||e.top)?'t':'n';
+
+// ---------- dag/natt ----------
+function sun(date){const rad=Math.PI/180,d=(date-Date.UTC(2000,0,1,12))/864e5,g=(357.529+.98560028*d)*rad,q=280.459+.98564736*d,
+  L=(q+1.915*Math.sin(g)+.02*Math.sin(2*g))*rad,e=(23.439-3.6e-7*d)*rad,ra=Math.atan2(Math.cos(e)*Math.sin(L),Math.cos(L)),dec=Math.asin(Math.sin(e)*Math.sin(L)),
+  gmst=((18.697374558+24.06570982441908*d)%24+24)%24;let lon=(ra/rad/15-gmst)*15;lon=((lon+540)%360)-180;return{lon,dec}}
+function nightBands(t){
+  const s=sun(t||Date.now()),rad=Math.PI/180,sd=Math.sin(s.dec),cd=Math.cos(s.dec),feats=[];
+  for(const h of [1,-2,-5,-8,-12]){const sh=Math.sin(h*rad),south=[],north=[];let anyS=false,anyN=false;
+    for(let lon=-180;lon<=180;lon+=2){const H=(lon-s.lon)*rad,b=cd*Math.cos(H),A=Math.hypot(sd,b),al=Math.atan2(sd,b);
+      let lo,hi;const r=sh/A;if(r>=1){lo=85;hi=-85}else if(r<=-1){lo=-85;hi=85}else{const dd=Math.acos(r);lo=(al-dd)/rad;hi=(al+dd)/rad}
+      const L=Math.max(-85,Math.min(85,lo)),U=Math.max(-85,Math.min(85,hi));if(L>-85)anyS=true;if(U<85)anyN=true;south.push([lon,L]);north.push([lon,U])}
+    if(anyS)feats.push({type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[[...south,[180,-85],[-180,-85],south[0]]]}});
+    if(anyN)feats.push({type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[[...north,[180,85],[-180,85],north[0]]]}})}
+  return{type:'FeatureCollection',features:feats}}
+
+// ---------- buer ----------
+function slerp(a,b,n=48){const r=Math.PI/180,toV=([lo,la])=>[Math.cos(la*r)*Math.cos(lo*r),Math.cos(la*r)*Math.sin(lo*r),Math.sin(la*r)];
+  const A=toV(a),B=toV(b),d=Math.acos(Math.max(-1,Math.min(1,A[0]*B[0]+A[1]*B[1]+A[2]*B[2])));if(d<1e-6)return[a,b];const out=[];
+  for(let i=0;i<=n;i++){const t=i/n,s1=Math.sin((1-t)*d)/Math.sin(d),s2=Math.sin(t*d)/Math.sin(d);const x=s1*A[0]+s2*B[0],y=s1*A[1]+s2*B[1],z=s1*A[2]+s2*B[2];
+    out.push([Math.atan2(y,x)/r,Math.atan2(z,Math.hypot(x,y))/r])}
+  for(let i=1;i<out.length;i++){while(out[i][0]-out[i-1][0]>180)out[i][0]-=360;while(out[i][0]-out[i-1][0]<-180)out[i][0]+=360}return out}
+function arcs(ev){const feats=[];const cand=ev.filter(e=>e.ccs.length>=2).sort((a,b)=>b.score-a.score).slice(0,30);
+  const sel=EVENTS.find(e=>e.id===S.sel);if(sel&&sel.ccs.length>=2&&!cand.includes(sel))cand.push(sel);
+  for(const e of cand){const from=e.lat!=null?[e.lon,e.lat]:centroid(e.ccs[0]);if(!from)continue;const home=ccOf(e)||e.ccs[0];
+    for(const c of e.ccs){if(c===home)continue;const to=centroid(c);if(!to)continue;
+      feats.push({type:'Feature',properties:{col:CATS[e.cat].c,sel:e.id===S.sel?1:0},geometry:{type:'LineString',coordinates:slerp(from,to)}})}}
+  return{type:'FeatureCollection',features:feats}}
+
+// ---------- kart ----------
+const LOCAL_STYLE={version:8,projection:{type:'globe'},glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',sources:{},
+  layers:[{id:'background',type:'background',paint:{'background-color':'#0d2238'}}]};
+let FONT=['Noto Sans Regular'],FONT_B=['Noto Sans Bold'],usingLocal=false,fontFound=false;
+async function loadStyle(){
+  try{const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),7000);
+    const st=await (await fetch('https://tiles.openfreemap.org/styles/dark',{signal:ctrl.signal})).json();clearTimeout(t);
+    if(!st.layers)throw 0;tuneStyle(st);return st}
+  catch(e){usingLocal=true;return LOCAL_STYLE}}
+function tuneStyle(st){
+  st.projection={type:'globe'};
+  const name=['coalesce',['get','name:nb'],['get','name:no'],['get','name:latin'],['get','name']];
+  const fill={background:'#162231',water:'#0a1828',landcover_ice_shelf:'#1d2a39',landcover_glacier:'#1d2a39',landuse_residential:'#1b2635',landcover_wood:'#15202d',landuse_park:'#15202d',building:'#1e2a38','aeroway-area':'#1b2735',road_area_pier:'#162231'};
+  const line={waterway:'#0a1828',highway_path:'#1f2c3b',highway_minor:'#223042',highway_major_casing:'#0d1520',highway_major_inner:'#2b3c52',highway_major_subtle:'#273649',highway_motorway_casing:'#0d1520',highway_motorway_inner:'#3a5170',highway_motorway_subtle:'#2a3b51',railway:'#2b3646',railway_minor:'#26313f',railway_transit:'#26313f',boundary_state:'#2f4157','boundary_country_z0-4':'#5d728b','boundary_country_z5-':'#5d728b','aeroway-runway':'#26344a','aeroway-taxiway':'#1e2a3a'};
+  for(const l of st.layers){const p=l.paint||(l.paint={}),lay=l.layout||(l.layout={});
+    if(l.type==='background')p['background-color']=fill.background;
+    else if(l.type==='fill'&&fill[l.id])p['fill-color']=fill[l.id];
+    else if(l.type==='line'&&line[l.id])p['line-color']=line[l.id];
+    if(/^boundary_country/.test(l.id))p['line-width']=['interpolate',['linear'],['zoom'],1,.6,5,1.2,10,2];
+    if(l.type==='symbol'&&lay['text-field']&&/name/.test(JSON.stringify(lay['text-field']))){lay['text-field']=name;p['text-halo-color']='rgba(6,11,19,.92)';p['text-halo-width']=1.3;
+      if(/^place_country/.test(l.id))p['text-color']='#b9c9db';else if(/^place_city/.test(l.id))p['text-color']='#dbe5f0';else if(/^place/.test(l.id))p['text-color']='#94a7bc';
+      else if(l.id==='water_name')p['text-color']='#4d6f93';else p['text-color']='#7f93a9'}
+    if(lay['text-font']&&!fontFound){FONT=lay['text-font'];fontFound=true}}
+  if(st.sources.ne2_shaded){const i=st.layers.findIndex(l=>l.id==='water');
+    st.layers.splice(i<0?1:i,0,{id:'relief',type:'raster',source:'ne2_shaded',maxzoom:7,paint:{'raster-opacity':['interpolate',['linear'],['zoom'],0,.55,5,.35,7,0],'raster-saturation':-.75,'raster-brightness-max':.42,'raster-contrast':.15,'raster-hue-rotate':200}})}
+  if(FONT[0]&&/Regular/.test(FONT[0]))FONT_B=[FONT[0].replace('Regular','Bold')];
+}
+let map,beforeLabels;
+async function initMap(){
+  const style=await loadStyle();
+  try{const c=document.createElement('canvas');if(!(c.getContext('webgl2')||c.getContext('webgl')))throw 0}catch(e){$('boot').textContent='Kartet trenger WebGL. Slå på maskinvareakselerasjon eller oppdater skjermkortdriveren.';return}
+  const view=store.get('nk-view2',{center:[12,40],zoom:1.9});
+  map=new maplibregl.Map({container:'map',style,center:view.center,zoom:view.zoom,minZoom:.6,maxZoom:18,attributionControl:{compact:true},
+    renderWorldCopies:false,fadeDuration:150,dragRotate:false,pitchWithRotate:false,touchPitch:false});
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+  map.addControl(new Tools(),'top-right');
+  map.on('moveend',()=>store.set('nk-view2',{center:map.getCenter().toArray(),zoom:map.getZoom()}));
+  map.on('style.load',()=>{map.setProjection({type:'globe'});
+    try{map.setSky({'sky-color':'#0a1a2e','horizon-color':'#2b5b8f','fog-color':'#0a1a2e','sky-horizon-blend':.6,'horizon-fog-blend':.6,'fog-ground-blend':.9,'atmosphere-blend':['interpolate',['linear'],['zoom'],0,1,5,1,7,0]})}catch(e){}});
+  map.on('load',onLoad);
+}
+class Tools{onAdd(){const d=document.createElement('div');d.className='maplibregl-ctrl maplibregl-ctrl-group';
+  const mk=(id,title,svg)=>{const b=document.createElement('button');b.type='button';b.id=id;b.className='nk';b.title=title;b.setAttribute('aria-label',title);b.innerHTML='<span>'+svg+'</span>';d.append(b);return b};
+  mk('bWorld','Hele kloden','<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>').onclick=()=>map.flyTo({center:map.getCenter(),zoom:1.9,duration:reduced?0:1400});
+  mk('bNor','Norge','<b style="font-size:11px">NO</b>').onclick=()=>map.fitBounds(NOR_BOUNDS,{padding:60,duration:reduced?0:1600});
+  const sp=mk('bSpin','Snurr kloden','<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></svg>');
+  sp.setAttribute('aria-pressed','false');sp.onclick=()=>{spin=!spin;sp.setAttribute('aria-pressed',spin);if(spin)spinStep()};
+  return d}onRemove(){}}
+let spin=false;
+function spinStep(){if(!spin||!map)return;if(map.isMoving()||map.getZoom()>4){setTimeout(spinStep,500);return}
+  const c=map.getCenter();map.easeTo({center:[c.lng+6,c.lat],duration:3000,easing:t=>t});map.once('moveend',spinStep)}
+['mousedown','touchstart','wheel'].forEach(ev=>$('map').addEventListener(ev,()=>{if(spin){spin=false;const b=$('bSpin');if(b)b.setAttribute('aria-pressed','false')}},{passive:true}));
+
+function iconImage(cat,kind){const r=kind==='x'?17:kind==='t'?13:10,pad=kind==='x'?9:3,s=(r+pad)*2,pr=2,c=document.createElement('canvas');c.width=c.height=s*pr;const x=c.getContext('2d');x.scale(pr,pr);
+  if(kind==='x'){const g=x.createRadialGradient(s/2,s/2,r*.8,s/2,s/2,r+pad);g.addColorStop(0,CATS[cat].c+'aa');g.addColorStop(1,CATS[cat].c+'00');x.fillStyle=g;x.beginPath();x.arc(s/2,s/2,r+pad,0,7);x.fill()}
+  x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=5;x.shadowOffsetY=1;x.fillStyle=CATS[cat].c;x.beginPath();x.arc(s/2,s/2,r,0,7);x.fill();
+  x.shadowColor='transparent';x.lineWidth=kind==='n'?1.6:2.3;x.strokeStyle='#fff';x.stroke();
+  const k=r*1.25/24;x.translate(s/2-12*k,s/2-12*k);x.scale(k,k);x.strokeStyle='#fff';x.lineWidth=2.3;x.lineJoin='round';x.lineCap='round';x.stroke(new Path2D(ICON[cat]));
+  if(cat==='sport'){x.fillStyle='#fff';x.fill(new Path2D('M12 7.5 15.8 10.3 14.4 14.8H9.6L8.2 10.3Z'))}
+  return{width:s*pr,height:s*pr,data:x.getImageData(0,0,s*pr,s*pr).data}}
+
+const EMPTY={type:'FeatureCollection',features:[]};
+function onLoad(){
+  $('boot').hidden=true;
+  beforeLabels=(map.getStyle().layers.find(l=>l.type==='symbol')||{}).id;
+  for(const k in CATS)for(const z of ['n','t','x'])map.addImage(z+'-'+k,iconImage(k,z),{pixelRatio:2});
+  map.addSource('sat',{type:'raster',tileSize:256,maxzoom:19,attribution:'Satellittbilder: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']});
+  const firstLine=(map.getStyle().layers.find(l=>l.type==='line')||{}).id;
+  if(usingLocal){map.addSource('land',{type:'geojson',data:COUNTRIES||EMPTY});
+    map.addLayer({id:'land',type:'fill',source:'land',paint:{'fill-color':'#1c2836'}});
+    map.addLayer({id:'land-line',type:'line',source:'land',paint:{'line-color':'#3d5168','line-width':.6}})}
+  map.addLayer({id:'sat',type:'raster',source:'sat',paint:{'raster-saturation':-.1,'raster-brightness-max':.88,'raster-contrast':.06,'raster-fade-duration':200}},usingLocal?'land-line':firstLine);
+  DETAIL=map.getStyle().layers.filter(l=>/^(transportation|transportation_name|building|aeroway|landuse|landcover)$/.test(l['source-layer']||'')).map(l=>l.id);
+  map.addSource('countries',{type:'geojson',data:COUNTRIES||EMPTY,promoteId:'a2'});
+  map.addLayer({id:'heat',type:'fill',source:'countries',paint:{'fill-color':['interpolate',['linear'],['coalesce',['feature-state','h'],0],0,'rgba(0,0,0,0)',.001,'#7a2a12',.35,'#d9480f',.7,'#fb7a1e',1,'#fcc419'],'fill-opacity':0}},beforeLabels);
+  map.addLayer({id:'flash',type:'fill',source:'countries',paint:{'fill-color':'#ffd166','fill-opacity':['*',.55,['coalesce',['feature-state','f'],0]]}},beforeLabels);
+  map.addLayer({id:'c-hover',type:'line',source:'countries',paint:{'line-color':'#c9dcf2','line-width':['case',['boolean',['feature-state','hover'],false],1.4,0]}},beforeLabels);
+  map.addLayer({id:'c-sel',type:'line',source:'countries',paint:{'line-color':'#5b9bff','line-width':['case',['boolean',['feature-state','sel'],false],2.4,0]}},beforeLabels);
+  map.addSource('alerts',{type:'geojson',data:ALERTS});
+  map.addLayer({id:'alerts',type:'fill',source:'alerts',paint:{'fill-color':['match',['get','level'],'red',ALERT_COL.red,'orange',ALERT_COL.orange,ALERT_COL.yellow],'fill-opacity':['interpolate',['linear'],['zoom'],2,.35,8,.22]}},beforeLabels);
+  map.addLayer({id:'alerts-line',type:'line',source:'alerts',paint:{'line-color':['match',['get','level'],'red',ALERT_COL.red,'orange',ALERT_COL.orange,ALERT_COL.yellow],'line-width':1.3}},beforeLabels);
+  map.addSource('night',{type:'geojson',data:nightBands()});
+  map.addLayer({id:'night',type:'fill',source:'night',paint:{'fill-color':'#000818','fill-opacity':['interpolate',['linear'],['zoom'],2,.11,6,.05,9,0],'fill-antialias':false}},beforeLabels);
+  setInterval(()=>map.getSource('night').setData(nightBands(REF())),60e3);
+  map.addSource('arcs',{type:'geojson',data:EMPTY,lineMetrics:true});
+  map.addLayer({id:'arcs-base',type:'line',source:'arcs',layout:{'line-cap':'round'},paint:{'line-color':['get','col'],'line-width':['case',['==',['get','sel'],1],2.6,1.4],'line-opacity':['case',['==',['get','sel'],1],.55,.22]}});
+  map.addLayer({id:'arcs',type:'line',source:'arcs',layout:{'line-cap':'round'},paint:{'line-color':['get','col'],'line-width':['case',['==',['get','sel'],1],3,1.8],'line-opacity':['case',['==',['get','sel'],1],1,.75],'line-dasharray':[0,4,3]}});
+  map.addSource('news',{type:'geojson',data:EMPTY,cluster:true,clusterRadius:34,clusterMaxZoom:5,
+    clusterProperties:{top:['+',['get','top']],recent:['+',['get','recent']],maxs:['max',['get','score']]}});
+  map.addLayer({id:'cl-halo',type:'circle',source:'news',filter:['has','point_count'],paint:{'circle-color':['case',['>=',['get','maxs'],7],'#ef4444','#ff6a3d'],'circle-opacity':['case',['>',['get','recent'],0],.24,0],
+    'circle-radius':['+',8,['step',['get','point_count'],12,5,15,15,19,40,24]]}});
+  map.addLayer({id:'clusters',type:'circle',source:'news',filter:['has','point_count'],paint:{'circle-color':'#101b28','circle-opacity':.95,
+    'circle-radius':['step',['get','point_count'],12,5,15,15,19,40,24],'circle-stroke-width':['case',['>=',['get','maxs'],7],3,2],'circle-stroke-color':['case',['>=',['get','maxs'],7],'#ef4444',['>',['get','top'],0],'#ff6a3d','#7f93ab']}});
+  map.addLayer({id:'cl-count',type:'symbol',source:'news',filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-font':FONT_B,'text-size':12.5,'text-allow-overlap':true},paint:{'text-color':'#fff'}});
+  map.addLayer({id:'pulse',type:'circle',source:'news',filter:['all',['!',['has','point_count']],['==',['get','recent'],1]],paint:{'circle-radius':12,'circle-color':'rgba(0,0,0,0)','circle-stroke-width':2,'circle-stroke-color':['get','col'],'circle-stroke-opacity':.8}});
+  map.addLayer({id:'pts',type:'symbol',source:'news',filter:['!',['has','point_count']],layout:{'icon-image':['concat',['get','size'],'-',['get','cat']],
+    'icon-allow-overlap':true,'icon-ignore-placement':true,'symbol-sort-key':['get','sort'],
+    'text-field':['case',['>',['get','nsrc'],1],['to-string',['get','nsrc']],''],'text-font':FONT_B,'text-size':10.5,'text-offset':[1.15,-1.05],'text-allow-overlap':true,'text-ignore-placement':true},
+    paint:{'text-color':'#fff','text-halo-color':'#1d4ed8','text-halo-width':3}});
+  map.addLayer({id:'pt-sel',type:'circle',source:'news',filter:['==',['get','id'],''],paint:{'circle-radius':21,'circle-color':'rgba(0,0,0,0)','circle-stroke-width':2.5,'circle-stroke-color':'#fff'}});
+  // samspill
+  const pop=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:16,maxWidth:'300px'});
+  map.on('mousemove','pts',e=>{map.getCanvas().style.cursor='pointer';const f=e.features[0];const ev=EVENTS.find(x=>x.id===f.properties.id);if(!ev)return;
+    pop.setLngLat(f.geometry.coordinates).setHTML(`<div class="pt"><b>${esc(ev.title)}</b><span>${esc(when(ev))} · ${ev.srcs.length>1?ev.srcs.length+' kilder':esc(ev.src)}</span></div>`).addTo(map)});
+  map.on('mouseleave','pts',()=>{map.getCanvas().style.cursor='';pop.remove()});
+  map.on('mouseenter','clusters',()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave','clusters',()=>map.getCanvas().style.cursor='');
+  map.on('click','clusters',async e=>{const f=e.features[0];const z=await map.getSource('news').getClusterExpansionZoom(f.properties.cluster_id);map.easeTo({center:f.geometry.coordinates,zoom:z+.3,duration:reduced?0:700})});
+  map.on('click',e=>{const hit=map.queryRenderedFeatures(e.point,{layers:['pts','clusters']});if(hit.length){if(hit[0].layer.id==='pts')select(hit[0].properties.id,false);return}
+    const al=S.layers.alerts&&map.queryRenderedFeatures(e.point,{layers:['alerts']})[0];if(al){showAlert(al.properties);return}
+    const a2=countryAt(e.lngLat.lng,e.lngLat.lat);setCountry(a2&&a2!==S.cc?a2:null)});
+  let hov=null;map.on('mousemove',e=>{if(!COUNTRIES)return;const a2=countryAt(e.lngLat.lng,e.lngLat.lat);if(a2===hov)return;
+    if(hov)map.setFeatureState({source:'countries',id:hov},{hover:false});hov=a2;if(a2)map.setFeatureState({source:'countries',id:a2},{hover:true})});
+  ready=true;applyLayers();applyBase();refresh();animate();
+}
+let DETAIL=[];
+function applyBase(){if(!map||!map.getLayer('sat'))return;const sat=S.base==='sat';
+  map.setLayoutProperty('sat','visibility',sat?'visible':'none');
+  for(const id of DETAIL)if(map.getLayer(id))map.setLayoutProperty(id,'visibility',sat?'none':'visible');
+  if(map.getLayer('relief'))map.setLayoutProperty('relief','visibility',sat?'none':'visible');
+  const h=['>',['coalesce',['feature-state','h'],0],0],o=sat?[.42,.18,.05]:[.6,.26,.08];
+  map.setPaintProperty('heat','fill-opacity',['interpolate',['linear'],['zoom'],1,['case',h,o[0],0],4,['case',h,o[1],0],7,['case',h,o[2],0]]);
+  for(const x of $('basemap').children)x.setAttribute('aria-pressed',x.dataset.b===S.base)}
+$('basemap').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.base=b.dataset.b;store.set('nk-base',S.base);applyBase()});
+for(const x of $('basemap').children)x.setAttribute('aria-pressed',x.dataset.b===S.base);
+const LAYER_IDS={heat:['heat'],arcs:['arcs','arcs-base'],alerts:['alerts','alerts-line'],night:['night']};
+function applyLayers(){for(const i of $('layers').querySelectorAll('input'))i.checked=!!S.layers[i.dataset.l];if(!ready)return;
+  for(const[k,ids]of Object.entries(LAYER_IDS))for(const id of ids)if(map.getLayer(id))map.setLayoutProperty(id,'visibility',S.layers[k]?'visible':'none')}
+$('layers').addEventListener('change',e=>{const i=e.target;if(!i.dataset.l)return;S.layers[i.dataset.l]=i.checked;store.set('nk-layers',S.layers);applyLayers()});
+
+const DASH=[[0,4,3],[.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,.5],[3,4,0],[0,.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,.5]];
+let t0=performance.now(),dashStep=-1;const flash=new Map();
+function animate(){if(!ready)return;const t=(performance.now()-t0)/1000;
+  if(!reduced){const k=(t%2)/2;map.setPaintProperty('pulse','circle-radius',11+k*16);map.setPaintProperty('pulse','circle-stroke-opacity',.85*(1-k));
+    const ds=Math.floor(t*12)%DASH.length;if(ds!==dashStep&&S.layers.arcs){dashStep=ds;map.setPaintProperty('arcs','line-dasharray',DASH[ds])}}
+  const now=performance.now();for(const[a2,st]of flash){const k=1-(now-st)/9000;if(k<=0){flash.delete(a2);map.setFeatureState({source:'countries',id:a2},{f:0})}else map.setFeatureState({source:'countries',id:a2},{f:Math.abs(Math.sin(k*Math.PI*4))*k})}
+  requestAnimationFrame(animate)}
+
+let prevHeat=new Set(),prevSel=null;
+function heatMap(){const h=new Map();for(const e of base()){if(!S.cats.has(e.cat))continue;const cc=ccOf(e);if(!cc)continue;h.set(cc,(h.get(cc)||0)+1+e.score/5)}return h}
+function updateMap(){
+  if(!ready)return;
+  const ev=shown(),feats=[];
+  for(const e of ev){if(e.lat==null)continue;
+    feats.push({type:'Feature',geometry:{type:'Point',coordinates:[e.lon,e.lat]},properties:{id:e.id,cat:e.cat,size:size(e),top:e.top?1:0,recent:fresh(e)?1:0,score:e.score,nsrc:e.srcs.length,col:CATS[e.cat].c,sort:e.score*1e13+ms(e.last)/1e3}})}
+  map.getSource('news').setData({type:'FeatureCollection',features:feats});
+  map.getSource('arcs').setData(S.layers.arcs?arcs(ev):EMPTY);
+  map.setFilter('pt-sel',['==',['get','id'],S.sel||'']);
+  const h=heatMap(),max=Math.max(4,...h.values());
+  for(const a2 of prevHeat)if(!h.has(a2))map.setFeatureState({source:'countries',id:a2},{h:0});
+  for(const[a2,v]of h)map.setFeatureState({source:'countries',id:a2},{h:Math.sqrt(v/max)});prevHeat=new Set(h.keys());
+  if(prevSel)map.setFeatureState({source:'countries',id:prevSel},{sel:false});if(S.cc)map.setFeatureState({source:'countries',id:S.cc},{sel:true});prevSel=S.cc;
+}
+
+// ---------- kort ----------
+let cardEv=null;
+function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star}){
+  const c=$('card');c.hidden=false;c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
+  $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;$('cMeta').textContent=meta;$('cText').textContent=text||'';$('cText').hidden=!text;
+  const ul=$('cSrcs');ul.textContent='';ul.hidden=!(srcs&&srcs.length>1);
+  for(const n of (srcs||[])){const li=document.createElement('li');if(n.url&&n.url.startsWith('https://')){const a=document.createElement('a');a.href=n.url;a.target='_blank';a.rel='noopener';a.textContent=n.src+': '+(n.titleNo||n.title);li.append(a)}else li.append(n.src+': '+n.title);
+    const s=document.createElement('span');s.textContent=tfmt.format(new Date(n.date));li.append(s);ul.append(li)}
+  const ok=typeof url==='string'&&url.startsWith('https://');$('cSrc').hidden=!ok;if(ok){$('cSrc').href=url;$('cSrc').textContent=urlText}
+  $('cStar').hidden=!star;
+}
+function select(id,go){
+  const e=EVENTS.find(x=>x.id===id);S.sel=e?e.id:null;
+  if(!e){$('card').hidden=true;cardEv=null;list();updateMap();return}
+  cardEv=e;READ.add(e.id);saveRead();
+  const c=CATS[e.cat];
+  showCard({color:c.c,tag:c.n+(e.score>=7?' · stor sak':e.top?' · toppsak':''),title:e.title,orig:e.orig,
+    meta:[when(e),e.srcs.length>1?e.srcs.length+' kilder':e.src,e.place||(e.lat==null?'uten sted':null),e.watch.length?'følger: '+e.watch.join(', '):null].filter(Boolean).join(' · '),
+    text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden')+' →',star:true});
+  $('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';
+  if(go&&e.lat!=null&&map){const no=ccOf(e)==='NO';map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),no?5.2:e.exact?4.5:4),duration:reduced?0:1800,essential:true})}
+  list();updateMap();
+}
+$('cStar').onclick=()=>{if(!cardEv)return;const e=cardEv;
+  if(SAVED.has(e.id))SAVED.delete(e.id);else SAVED.set(e.id,{id:e.id,title:e.title,url:e.url,src:e.src,date:e.date,last:e.last,cat:e.cat,lat:e.lat,lon:e.lon,place:e.place,text:e.text});
+  saveSaved();$('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';if(S.tab==='saved')list()};
+function showAlert(p){S.sel=null;cardEv=null;
+  const t=p.from&&p.to?`${dfmt.format(new Date(p.from))} – ${dfmt.format(new Date(p.to))}`:'';
+  showCard({color:ALERT_COL[p.level]||ALERT_COL.yellow,tag:'Farevarsel · '+({yellow:'gult',orange:'oransje',red:'rødt'}[p.level]||'')+' nivå',title:p.title,meta:[p.area,t].filter(Boolean).join(' · '),
+    text:[p.desc,p.consequences,p.instruction].filter(Boolean).join(' '),srcs:[],url:'https://www.yr.no/nb/farevarsler',urlText:'Se farevarsler på Yr →',star:false});list();updateMap()}
+$('cardX').onclick=()=>select(null);
+
+// ---------- panel ----------
+function setCountry(a2){S.cc=a2;refresh();if(a2&&map){const c=centroid(a2);if(c&&map.getZoom()<2.6)map.flyTo({center:c,zoom:3,duration:reduced?0:1400})}}
+$('ctX').onclick=()=>setCountry(null);
+function countryPanel(){const box=$('ctry');box.hidden=!S.cc;if(!S.cc){$('lhName').textContent=S.tab==='saved'?'Lagrede saker':S.tab==='watch'?'Saker du følger':'Hendelser';return}
+  $('ctName').textContent=cname(S.cc);$('lhName').textContent='Hendelser i '+cname(S.cc);
+  const all=EVENTS.filter(e=>ccOf(e)===S.cc||e.ccs.includes(S.cc)),bins=new Array(28).fill(0),now=REF();
+  for(const e of all){const b=Math.floor((now-ms(e.date))/(6*3600e3));if(b>=0&&b<28)bins[27-b]++}
+  const mx=Math.max(1,...bins),W=280,H=46,pts=bins.map((v,i)=>[i*(W/27),H-3-(v/mx)*(H-8)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  $('ctSpark').innerHTML=`<path d="${line} L${W} ${H} L0 ${H}Z" fill="rgba(255,106,61,.18)"/><path d="${line}" fill="none" stroke="#ff6a3d" stroke-width="1.8"/>`;
+  const d24=all.filter(e=>now-ms(e.date)<864e5).length,top=all.filter(e=>e.score>=3.5).length;
+  $('ctMeta').innerHTML=`<b>${all.length}</b> hendelser siste 7 døgn · <b>${d24}</b> siste døgn · <b>${top}</b> store saker`}
+function cats(){const b=base(),all=S.cats.size===KEYS.length;
+  $('cats').innerHTML=`<button class="cat all" data-c="*" aria-pressed="${all}"><span class="sw" style="background:#33465c"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>Alle<span class="n">${b.length}</span></button>`+
+  Object.entries(CATS).map(([k,c])=>`<button class="cat" data-c="${k}" aria-pressed="${!all&&S.cats.has(k)}"><span class="sw" style="background:${c.c}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="${ICON[k]}"/></svg></span>${c.n}<span class="n">${b.filter(e=>e.cat===k).length}</span></button>`).join('')}
+$('cats').addEventListener('click',e=>{const b=e.target.closest('.cat');if(!b)return;const k=b.dataset.c,all=S.cats.size===KEYS.length;
+  if(k==='*')S.cats=new Set(KEYS);
+  else if(e.ctrlKey||e.metaKey){if(all)S.cats=new Set([k]);else{S.cats.has(k)?S.cats.delete(k):S.cats.add(k);if(!S.cats.size)S.cats=new Set(KEYS)}}
+  else S.cats=(!all&&S.cats.size===1&&S.cats.has(k))?new Set(KEYS):new Set([k]);
+  store.set('nk-cats',[...S.cats]);refresh()});
+function segUI(){for(const x of $('period').children)x.setAttribute('aria-pressed',x.dataset.p===S.period);for(const x of $('scope').children)x.setAttribute('aria-pressed',x.dataset.s===S.scope);
+  for(const x of $('tabs').children)x.setAttribute('aria-pressed',x.dataset.t===S.tab)}
+$('period').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.period=b.dataset.p;store.set('nk-period',S.period);tlSync();refresh()});
+$('scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.scope=b.dataset.s;store.set('nk-scope',S.scope);refresh();
+  if(!map)return;if(S.scope==='no')map.fitBounds(NOR_BOUNDS,{padding:60,duration:reduced?0:1600});else if(map.getZoom()>3)map.flyTo({center:map.getCenter(),zoom:1.9,duration:reduced?0:1400})});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.t;refresh()});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim();refresh()},150)});
+
+function li(e,saved){
+  const c=CATS[e.cat]||CATS.annet,el=document.createElement('li'),b=document.createElement('button');
+  if(READ.has(e.id)&&e.id!==S.sel)el.className='read';
+  b.style.setProperty('--cc',c.c);b.setAttribute('aria-pressed',e.id===S.sel);
+  b.onclick=()=>{if(EVENTS.some(x=>x.id===e.id))select(e.id,true);else{S.sel=null;showCard({color:c.c,tag:c.n+' · lagret',title:e.title,meta:[dfmt.format(new Date(e.last||e.date)),e.src,e.place].filter(Boolean).join(' · '),text:e.text,srcs:[],url:e.url,urlText:'Les saken hos '+(e.src||'kilden')+' →',star:false});
+    if(e.lat!=null&&map)map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),4),duration:reduced?0:1600})}};
+  const t=document.createElement('span');t.className='lt';t.textContent=e.title;
+  const m=document.createElement('span');m.className='lm';
+  const add=(txt,cls)=>{if(!txt)return;const s=document.createElement('span');if(cls)s.className=cls;s.textContent=txt;m.append(s)};
+  if(!saved){if(fresh(e))add('Ny','badge b-new');if(e.score>=7)add('Stor sak','badge b-sev');else if(e.top)add('Topp','badge b-top');
+    if(e.srcs.length>1)add(e.srcs.length+' kilder','badge b-src');if(e.watch.length)add('Følger: '+e.watch[0],'badge b-watch')}
+  if(SAVED.has(e.id))add('★','');
+  add(c.n,'c');add(saved?dfmt.format(new Date(e.last||e.date)):when(e));if(!saved&&e.srcs.length<2)add(e.src);add(e.place||(e.lat==null&&!saved?'uten sted':''));
+  b.append(t,m);el.append(b);return el}
+function list(){
+  const ul=$('list');ul.textContent='';
+  if(S.tab==='saved'){const sv=[...SAVED.values()].filter(e=>S.cats.has(e.cat)).reverse();$('count2').textContent=sv.length+(sv.length===1?' sak':' saker');
+    if(!sv.length){const l=document.createElement('li');l.className='empty';l.textContent='Ingen lagrede saker. Åpne en sak og trykk på stjerna for å lagre den.';ul.append(l)}
+    for(const e of sv)ul.append(li(e,true));return}
+  const ev=shown();$('count2').textContent=ev.length+(ev.length===1?' hendelse':' hendelser');
+  if(!ev.length){const l=document.createElement('li');l.className='empty';l.textContent=!EVENTS.length?'Henter nyheter …':S.tab==='watch'?'Ingen saker nevner ordene du følger ennå. Legg til ord under Innstillinger.':'Ingen hendelser med disse filtrene.';ul.append(l);return}
+  for(const e of ev.slice(0,300))ul.append(li(e))
+}
+function kpis(){const b=base();$('k1').textContent=EVENTS.filter(e=>{const a=age(e);return a>=0&&a<=60&&inScope(e)}).length;$('k2').textContent=b.filter(e=>e.score>=3.5).length;
+  const h=heatMap();$('k3').textContent=h.size;
+  const top=[...h.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6),max=top.length?top[0][1]:1,ul=$('hot');ul.textContent='';
+  if(!top.length){const l=document.createElement('li');l.className='meta';l.textContent='Ingen hendelser med sted ennå';ul.append(l)}
+  for(const[a2,v]of top){const l=document.createElement('li'),b=document.createElement('button');b.onclick=()=>setCountry(a2);
+    const n=document.createElement('span');n.textContent=cname(a2);const r=document.createElement('span');r.className='bars';const i=document.createElement('i');i.style.width=Math.max(6,60*v/max)+'px';
+    r.append(i,String(base().filter(e=>S.cats.has(e.cat)&&ccOf(e)===a2).length));b.append(n,r);l.append(b);ul.append(l)}}
+let brIdx=0,brList=[];
+function breaking(){brList=EVENTS.filter(e=>e.score>=6&&(Date.now()-ms(e.date))/6e4<=90).sort((a,b)=>b.score-a.score).slice(0,5);
+  const on=brList.length>0;$('breaking').hidden=!on;document.body.classList.toggle('has-breaking',on);if(on)showBr()}
+function showBr(){if(!brList.length)return;const e=brList[brIdx%brList.length];$('brTxt').textContent=e.title;$('brMeta').textContent=[e.srcs.length>1?e.srcs.length+' kilder':e.src,e.place,when(e)].filter(Boolean).join(' · ');$('breaking').dataset.id=e.id}
+setInterval(()=>{brIdx++;showBr()},7000);
+$('breaking').onclick=()=>{const id=$('breaking').dataset.id;if(id){S.cats=new Set(KEYS);S.tab='all';refresh();select(id,true)}};
+function sources(st){if(!st)return;STATUS=st;const v=Object.values(st),ok=v.filter(s=>s.ok).length;$('srcSum').textContent=`Kilder: ${ok} av ${v.length} svarer`;
+  for(const ul of [$('srcList'),$('sStatus')]){ul.textContent='';for(const s of v){const l=document.createElement('li');const sp=document.createElement('span');sp.className=s.ok?'ok':'bad';sp.textContent=s.ok?'✓ ':'✗ ';l.append(sp,s.src+': '+(s.ok?s.n+' saker':'feil ('+s.err+')'));ul.append(l)}}}
+function refresh(){segUI();cats();countryPanel();list();kpis();updateMap()}
+
+// ---------- tidslinje ----------
+let playing=null;
+const span=()=>+S.period*3600e3;
+function tlSync(){const r=$('tlRange');if(S.tl==null){r.value=1000;$('tlWhen').textContent='';$('tlLive').setAttribute('aria-pressed','true')}
+  else{r.value=Math.round(1000*(1-(Date.now()-S.tl)/span()));$('tlWhen').textContent=dfmt.format(new Date(S.tl));$('tlLive').setAttribute('aria-pressed','false')}
+  $('tlPlay').textContent=playing?'❚❚':'▶';}
+function setTl(t){S.tl=t==null||t>=Date.now()-30e3?null:t;tlSync();refresh();if(ready)map.getSource('night').setData(nightBands(REF()))}
+$('tlRange').addEventListener('input',e=>{stopPlay();const v=+e.target.value;setTl(v>=1000?null:Date.now()-span()*(1-v/1000))});
+$('tlLive').onclick=()=>{stopPlay();setTl(null)};
+function stopPlay(){if(playing){cancelAnimationFrame(playing);playing=null;tlSync()}}
+$('tlPlay').onclick=()=>{if(playing){stopPlay();return}let t=S.tl??Date.now()-span();if(Date.now()-t<60e3)t=Date.now()-span();
+  const dur=25000,rate=span()/dur;let last=performance.now(),acc=0;
+  const step=now=>{t+=(now-last)*rate;acc+=now-last;last=now;if(t>=Date.now()){playing=null;setTl(null);return}
+    if(acc>120){acc=0;S.tl=t;tlSync();refresh();map.getSource('night').setData(nightBands(t))}playing=requestAnimationFrame(step)};
+  playing=requestAnimationFrame(step);tlSync()};
+
+// ---------- innstillinger ----------
+let SET={};
+function feedRow(f={src:'',url:''}){const d=document.createElement('div');d.className='row2';
+  d.innerHTML='<input type="text" placeholder="Navn" class="fn"><input type="text" placeholder="https://…/rss" class="fu"><button class="btn" title="Fjern">Fjern</button>';
+  d.querySelector('.fn').value=f.src||'';d.querySelector('.fu').value=f.url||'';d.querySelector('button').onclick=()=>d.remove();$('sFeeds').append(d)}
+$('setBtn').onclick=async()=>{try{SET=await (await fetch('/api/settings')).json()}catch(e){SET={}}
+  $('sWatch').value=(SET.watch||[]).join('\n');$('sTr').checked=SET.translate!==false;$('sKey').value='';$('sKey').placeholder=SET.hasKey?'Nøkkel er lagret (lim inn ny for å bytte)':'DeepL-nøkkel';
+  $('sDaily').value=SET.dailyChars||15000;$('sUsed').textContent=SET.hasKey?`Brukt i dag: ${SET.usedToday||0} tegn`:'';
+  $('sFeeds').textContent='';(SET.customFeeds||[]).forEach(feedRow);$('sMsg').textContent='';sources(STATUS);$('dlg').showModal()};
+$('sAdd').onclick=()=>feedRow();
+$('dlgX').onclick=$('sCancel').onclick=()=>$('dlg').close();
+$('sSave').onclick=async()=>{const body={watch:$('sWatch').value.split('\n').map(s=>s.trim()).filter(Boolean),translate:$('sTr').checked,dailyChars:+$('sDaily').value||15000,
+    customFeeds:[...$('sFeeds').children].map(r=>({src:r.querySelector('.fn').value.trim(),url:r.querySelector('.fu').value.trim()})).filter(f=>f.url)};
+  const bad=body.customFeeds.find(f=>!/^https:\/\//.test(f.url));if(bad){$('sMsg').textContent='Kildeadresser må starte med https://';return}
+  if($('sKey').value.trim())body.deeplKey=$('sKey').value.trim();
+  try{const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw 0;$('dlg').close();toastMsg('Innstillingene er lagret')}
+  catch(e){$('sMsg').textContent='Kunne ikke lagre. Prøv igjen.'}};
+
+// ---------- direkte ----------
+function liveText(){if(!meta.lastPoll){$('liveTxt').textContent='Henter første gang …';return}
+  const left=Math.max(0,Math.round((new Date(meta.nextPoll)-Date.now())/6e4));
+  $('liveTxt').textContent=`Oppdatert ${tfmt.format(new Date(meta.lastPoll))} · neste om ${left<1?'under 1':left} min`}
+setInterval(()=>{liveText();if(!playing){list();updateMap();breaking()}},30e3);
+let toastIds=[];
+function toastMsg(txt){toastIds=[];$('toast').textContent=txt;$('toast').hidden=false;clearTimeout(toastMsg.t);toastMsg.t=setTimeout(()=>$('toast').hidden=true,5000)}
+function toast(ids){if(!ids.length)return;toastIds=ids;$('toast').textContent=ids.length===1?'1 ny sak – vis':ids.length+' nye saker – vis nyeste';$('toast').hidden=false;clearTimeout(toastMsg.t);toastMsg.t=setTimeout(()=>$('toast').hidden=true,12000)}
+$('toast').onclick=()=>{$('toast').hidden=true;const n=NEWS.find(n=>toastIds.includes(n.id));if(n){const e=EVENTS.find(e=>e.items.includes(n));if(e){S.cats=new Set(KEYS);S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}}};
+function apply(d,ids){NEWS=d.news||[];buildEvents();meta={lastPoll:d.lastPoll,nextPoll:d.nextPoll};sources(d.status);liveText();
+  if(ids){for(const id of ids){const n=NEWS.find(x=>x.id===id);const e=n&&EVENTS.find(e=>e.items.includes(n));const cc=e&&ccOf(e);if(cc)flash.set(cc,performance.now())}toast(ids)}
+  if(S.sel&&!EVENTS.some(e=>e.id===S.sel)){const n=NEWS.find(x=>x.id===S.sel);const e=n&&EVENTS.find(e=>e.items.includes(n));S.sel=e?e.id:null}
+  breaking();if(!playing)refresh()}
+async function loadAlerts(){try{ALERTS=await (await fetch('/api/alerts')).json();if(ready)map.getSource('alerts').setData(ALERTS)}catch(e){}}
+
+async function load(){
+  initMap();
+  const [w50,cm,d]=await Promise.all(['/countries-50m.json','/countries-meta.json','/api/news'].map(u=>fetch(u).then(r=>r.json())));
+  CMETA=cm;for(const id in cm)A2ID[cm[id].a2]=id;
+  const fc=topojson.feature(w50,w50.objects.countries);fc.features=fc.features.filter(f=>cm[f.id]).map(f=>({type:'Feature',geometry:f.geometry,properties:{a2:cm[f.id].a2}}));
+  COUNTRIES=fc;
+  for(const f of fc.features){let x0=180,y0=90,x1=-180,y1=-90;const g=f.geometry,ps=g.type==='Polygon'?[g.coordinates]:g.coordinates;
+    for(const p of ps)for(const[x,y]of p[0]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}BOUNDS.push({f,a2:f.properties.a2,bb:[x0,y0,x1,y1]})}
+  if(ready){map.getSource('countries').setData(fc);if(map.getSource('land'))map.getSource('land').setData(fc)}
+  apply(d);loadAlerts();
+  const es=new EventSource('/api/stream');
+  es.addEventListener('hello',()=>$('live').classList.remove('off'));
+  es.addEventListener('update',m=>{const d=JSON.parse(m.data);$('live').classList.remove('off');apply(d,d.added.length&&NEWS.length?d.added:null)});
+  es.addEventListener('alerts',loadAlerts);
+  es.onerror=()=>{$('live').classList.add('off');$('liveTxt').textContent='Mistet kontakt – prøver igjen …'};
+}
+$('refresh').onclick=async()=>{$('refresh').disabled=true;$('liveTxt').textContent='Henter …';try{await fetch('/api/refresh',{method:'POST'})}catch(e){}setTimeout(()=>$('refresh').disabled=false,4000)};
+document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea'))return;if(e.key==='Escape'){if(!$('card').hidden)select(null);else if(S.cc)setCountry(null)}
+  if(e.key===' '&&e.target===document.body){e.preventDefault();$('tlPlay').click()}});
+if(window.nk){const nb=$('notify');nb.hidden=false;let on=store.get('nk-notify',true);
+  const ui=()=>{nb.setAttribute('aria-pressed',on);nb.textContent=on?'Varsler på':'Varsler av';window.nk.setNotify(on)};ui();
+  nb.onclick=()=>{on=!on;store.set('nk-notify',on);ui()};
+  if(window.nk.toggleTicker){$('tickerBtn').hidden=false;$('tickerBtn').onclick=()=>window.nk.toggleTicker()}
+  window.nk.onOpen(id=>{const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
+tlSync();
+load().catch(err=>{$('liveTxt').textContent='Fant ikke nyhetsmotoren';console.error(err)});
+}
+</script>
+</body>
+</html>
