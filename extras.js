@@ -197,4 +197,32 @@ async function getRadar() {
   return radar;
 }
 
-module.exports = { getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+// ---------- tropiske stormer (GDACS) ----------
+// Henter aktive sykloner fra GDACS og banen deres (linjer) og varslingsområder (flater). Mellomlagres i 30 min.
+let storms = null, stormsAt = 0;
+async function getStorms() {
+  if (storms && Date.now() - stormsAt < 30 * 60e3) return storms;
+  const r = await fetch('https://www.gdacs.org/gdacsapi/api/events/geteventlist/latest', { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+  if (!r.ok) throw new Error('GDACS HTTP ' + r.status);
+  const list = ((await r.json()).features || []).filter(f => f.properties && f.properties.eventtype === 'TC').slice(0, 8);
+  const feats = [];
+  for (const ev of list) {
+    const p = ev.properties, name = (p.eventname || 'Storm').replace(/-\d+$/, ''), level = String(p.alertlevel || 'green').toLowerCase();
+    const base = { name, level, eventid: p.eventid, url: `https://www.gdacs.org/report.aspx?eventtype=TC&eventid=${p.eventid}` };
+    if (ev.geometry && ev.geometry.type === 'Point') feats.push({ type: 'Feature', geometry: ev.geometry, properties: { ...base, role: 'now' } });
+    const gurl = p.url && p.url.geometry || `https://www.gdacs.org/gdacsapi/api/polygons/getgeometry?eventtype=TC&eventid=${p.eventid}&episodeid=${p.episodeid}`;
+    try {
+      const g = await fetch(gurl, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+      if (!g.ok) continue;
+      for (const f of (await g.json()).features || []) {
+        const t = f.geometry && f.geometry.type;
+        if (t === 'LineString' || t === 'MultiLineString') feats.push({ type: 'Feature', geometry: f.geometry, properties: { ...base, role: 'track' } });
+        else if ((t === 'Polygon' || t === 'MultiPolygon') && /cone|forecast|uncertain/i.test(JSON.stringify(f.properties || {}))) feats.push({ type: 'Feature', geometry: f.geometry, properties: { ...base, role: 'cone' } });
+      }
+    } catch {}
+  }
+  storms = { type: 'FeatureCollection', features: feats, at: new Date().toISOString() }; stormsAt = Date.now();
+  return storms;
+}
+
+module.exports = { getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

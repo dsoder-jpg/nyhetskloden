@@ -20,6 +20,7 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Saker om det samme fra flere kilder slås sammen til én markør. Store saker får større markør.
 - Tidslinje for siste time, 6 timer, døgn eller uke, med avspilling.
 - Vær i norske byer fra Yr og nedbørsradar som eget lag.
+- Jordskjelv vises med ringer etter styrke, og tropiske stormer med bane fra GDACS.
 
 **Nyheter**
 - Kategorier: krim og ulykker, krig og sikkerhet, politikk, natur og vær, samferdsel, marked, teknologi, helse, vitenskap, energi, kultur, kongehus og sport.
@@ -29,6 +30,8 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Norske titler på utenlandske saker med en gratis DeepL-nøkkel (valgfritt).
 - Se hvordan en sak har utviklet seg: hvem meldte først, og hvem fulgte opp.
 - Søk i arkivet over saker fra de siste 90 dagene.
+- Innsikt: hvilke land, temaer og ord som har fått mest omtale siste uke eller måned.
+- «Mindre av dette»: skjul en kilde, et tema eller et ord rett fra en sak.
 - Legg til egne RSS-kilder. Kilder som slutter å virke settes på pause og vises i Innstillinger.
 
 **Marked**
@@ -38,14 +41,16 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 
 **Vær og varsler**
 - Værvarsel fra Yr for hjemstedet ditt: nå, time for time og neste dager, med farevarsler fra MET.
-- Varsel på skrivebordet ved store saker, med stille timer.
+- Varsel på skrivebordet ved store saker, valgt per kategori, med stille timer. Flere saker samles i ett varsel.
+- Varsel når en sak du har lagret får en ny utvikling.
 - Daglig oppsummering om morgenen med døgnets viktigste saker.
 
 **Annet**
 - Ticker-stripe som ligger øverst eller nederst på skjermen.
 - Flytrafikk på kloden, og skipstrafikk langs norskekysten (krever gratis BarentsWatch-konto).
 - Mobilvisning: åpne kloden på mobilen når den er på samme nettverk som PC-en.
-- Mørkt og lyst tema, og større tekst.
+- Mørkt, lyst og høykontrast tema, større tekst og hurtigtaster (trykk ? i appen).
+- Virker uten nett: viser lagrede saker og sier fra når nettet er borte.
 
 Alt kan slås av og på under **Innstillinger**.
 

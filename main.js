@@ -100,14 +100,31 @@ function notify(title, body, id) {
   n.show();
 }
 const label = i => i.titleNo || i.title;
+// Store saker samles i ett minutt, så flere saker på rad gir ett varsel i stedet for mange.
+// Saker om samme hendelse (samme eid) teller bare én gang.
+let topQueue = [], topTimer = null;
+function flushTop() {
+  topTimer = null; const seen = new Set();
+  const items = topQueue.filter(i => { const k = i.eid || i.id; if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => (b.sev || 0) - (a.sev || 0));
+  topQueue = [];
+  if (!items.length) return;
+  const first = items[0];
+  if (items.length > 1) notify(`${items.length} store saker`, items.slice(0, 3).map(i => '• ' + label(i)).join('\n') + (items.length > 3 ? `\nog ${items.length - 3} til` : ''), first.eid || first.id);
+  else notify(`${first.sev >= 5 ? 'Stor sak' : 'Toppsak'}, ${first.src}`, label(first), first.eid || first.id);
+}
 engine.events.on('top', all => {
   const mode = S().notifyMode;
   if (mode === 'watch') return;
   const items = mode === 'top' ? all : all.filter(i => (i.top && i.sev >= 2) || i.sev >= 5);
   if (!items.length) return;
-  const first = items.sort((a, b) => (b.sev || 0) - (a.sev || 0))[0];
-  if (items.length > 1) notify(`${items.length} store saker`, items.slice(0, 3).map(i => '• ' + label(i)).join('\n'), first.eid || first.id);
-  else notify(`${first.sev >= 5 ? 'Stor sak' : 'Toppsak'} · ${first.src}`, label(first), first.eid || first.id);
+  topQueue.push(...items);
+  if (S().notifyGroup === false) return flushTop();
+  if (!topTimer) topTimer = setTimeout(flushTop, 60e3);
+});
+// ny utvikling i en sak brukeren har lagret
+engine.events.on('followup', items => {
+  const first = items[0];
+  notify(`Ny utvikling: ${(first.eventTitle || label(first)).slice(0, 80)}`, items.slice(0, 3).map(i => `${i.src}: ${label(i)}`).join('\n'), first.eid || first.id);
 });
 engine.events.on('settings', () => buildTrayMenu());
 // bytte mellom stabil og beta: glem en nedlastet beta og se etter oppdateringer på nytt

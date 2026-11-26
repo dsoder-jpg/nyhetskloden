@@ -101,7 +101,8 @@ const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], da
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
   closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true },
+  muteWords: [], hiddenSrc: [], notifyCats: null, notifyFollow: true, notifyGroup: true, followEids: [],
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
 function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) } }; } catch {} }
@@ -115,7 +116,7 @@ const publicSettings = () => {
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup']) if (typeof b[k] === 'boolean') settings[k] = b[k];
   if (b.channel === 'stable' || b.channel === 'beta') { const was = settings.channel; settings.channel = b.channel; if (was !== b.channel) setTimeout(() => events.emit('channel', b.channel), 50); }
   if (Array.isArray(b.watch)) settings.watch = [...new Set(b.watch.map(String).map(s => s.trim()).filter(Boolean))].slice(0, 50);
   if (Array.isArray(b.customFeeds)) settings.customFeeds = b.customFeeds.filter(f => f && /^https:\/\//.test(f.url)).slice(0, 40).map(f => ({ src: String(f.src || '').slice(0, 40), url: String(f.url).slice(0, 300) })).filter((f, i, a) => a.findIndex(x => x.url === f.url) === i);
@@ -129,6 +130,10 @@ function applySettings(b) {
   if (b.tickerSpeed != null) settings.tickerSpeed = clampNum(b.tickerSpeed, 0.3, 3, 1);
   const CATS = ['krim', 'forsvar', 'politikk', 'marked', 'teknologi', 'helse', 'vitenskap', 'energi', 'vaer', 'samferdsel', 'kongehus', 'kultur', 'sport', 'annet'];
   if (Array.isArray(b.catsOff)) settings.catsOff = b.catsOff.filter(c => CATS.includes(c));
+  if (b.notifyCats === null) settings.notifyCats = null; else if (Array.isArray(b.notifyCats)) settings.notifyCats = b.notifyCats.filter(c => CATS.includes(c));
+  if (Array.isArray(b.muteWords)) settings.muteWords = [...new Set(b.muteWords.map(w => String(w).trim().toLowerCase()).filter(w => w.length >= 2))].slice(0, 100).map(w => w.slice(0, 40));
+  if (Array.isArray(b.hiddenSrc)) settings.hiddenSrc = [...new Set(b.hiddenSrc.map(String))].slice(0, 100).map(w => w.slice(0, 60));
+  if (Array.isArray(b.followEids)) settings.followEids = [...new Set(b.followEids.map(String).filter(x => /^https?:\/\//.test(x)))].slice(-100);
   if (b.home === null) settings.home = null;
   else if (b.home && isFinite(b.home.lat) && isFinite(b.home.lon)) settings.home = { name: String(b.home.name || '').slice(0, 60), lat: +b.home.lat, lon: +b.home.lon };
   if (b.nearKm != null) settings.nearKm = clampNum(b.nearKm, 5, 500, 50);
@@ -306,6 +311,9 @@ async function translate(items) {
 }
 
 // ---------- overvåkning ----------
+// «Mindre av dette»: skjulte kilder og ord gjelder både lista og varsler
+const muted = n => (settings.hiddenSrc || []).includes(n.src) ||
+  (settings.muteWords || []).some(w => new RegExp(`(?<![\\p{L}])${esc(w)}`, 'iu').test([n.title, n.titleNo, n.text].filter(Boolean).join(' ')));
 function watchHits(n) {
   const text = [n.title, n.titleNo, n.text, n.place].filter(Boolean).join(' ');
   return settings.watch.filter(w => w && new RegExp(`(?<![\\p{L}])${esc(w.trim())}`, 'iu').test(text));
@@ -385,7 +393,7 @@ async function fetchFeed(feed, force) {
   } catch (e) {
     st.fails = (st.fails || 0) + 1; st.err = ERR_NO(e); st.since = st.since || new Date().toISOString();
     if (st.fails >= 3) st.pausedUntil = Date.now() + Math.min(12 * 60, 30 * 2 ** (st.fails - 3)) * 60e3;
-    status[feed.url] = { ...base, since: st.since, ok: false, err: st.err, fails: st.fails, paused: !!st.pausedUntil && st.fails >= 3, until: st.pausedUntil ? new Date(st.pausedUntil).toISOString() : null };
+    status[feed.url] = { ...base, net: !/^HTTP |ingen saker/.test(e.message || ''), since: st.since, ok: false, err: st.err, fails: st.fails, paused: !!st.pausedUntil && st.fails >= 3, until: st.pausedUntil ? new Date(st.pausedUntil).toISOString() : null };
     return [];
   } finally { clearTimeout(t); }
 }
@@ -403,6 +411,27 @@ function archive(items) {
     const keep = new Date(Date.now() - 95 * 864e5).toISOString().slice(0, 7);
     for (const f of fs.readdirSync(ARCHIVE_DIR)) if (/^\d{4}-\d{2}\.jsonl$/.test(f) && f.slice(0, 7) < keep) fs.unlinkSync(path.join(ARCHIVE_DIR, f));
   } catch (e) { console.warn('Arkiv:', e.message); }
+}
+// ---------- innsikt ----------
+// Teller hendelser (ikke enkeltsaker) per land, kategori og dag, og finner ord som øker, i denne perioden mot forrige.
+const INS_STOP = new Set(('etter mellom eller blir ble skal kan vil ikke dette denne disse også både mens fordi under over mange flere sier mener nytt første siste største norske norge norsk året dager timer uker ' +
+  'about after again against amid could first former great into last more most new news over says said says still their there these they three under until video watch were what when where which while will with would years people world report reports').split(' '));
+function insights(days) {
+  const all = searchArchive('', Math.min(90, days * 2), 100000);
+  const now = Date.now(), cut = now - days * 864e5, cut2 = now - 2 * days * 864e5;
+  const ev = new Map();
+  for (const n of all) { const t = +new Date(n.date); if (t < cut2) continue; const k = n.eid || n.id; if (!ev.has(k)) ev.set(k, { ...n, t, n: 0, srcs: new Set() }); const e = ev.get(k); e.n++; e.srcs.add(n.src); if (t < e.t) e.t = t; }
+  const cur = [...ev.values()].filter(e => e.t >= cut), prev = [...ev.values()].filter(e => e.t < cut);
+  const count = (arr, key) => { const m = new Map(); for (const e of arr) { const k = key(e); if (k) m.set(k, (m.get(k) || 0) + 1); } return m; };
+  const cc1 = count(cur, e => e.cc), cc0 = count(prev, e => e.cc), cat1 = count(cur, e => e.cat), cat0 = count(prev, e => e.cat);
+  const words = arr => { const m = new Map(); for (const e of arr) for (const w of new Set(((e.lang === 'no' ? e.title : (e.titleNo || e.title)) || '').toLowerCase().match(/[a-zæøå][a-zæøå-]{4,}/g) || [])) if (!INS_STOP.has(w)) m.set(w, (m.get(w) || 0) + 1); return m; };
+  const w1 = words(cur), w0 = words(prev);
+  const rising = [...w1].filter(([, n]) => n >= 3).map(([w, n]) => ({ w, n, prev: w0.get(w) || 0, score: (n + 1) / ((w0.get(w) || 0) + 1) * Math.log(n + 1) })).sort((a, b) => b.score - a.score).slice(0, 12);
+  const daysArr = []; for (let i = days - 1; i >= 0; i--) { const d0 = now - (i + 1) * 864e5, d1 = now - i * 864e5; daysArr.push({ day: new Date(d1).toISOString().slice(0, 10), n: cur.filter(e => e.t >= d0 && e.t < d1).length }); }
+  const big = cur.filter(e => e.srcs.size >= 3).sort((a, b) => b.srcs.size - a.srcs.size || b.n - a.n).slice(0, 8).map(e => ({ title: e.lang === 'no' ? e.title : (e.titleNo || e.title), date: e.date, srcs: e.srcs.size, place: e.place, cat: e.cat, url: e.url, lat: e.lat, lon: e.lon }));
+  return { days, total: cur.length, totalPrev: prev.length, articles: all.filter(n => +new Date(n.date) >= cut).length, since: all.length ? all[all.length - 1].date : null,
+    countries: [...cc1].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([cc, n]) => ({ cc, n, prev: cc0.get(cc) || 0 })),
+    cats: [...cat1].sort((a, b) => b[1] - a[1]).map(([cat, n]) => ({ cat, n, prev: cat0.get(cat) || 0 })), rising, perDay: daysArr, big };
 }
 function searchArchive(q, days = 90, limit = 200) {
   if (!ARCHIVE_DIR) return [];
@@ -425,6 +454,7 @@ function searchArchive(q, days = 90, limit = 200) {
   }
   out.sort((a, b) => b.date.localeCompare(a.date));
   return out.slice(0, limit);
+  // (brukes også av innsikt med stor grense)
 }
 
 let pollTimer = null;
@@ -433,9 +463,16 @@ async function poll() {
   if (polling) return; polling = true;
   try {
     const list = feeds();
-    for (const k of Object.keys(status)) if (k !== 'deepl' && k !== 'met' && !list.some(f => f.url === k)) delete status[k];
+    for (const k of Object.keys(status)) if (!['deepl', 'met', 'lan', 'net'].includes(k) && !list.some(f => f.url === k)) delete status[k];
     const force = poll.force; poll.force = false;
+    const before = Object.fromEntries(list.map(f => [f.url, { ...(FEEDSTATE[f.url] || {}) }]));
     const results = (await Promise.all(list.map(f => fetchFeed(f, force)))).flat();
+    // nesten alle kilder feilet samtidig = PC-en er uten nett. Da skal ingen kilder settes på pause.
+    const tried = list.filter(f => !(before[f.url].pausedUntil > Date.now()) || force);
+    const failed = tried.filter(f => status[f.url] && !status[f.url].ok && !status[f.url].paused && status[f.url].net);
+    const offline = tried.length >= 4 && failed.length / tried.length >= 0.8;
+    if (offline) for (const f of failed) { FEEDSTATE[f.url] = before[f.url]; status[f.url] = { ...status[f.url], err: 'uten nett', paused: false }; }
+    status.net = offline ? { src: 'Internett', ok: false, err: 'PC-en ser ut til å være uten nett', offline: true, since: (status.net && status.net.since) || new Date().toISOString() } : { src: 'Internett', ok: true, n: tried.length - failed.length, hidden: true };
     saveFeedState();
     const byId = new Map(news.map(n => [n.id, n]));
     const added = [];
@@ -450,7 +487,7 @@ async function poll() {
       const n = {
         id, title: i.title, text: i.desc, url: i.link, date: i.date, src: i.feed.src, lang,
         cat: categorize(i.title, i.desc, i.feed.cat), top: !!(i.feed.top || i.top) && !i.minor,
-        sev: severity(i), ccs, ...(where || {}),
+        sev: severity(i), ccs, ...(where || {}), ...(isFinite(i.mag) ? { mag: i.mag, tsunami: !!i.tsunami } : {}),
       };
       byId.set(id, n); added.push(n);
     }
@@ -475,8 +512,12 @@ async function poll() {
     console.log(`[${lastPoll.toLocaleTimeString('nb-NO')}] ${ok}/${Object.keys(status).length} kilder ok, ${added.length} nye, ${news.length} totalt`);
     broadcast('update', { added: added.map(a => a.id), news, lastPoll, nextPoll, status });
     if (!isFirst) {
-      const off = new Set(settings.catsOff || []);
-      const fresh = added.filter(a => Date.now() - new Date(a.date) < 2 * 3600e3 && !off.has(a.cat));
+      const off = new Set(settings.catsOff || []), ncat = settings.notifyCats;
+      const fresh = added.filter(a => Date.now() - new Date(a.date) < 2 * 3600e3 && !off.has(a.cat) && !muted(a) && (!ncat || ncat.includes(a.cat)));
+      // ny utvikling i saker brukeren har lagret: en ny kilde eller oppdatering i samme hendelse
+      const follow = new Set(settings.followEids || []);
+      const followups = settings.notifyFollow ? added.filter(a => follow.has(a.eid) && a.id !== a.eid && Date.now() - new Date(a.date) < 6 * 3600e3 && !muted(a)) : [];
+      if (followups.length) events.emit('followup', followups.map(a => ({ ...a, eventTitle: (news.find(n => n.id === a.eid) || {}).titleNo || (news.find(n => n.id === a.eid) || {}).title })));
       const big = fresh.filter(a => a.top || a.sev >= 5);
       const watched = fresh.filter(a => a.watch.length);
       if (big.length) events.emit('top', big);
@@ -527,6 +568,14 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       if (url.searchParams.get('t') === tok) { res.writeHead(302, { 'Set-Cookie': `nk_t=${tok}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000`, Location: '/' }); return res.end(); }
       if (!cookie || cookie[1] !== tok) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Åpne lenken fra Nyhetskloden-innstillingene (Mobil) på denne enheten.'); }
       if (req.method !== 'GET' && url.pathname !== '/api/refresh') { res.writeHead(403); return res.end(); }
+    }
+    if (url.pathname === '/api/insights') {
+      const days = Math.min(45, Math.max(1, +url.searchParams.get('days') || 7));
+      return json(insights(days));
+    }
+    if (url.pathname === '/api/storms') {
+      if (!settings.features.storms) return json({ off: true, type: 'FeatureCollection', features: [] });
+      try { return json(await X.getStorms()); } catch (e) { return json({ error: e.message, type: 'FeatureCollection', features: [] }, 502); }
     }
     if (url.pathname === '/api/archive') {
       const days = Math.min(90, Math.max(1, +url.searchParams.get('days') || 90));
