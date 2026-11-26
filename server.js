@@ -39,7 +39,7 @@ const BUILTIN_FEEDS = [
   { src: 'NRK Finnmark', url: 'https://www.nrk.no/tromsogfinnmark/toppsaker.rss', region: 'Finnmark', lang: 'no' },
   { src: 'VG', url: 'https://www.vg.no/rss/feed', lang: 'no' },
   { src: 'Aftenposten', url: 'https://www.aftenposten.no/rss', lang: 'no' },
-  { src: 'Dagbladet', url: 'https://www.dagbladet.no/rss', lang: 'no' },
+  { src: 'Dagbladet', url: 'https://www.dagbladet.no/?lab_viewport=rss', lang: 'no' },
   { src: 'E24', url: 'https://e24.no/rss2/', lang: 'no', cat: 'marked' },
   { src: 'NRK Kultur', url: 'https://www.nrk.no/kultur/toppsaker.rss', lang: 'no', cat: 'kultur' },
   // Verden
@@ -67,13 +67,13 @@ const BUILTIN_FEEDS = [
   { src: 'RFI', url: 'https://www.rfi.fr/en/rss', lang: 'en' },
   { src: 'Kyiv Independent', url: 'https://kyivindependent.com/news-archive/rss/', lang: 'en' },
   { src: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', lang: 'en' },
-  { src: 'Africanews', url: 'https://www.africanews.com/feed/rss', lang: 'en' },
+  { src: 'AllAfrica', url: 'https://allafrica.com/tools/headlines/rdf/latest/headlines.rdf', lang: 'en' },
   { src: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms', lang: 'en' },
   { src: 'South China Morning Post', url: 'https://www.scmp.com/rss/91/feed', lang: 'en' },
   { src: 'CNA', url: 'https://www.channelnewsasia.com/rssfeeds/8395884', lang: 'en' },
   { src: 'The Japan Times', url: 'https://www.japantimes.co.jp/feed/', lang: 'en' },
   { src: 'Yonhap', url: 'https://en.yna.co.kr/RSS/news.xml', lang: 'en' },
-  { src: 'ABC Australia', url: 'https://www.abc.net.au/news/feed/52278/rss.xml', lang: 'en' },
+  { src: 'ABC Australia', url: 'https://www.abc.net.au/news/feed/2942460/rss.xml', lang: 'en' },
   { src: 'MercoPress', url: 'https://en.mercopress.com/rss/', lang: 'en' },
   { src: 'SVT', url: 'https://www.svt.se/nyheter/rss.xml', lang: 'sv' },
   { src: 'DR', url: 'https://www.dr.dk/nyheder/service/feeds/allenyheder', lang: 'da' },
@@ -86,11 +86,11 @@ const BUILTIN_FEEDS = [
   { src: 'BBC Science', url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml', lang: 'en', cat: 'vitenskap' },
   { src: 'NASA', url: 'https://www.nasa.gov/feed/', lang: 'en', cat: 'vitenskap' },
   { src: 'BBC Health', url: 'https://feeds.bbci.co.uk/news/health/rss.xml', lang: 'en', cat: 'helse' },
-  { src: 'WHO', url: 'https://www.who.int/rss-feeds/news-english.xml', lang: 'en', cat: 'helse' },
+  { src: 'STAT News', url: 'https://www.statnews.com/feed/', lang: 'en', cat: 'helse' },
   { src: 'BBC Entertainment', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml', lang: 'en', cat: 'kultur' },
   // Naturhendelser med nøyaktige koordinater
   { src: 'USGS', url: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson', type: 'usgs', cat: 'vaer', lang: 'no' },
-  { src: 'GDACS', url: 'https://www.gdacs.org/xml/rss.xml', cat: 'vaer', lang: 'en' },
+  { src: 'GDACS', url: 'https://www.gdacs.org/xml/rss_24h.xml', cat: 'vaer', lang: 'en' },
 ];
 const MET_ALERTS = 'https://api.met.no/weatherapi/metalerts/2.0/current.json?lang=no';
 
@@ -99,24 +99,30 @@ let SETTINGS_FILE = null;
 const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], dailyChars: 15000, usage: { day: '', chars: 0 },
   pollMin: POLL_MIN, keepHours: KEEP_HOURS, disabledFeeds: [],
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
-  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false,
+  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false, widget: false, widgetOnTop: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false },
+  datex: { user: '', pass: '' },
   muteWords: [], hiddenSrc: [], notifyCats: null, notifyFollow: true, notifyGroup: true, followEids: [],
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
-function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) } }; } catch {} }
+function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) }, datex: { ...DEFAULTS.datex, ...(s.datex || {}) } }; } catch {} }
 function saveSettings() { try { fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true }); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (e) { console.warn('Kunne ikke lagre innstillinger:', e.message); } }
 const publicSettings = () => {
-  const { deeplKey, usage, ships, lanToken, ...rest } = settings;
-  return { ...rest, hasKey: !!deeplKey, usedToday: usage.day === today() ? usage.chars : 0,
+  const { deeplKey, usage, ships, lanToken, datex, ...rest } = settings;
+  return { ...rest, datexUser: datex && datex.user || '', hasDatexPass: !!(datex && datex.pass), hasKey: !!deeplKey, usedToday: usage.day === today() ? usage.chars : 0,
     shipsClient: ships.clientId || '', hasShipsSecret: !!ships.clientSecret, lanUrls: lanUrls(),
     builtinFeeds: BUILTIN_FEEDS.map(f => ({ url: f.url, src: f.src, lang: f.lang })) };
 };
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  if (b.datex && typeof b.datex === 'object') {
+    if (typeof b.datex.user === 'string') settings.datex.user = b.datex.user.trim().slice(0, 100);
+    if (typeof b.datex.pass === 'string' && b.datex.pass) settings.datex.pass = b.datex.pass.slice(0, 200);
+    if (b.datex.clear) settings.datex = { user: '', pass: '' };
+  }
   if (b.channel === 'stable' || b.channel === 'beta') { const was = settings.channel; settings.channel = b.channel; if (was !== b.channel) setTimeout(() => events.emit('channel', b.channel), 50); }
   if (Array.isArray(b.watch)) settings.watch = [...new Set(b.watch.map(String).map(s => s.trim()).filter(Boolean))].slice(0, 50);
   if (Array.isArray(b.customFeeds)) settings.customFeeds = b.customFeeds.filter(f => f && /^https:\/\//.test(f.url)).slice(0, 40).map(f => ({ src: String(f.src || '').slice(0, 40), url: String(f.url).slice(0, 300) })).filter((f, i, a) => a.findIndex(x => x.url === f.url) === i);
@@ -569,6 +575,17 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       if (!cookie || cookie[1] !== tok) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Åpne lenken fra Nyhetskloden-innstillingene (Mobil) på denne enheten.'); }
       if (req.method !== 'GET' && url.pathname !== '/api/refresh') { res.writeHead(403); return res.end(); }
     }
+    if (url.pathname === '/api/country') {
+      const cc = String(url.searchParams.get('cc') || '').toUpperCase();
+      if (!/^[A-Z]{2}$/.test(cc)) return json({ error: 'ugyldig land' }, 400);
+      const c = await X.getCountry(cc); return c ? json(c) : json({ error: 'ukjent land' }, 404);
+    }
+    if (url.pathname === '/api/power') { if (!settings.features.power) return json({ off: true, zones: [] }); try { return json(await X.getPower()); } catch (e) { return json({ error: e.message, zones: [] }, 502); } }
+    if (url.pathname === '/api/traffic') {
+      if (!settings.features.traffic) return json({ off: true, items: [] });
+      try { return json(await X.getTraffic(settings.datex)); } catch (e) { return json({ error: e.message, items: [] }, 502); }
+    }
+    if (url.pathname === '/api/podcasts') { try { return json(await X.getPodcasts()); } catch (e) { return json({ error: e.message, pods: [] }, 502); } }
     if (url.pathname === '/api/insights') {
       const days = Math.min(45, Math.max(1, +url.searchParams.get('days') || 7));
       return json(insights(days));
@@ -576,6 +593,14 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
     if (url.pathname === '/api/storms') {
       if (!settings.features.storms) return json({ off: true, type: 'FeatureCollection', features: [] });
       try { return json(await X.getStorms()); } catch (e) { return json({ error: e.message, type: 'FeatureCollection', features: [] }, 502); }
+    }
+    if (url.pathname === '/api/archive' && url.searchParams.get('date')) {
+      const day = String(url.searchParams.get('date'));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: 'ugyldig dato' }, 400);
+      const from = new Date(day + 'T00:00:00'), to = new Date(+from + 864e5);
+      const days = Math.ceil((Date.now() - from) / 864e5) + 1;
+      if (days > 92) return json({ items: [] });
+      return json({ day, items: searchArchive('', days, 100000).filter(n => new Date(n.date) >= from && new Date(n.date) < to) });
     }
     if (url.pathname === '/api/archive') {
       const days = Math.min(90, Math.max(1, +url.searchParams.get('days') || 90));

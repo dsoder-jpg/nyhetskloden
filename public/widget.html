@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<title>Nyhetskloden – widget</title>
+<style>
+:root{color-scheme:dark;--bg:#0b131d;--ink:#e6edf3;--muted:#93a4b3;--dim:#64768a;--line:#1c2b3a;--panel2:#111e2a}
+html[data-theme=light]{color-scheme:light;--bg:#fff;--ink:#122033;--muted:#4f6276;--dim:#6f8094;--line:#d5dee8;--panel2:#f3f6f9}
+html[data-theme=contrast]{--bg:#000;--ink:#fff;--muted:#e6e6e6;--dim:#cfcfcf;--line:#9a9a9a;--panel2:#111}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.35 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;border:1px solid var(--line)}
+header{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 12px;-webkit-app-region:drag;user-select:none;border-bottom:1px solid var(--line)}
+header b{font-weight:600;font-size:12.5px;flex:1}
+header button{-webkit-app-region:no-drag;width:26px;height:24px;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:14px}
+header button:hover{background:var(--panel2);color:var(--ink)}
+header button[aria-pressed=true]{color:#ffb38a}
+.wx{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.wx b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.wx span{color:var(--muted)}
+.warm{color:#ff7a6b}.cold{color:#6db3ff}
+ol{list-style:none;margin:0;padding:4px;flex:1;overflow:auto}
+li button{width:100%;text-align:left;border:0;background:transparent;color:var(--ink);font:inherit;padding:7px 8px;border-radius:8px;cursor:pointer;display:grid;gap:2px}
+li button:hover{background:var(--panel2)}
+li small{color:var(--dim);font-size:11.5px}
+.empty{color:var(--muted);padding:12px}
+footer{padding:4px 12px 6px;color:var(--dim);font-size:11px}
+</style>
+</head>
+<body>
+<header><b>Nyhetskloden</b><button id="pin" title="Alltid øverst" aria-pressed="false">📌</button><button id="x" title="Lukk widgeten" aria-label="Lukk">×</button></header>
+<div class="wx" id="wx" hidden></div>
+<ol id="top"><li class="empty">Henter saker …</li></ol>
+<footer id="foot"></footer>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+try{const l=JSON.parse(localStorage.getItem('nk-look')||'{}');const t=l.theme==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):(l.theme||'dark');document.documentElement.dataset.theme=t}catch(e){}
+const tfmt=new Intl.DateTimeFormat('nb-NO',{hour:'2-digit',minute:'2-digit'});
+const deg=t=>{if(t==null)return'–';const r=Math.round(t)||0;return(r<0?'−':'')+Math.abs(r)+'°'};
+const WXT=c=>{c=(c||'').replace(/_(day|night|polartwilight)$/,'');return({clearsky:'Klarvær',fair:'Lettskyet',partlycloudy:'Delvis skyet',cloudy:'Skyet',fog:'Tåke'})[c]||(/snow/.test(c)?'Snø':/sleet/.test(c)?'Sludd':/rain/.test(c)?'Regn':/thunder/.test(c)?'Torden':'')};
+async function load(){
+  try{const s=await (await fetch('/api/settings')).json();$('pin').setAttribute('aria-pressed',!!s.widgetOnTop);
+    if(s.features&&s.features.weather&&s.home){const w=await (await fetch('/api/weather')).json();
+      if(w&&w.now){$('wx').hidden=false;$('wx').innerHTML=`<b class="${Math.round(w.now.temp)>0?'warm':'cold'}">${deg(w.now.temp)}</b><span>${esc(WXT(w.now.sym))}, ${esc(s.home.name)}</span>`}}}catch(e){}
+  try{const t=await (await fetch('/api/top')).json(),ol=$('top');ol.textContent='';
+    if(!t.length)ol.innerHTML='<li class="empty">Ingen store saker siste døgn.</li>';
+    for(const e of t.slice(0,3)){const li=document.createElement('li'),b=document.createElement('button');b.innerHTML=`<span>${esc(e.title)}</span><small>${e.srcs>1?e.srcs+' kilder':'1 kilde'}</small>`;
+      b.onclick=()=>window.nk&&window.nk.openItem(e.id);li.append(b);ol.append(li)}
+    $('foot').textContent='Oppdatert '+tfmt.format(new Date())}catch(e){$('foot').textContent='Fikk ikke kontakt med nyhetsmotoren.'}}
+$('x').onclick=()=>window.nk&&window.nk.widget('close');
+$('pin').onclick=async()=>{const on=$('pin').getAttribute('aria-pressed')!=='true';$('pin').setAttribute('aria-pressed',on);
+  if(window.nk)window.nk.widgetTop(on);try{await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({widgetOnTop:on})})}catch(e){}};
+load();setInterval(load,60e3);
+try{const es=new EventSource('/api/stream');es.addEventListener('update',()=>setTimeout(load,1500))}catch(e){}
+</script>
+</body>
+</html>

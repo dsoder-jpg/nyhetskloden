@@ -204,7 +204,9 @@ async function getStorms() {
   if (storms && Date.now() - stormsAt < 30 * 60e3) return storms;
   const r = await fetch('https://www.gdacs.org/gdacsapi/api/events/geteventlist/latest', { headers: { 'User-Agent': UA, Accept: 'application/json' } });
   if (!r.ok) throw new Error('GDACS HTTP ' + r.status);
-  const list = ((await r.json()).features || []).filter(f => f.properties && f.properties.eventtype === 'TC').slice(0, 8);
+  // bare stormer som pågår nå, eller som var aktive de siste to døgnene
+  const list = ((await r.json()).features || []).filter(f => f.properties && f.properties.eventtype === 'TC' &&
+    (String(f.properties.iscurrent) === 'true' || Date.now() - new Date(f.properties.todate + 'Z') < 2 * 864e5)).slice(0, 8);
   const feats = [];
   for (const ev of list) {
     const p = ev.properties, name = (p.eventname || 'Storm').replace(/-\d+$/, ''), level = String(p.alertlevel || 'green').toLowerCase();
@@ -225,4 +227,107 @@ async function getStorms() {
   return storms;
 }
 
-module.exports = { getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+// ---------- podkaster ----------
+const PODS = [
+  { name: 'Dagsnytt 18', by: 'NRK', url: 'https://podkast.nrk.no/program/dagsnytt_18.rss' },
+  { name: 'Global News Podcast', by: 'BBC', url: 'https://podcasts.files.bbci.co.uk/p02nq0gn.rss' },
+  { name: 'The Daily', by: 'New York Times', url: 'https://feeds.simplecast.com/54nAGcIl' },
+];
+let pods = null, podsAt = 0;
+const unx = t => (t || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").trim();
+async function getPodcasts() {
+  if (pods && Date.now() - podsAt < 30 * 60e3) return pods;
+  const out = await Promise.all(PODS.map(async p => {
+    try {
+      const r = await fetch(p.url, { headers: { 'User-Agent': UA } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const xml = await r.text();
+      const eps = [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/g)].slice(0, 3).map(m => {
+        const it = m[0], enc = (it.match(/<enclosure[^>]*url="([^"]+)"/) || [])[1];
+        return { title: unx((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1]), date: (it.match(/<pubDate>([^<]+)/) || [])[1] || null,
+          audio: enc && /^https:\/\//.test(unx(enc)) ? unx(enc) : null, dur: unx((it.match(/<itunes:duration>([^<]+)/) || [])[1]) || null };
+      }).filter(e => e.audio);
+      return { ...p, eps };
+    } catch (e) { return { ...p, eps: [], error: e.message }; }
+  }));
+  pods = { at: new Date().toISOString(), pods: out }; podsAt = Date.now();
+  return pods;
+}
+
+// ---------- landfakta ----------
+// countries.json: [hovedstad, areal km², språk, valuta, tidssone, hovedstad lat, lon] fra world-countries (ODbL) og countries-and-timezones (MIT)
+const COUNTRIES = require('./countries.json');
+if (COUNTRIES.US) { COUNTRIES.US[5] = 38.9; COUNTRIES.US[6] = -77.04; }
+const popCache = new Map(), capWx = new Map();
+async function getCountry(cc) {
+  const c = COUNTRIES[cc];
+  if (!c) return null;
+  const [capital, area, langs, curr, tz, lat, lon] = c;
+  let pop = popCache.get(cc);
+  if (!pop || Date.now() - pop.at > 7 * 864e5) {
+    try {
+      const r = await fetch(`https://api.worldbank.org/v2/country/${cc}/indicator/SP.POP.TOTL?format=json&mrv=1`, { headers: { 'User-Agent': UA } });
+      const d = await r.json(); const v = d && d[1] && d[1][0];
+      pop = { at: Date.now(), n: v && v.value, year: v && v.date };
+    } catch { pop = { at: Date.now() - 6 * 864e5, n: null }; }
+    popCache.set(cc, pop);
+  }
+  let wx = capWx.get(cc);
+  if (!wx || Date.now() - wx.at > 30 * 60e3) {
+    try {
+      const r = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${(+lat).toFixed(2)}&lon=${(+lon).toFixed(2)}`, { headers: { 'User-Agent': UA } });
+      const t = (await r.json()).properties.timeseries[0];
+      wx = { at: Date.now(), temp: t.data.instant.details.air_temperature, sym: (t.data.next_1_hours || t.data.next_6_hours || {}).summary?.symbol_code || '' };
+    } catch { wx = { at: Date.now() - 25 * 60e3 }; }
+    capWx.set(cc, wx);
+  }
+  return { cc, capital, area, langs, curr, tz, lat, lon, population: pop.n || null, popYear: pop.year || null, weather: wx.temp != null ? { temp: wx.temp, sym: wx.sym } : null };
+}
+
+// ---------- strømpris (hvakosterstrommen.no) ----------
+const ZONES = [['NO1', 'Øst', 60.2, 10.9], ['NO2', 'Sør', 58.9, 7.4], ['NO3', 'Midt', 63.4, 10.4], ['NO4', 'Nord', 68.6, 16.5], ['NO5', 'Vest', 60.6, 6.2]];
+let power = null, powerAt = 0;
+async function getPower() {
+  if (power && Date.now() - powerAt < 10 * 60e3 && new Date(power.at).getHours() === new Date().getHours()) return power;
+  const d = new Date(), day = d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
+  const [y, m, dd] = day.split('-');
+  const zones = await Promise.all(ZONES.map(async ([id, name, lat, lon]) => {
+    try {
+      const r = await fetch(`https://www.hvakosterstrommen.no/api/v1/prices/${y}/${m}-${dd}_${id}.json`, { headers: { 'User-Agent': UA } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const arr = (await r.json()).map(p => ({ t: p.time_start, end: p.time_end, kr: p.NOK_per_kWh }));
+      const now = arr.find(p => new Date(p.t) <= d && d < new Date(p.end)) || arr[arr.length - 1];
+      const ks = arr.map(p => p.kr);
+      return { id, name, lat, lon, now: now ? now.kr : null, avg: ks.reduce((a, b) => a + b, 0) / ks.length, min: Math.min(...ks), max: Math.max(...ks), hours: arr };
+    } catch (e) { return { id, name, lat, lon, now: null, error: e.message }; }
+  }));
+  power = { at: new Date().toISOString(), day, zones }; powerAt = Date.now();
+  return power;
+}
+
+// ---------- trafikk på norske veier (Statens vegvesen, DATEX II) ----------
+let traffic = null, trafficAt = 0, trafficKey = '';
+async function getTraffic(cfg) {
+  if (!cfg || !cfg.user || !cfg.pass) throw new Error('mangler DATEX-tilgang');
+  const key = cfg.user;
+  if (traffic && key === trafficKey && Date.now() - trafficAt < 5 * 60e3) return traffic;
+  const r = await fetch('https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata', {
+    headers: { 'User-Agent': UA, Authorization: 'Basic ' + Buffer.from(cfg.user + ':' + cfg.pass).toString('base64'), Accept: 'application/xml' } });
+  if (r.status === 401 || r.status === 403) throw new Error('feil brukernavn eller passord');
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const xml = await r.text(), out = [];
+  for (const m of xml.matchAll(/<(?:\w+:)?situationRecord\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?situationRecord>/g)) {
+    const attrs = m[1], body = m[2];
+    const type = ((attrs.match(/type="(?:\w+:)?(\w+)"/) || [])[1] || '').replace(/^(\w)/, x => x.toLowerCase());
+    const lat = +(body.match(/<(?:\w+:)?latitude>([-\d.]+)</) || [])[1], lon = +(body.match(/<(?:\w+:)?longitude>([-\d.]+)</) || [])[1];
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+    const text = ((body.match(/<(?:\w+:)?value lang="no[^"]*">([\s\S]*?)<\/(?:\w+:)?value>/) || body.match(/<(?:\w+:)?value[^>]*>([\s\S]*?)<\/(?:\w+:)?value>/) || [])[1] || '').replace(/<[^>]+>/g, '').trim();
+    const start = (body.match(/<(?:\w+:)?overallStartTime>([^<]+)</) || [])[1] || null;
+    const kind = /accident/i.test(type) ? 'ulykke' : /roadOrCarriagewayOrLaneManagement|roadClosed|closure/i.test(type + body) && /closed|stengt/i.test(body + text) ? 'stengt' : /maintenance|roadworks|constructionWorks/i.test(type) ? 'veiarbeid' : /weather|poorEnvironment|conditions/i.test(type) ? 'føre' : /ferry|ferje/i.test(type + text) ? 'ferje' : 'melding';
+    out.push({ lat, lon, kind, type, text: text.slice(0, 400), start });
+  }
+  traffic = { at: new Date().toISOString(), items: out.slice(0, 3000) }; trafficAt = Date.now(); trafficKey = key;
+  return traffic;
+}
+
+module.exports = { getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

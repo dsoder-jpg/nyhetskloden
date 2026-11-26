@@ -3,7 +3,7 @@
 // har en ticker-stripe som alltid ligger øverst, varsler om store saker og overvåkede ord,
 // og oppdaterer seg selv fra GitHub Releases (se LES-MEG).
 
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, shell, nativeImage, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, shell, nativeImage, screen, dialog } = require('electron');
 const path = require('path');
 const engine = require('./server');
 
@@ -13,7 +13,7 @@ if (!app.requestSingleInstanceLock()) { app.quit(); }
 const ICON = path.join(__dirname, 'build', 'icon.png');
 const TRAY_ICON = path.join(__dirname, 'build', 'tray.png');
 const PREFERRED_PORT = 37851; // fast port, så innstillinger (lagret per adresse) huskes mellom oppstarter
-let win = null, ticker = null, tray = null, port = null, quitting = false, hintShown = false;
+let win = null, ticker = null, widget = null, tray = null, port = null, quitting = false, hintShown = false;
 const base = () => `http://127.0.0.1:${port}`;
 const S = () => engine.getSettings();
 
@@ -52,6 +52,53 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+// Widget: lite vindu på skrivebordet med været og de tre viktigste sakene. Plassering huskes.
+const WIDGET_FILE = () => path.join(app.getPath('userData'), 'widget.json');
+function toggleWidget(force) {
+  if (widget && force !== true) { widget.close(); return; }
+  if (widget) return;
+  let b = null; try { b = JSON.parse(fs.readFileSync(WIDGET_FILE(), 'utf8')); } catch {}
+  const { workArea } = screen.getPrimaryDisplay();
+  const w = 320, h = 270;
+  const ok = b && screen.getAllDisplays().some(d => b.x >= d.workArea.x - 50 && b.y >= d.workArea.y - 50 && b.x < d.workArea.x + d.workArea.width - 50 && b.y < d.workArea.y + d.workArea.height - 50);
+  widget = new BrowserWindow({
+    x: ok ? b.x : workArea.x + workArea.width - w - 24, y: ok ? b.y : workArea.y + 24, width: ok && b.width ? b.width : w, height: ok && b.height ? b.height : h,
+    minWidth: 260, minHeight: 180, frame: false, resizable: true, skipTaskbar: true, alwaysOnTop: !!S().widgetOnTop, backgroundColor: '#0b131d',
+    title: 'Nyhetskloden – widget', icon: ICON, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
+  });
+  widget.loadURL(base() + '/widget.html');
+  guardLinks(widget);
+  const save = () => { if (widget && !widget.isDestroyed()) try { fs.writeFileSync(WIDGET_FILE(), JSON.stringify(widget.getBounds())); } catch {} };
+  widget.on('moved', save); widget.on('resized', save);
+  widget.on('closed', () => { widget = null; if (!quitting && S().widget) engine.applySettings({ widget: false }); buildTrayMenu(); });
+  if (!S().widget) engine.applySettings({ widget: true });
+  buildTrayMenu();
+}
+ipcMain.on('widget', (_e, on) => { if (on === 'close') return widget && widget.close(); if (!!on !== !!widget) toggleWidget(); });
+ipcMain.on('widget-top', (_e, on) => { if (widget) widget.setAlwaysOnTop(!!on); });
+
+// Eksport: lagre et bilde av kloden, eller en PDF av dagens saker
+ipcMain.handle('save-png', async (_e, dataUrl, name) => {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return { ok: false };
+  const r = await dialog.showSaveDialog(win, { title: 'Lagre bilde av kloden', defaultPath: path.join(app.getPath('pictures'), String(name || 'nyhetskloden.png').replace(/[^\w.æøåÆØÅ -]/g, '')), filters: [{ name: 'PNG-bilde', extensions: ['png'] }] });
+  if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+  fs.writeFileSync(r.filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
+  shell.showItemInFolder(r.filePath);
+  return { ok: true, file: r.filePath };
+});
+ipcMain.handle('save-pdf', async (_e, html, name) => {
+  if (typeof html !== 'string' || html.length > 2e6) return { ok: false };
+  const r = await dialog.showSaveDialog(win, { title: 'Lagre dagens saker som PDF', defaultPath: path.join(app.getPath('documents'), String(name || 'nyhetskloden.pdf').replace(/[^\w.æøåÆØÅ -]/g, '')), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+  if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+  const pw = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, javascript: false } });
+  try {
+    await pw.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    const pdf = await pw.webContents.printToPDF({ pageSize: 'A4', printBackground: true, margins: { marginType: 'default' } });
+    fs.writeFileSync(r.filePath, pdf); shell.openPath(r.filePath);
+    return { ok: true, file: r.filePath };
+  } finally { pw.destroy(); }
+});
+
 // Ticker: smal stripe øverst på skjermen som alltid ligger over andre vinduer
 function toggleTicker() {
   if (ticker) { ticker.close(); return; }
@@ -74,6 +121,7 @@ function buildTrayMenu() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Vis Nyhetskloden', click: show },
     { label: ticker ? 'Skjul ticker' : 'Vis ticker', click: toggleTicker },
+    { label: widget ? 'Skjul widget' : 'Vis widget på skrivebordet', click: () => toggleWidget() },
     { label: 'Hent nyheter nå', click: () => engine.poll() },
     { type: 'separator' },
     { label: 'Varsler', type: 'checkbox', checked: S().notify, click: i => engine.applySettings({ notify: i.checked }) },
@@ -126,7 +174,7 @@ engine.events.on('followup', items => {
   const first = items[0];
   notify(`Ny utvikling: ${(first.eventTitle || label(first)).slice(0, 80)}`, items.slice(0, 3).map(i => `${i.src}: ${label(i)}`).join('\n'), first.eid || first.id);
 });
-engine.events.on('settings', () => buildTrayMenu());
+engine.events.on('settings', () => { buildTrayMenu(); if (!!S().widget !== !!widget) setTimeout(() => { if (!!S().widget !== !!widget) toggleWidget(); }, 50); if (widget) widget.setAlwaysOnTop(!!S().widgetOnTop); });
 // bytte mellom stabil og beta: glem en nedlastet beta og se etter oppdateringer på nytt
 engine.events.on('channel', ch => {
   if (pendingUpdate && ch === 'stable' && isBeta(pendingUpdate.ver)) { try { fs.unlinkSync(pendingUpdate.file); } catch {} pendingUpdate = null; buildTrayMenu(); }
@@ -265,6 +313,7 @@ app.whenReady().then(async () => {
   buildTray();
   if (!process.argv.includes('--hidden')) createWindow();
   if (S().tickerAtStart) setTimeout(toggleTicker, 2500);
+  if (S().widget) setTimeout(() => toggleWidget(true), 2000);
   setTimeout(() => checkUpdates(false), 15000);
   setInterval(() => checkUpdates(false), 6 * 3600e3);
 });

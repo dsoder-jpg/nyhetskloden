@@ -66,13 +66,52 @@ test('RSS leses', () => {
   assert.equal(items[0].link, 'https://x.no/1');
 });
 
+const PUB = path.join(__dirname, '..', 'public');
+const pageScripts = () => {
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  return [...html.matchAll(/<script src="\/js\/([\w-]+\.js)"><\/script>/g)].map(m => ({ f: m[1], js: fs.readFileSync(path.join(PUB, 'js', m[1]), 'utf8') }));
+};
 test('sidekoden har ingen syntaksfeil', () => {
   const vm = require('vm');
-  for (const f of ['index.html', 'ticker.html']) {
-    const html = fs.readFileSync(path.join(__dirname, '..', 'public', f), 'utf8');
+  const files = pageScripts();
+  assert.ok(files.length >= 5, 'fant ikke skriptene i index.html');
+  for (const { f, js } of files) assert.doesNotThrow(() => new vm.Script(js, { filename: f }));
+  for (const f of ['ticker.html', 'widget.html']) {
+    if (!fs.existsSync(path.join(PUB, f))) continue;
+    const html = fs.readFileSync(path.join(PUB, f), 'utf8');
     const js = html.slice(html.lastIndexOf('<script>') + 8, html.lastIndexOf('</script>'));
     assert.doesNotThrow(() => new vm.Script(js, { filename: f }));
   }
+});
+
+test('ingen navn er deklarert to ganger på tvers av skriptene', () => {
+  const acorn = require('acorn');
+  const seen = new Map();
+  for (const { f, js } of pageScripts()) {
+    for (const n of acorn.parse(js, { ecmaVersion: 'latest' }).body) {
+      const names = n.type === 'VariableDeclaration' ? n.declarations.flatMap(d => d.id.type === 'Identifier' ? [d.id.name] : []) : (n.type === 'FunctionDeclaration' || n.type === 'ClassDeclaration') ? [n.id.name] : [];
+      for (const x of names) { assert.ok(!seen.has(x), `«${x}» finnes både i ${seen.get(x)} og ${f}`); seen.set(x, f); }
+    }
+  }
+});
+
+test('ingen id er brukt to ganger i HTML-en', () => {
+  for (const f of ['index.html', 'ticker.html', 'widget.html']) {
+    if (!fs.existsSync(path.join(PUB, f))) continue;
+    const ids = [...fs.readFileSync(path.join(PUB, f), 'utf8').matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
+    const dup = ids.filter((x, i) => ids.indexOf(x) !== i);
+    assert.deepEqual(dup, [], `${f}: doble id-er`);
+  }
+});
+
+test('alle id-er som skriptene slår opp finnes', () => {
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+  const missing = new Set();
+  // id-er som lages av skriptene selv (kartknapper og innhold i paneler)
+  for (const { js } of pageScripts()) for (const m of js.matchAll(/id="([\w-]+)"|\bmk\('([\w-]+)'/g)) ids.add(m[1] || m[2]);
+  for (const { js } of pageScripts()) for (const m of js.matchAll(/\$\('([\w-]+)'\)/g)) if (!ids.has(m[1])) missing.add(m[1]);
+  assert.deepEqual([...missing], [], 'id-er som mangler i index.html');
 });
 
 test('stedslista er gyldig', () => {

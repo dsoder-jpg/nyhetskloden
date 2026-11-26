@@ -17,4 +17,8 @@ contextBridge.exposeInMainWorld('nk', {
   onOpenSettings: cb => ipcRenderer.on('open-settings', () => cb()),
   onOpenTab: cb => ipcRenderer.on('open-tab', (_e, t) => cb(String(t))),
   setZoom: f => ipcRenderer.send('zoom', +f),
+  widget: on => ipcRenderer.send('widget', on === 'close' ? 'close' : !!on),
+  widgetTop: on => ipcRenderer.send('widget-top', !!on),
+  savePng: (dataUrl, name) => ipcRenderer.invoke('save-png', String(dataUrl), String(name || '')),
+  savePdf: (html, name) => ipcRenderer.invoke('save-pdf', String(html), String(name || '')),
 });

@@ -51,6 +51,10 @@ jobs:
           choco install nsis -y --no-progress
           echo "C:\\Program Files (x86)\\NSIS" >> "$GITHUB_PATH"
 
+      - name: Kodesjekk
+        if: steps.v.outputs.skip != 'true'
+        run: npm run lint
+
       - name: Test
         if: steps.v.outputs.skip != 'true'
         run: npm test

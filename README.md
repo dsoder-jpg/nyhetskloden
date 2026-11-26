@@ -21,6 +21,10 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Tidslinje for siste time, 6 timer, døgn eller uke, med avspilling.
 - Vær i norske byer fra Yr og nedbørsradar som eget lag.
 - Jordskjelv vises med ringer etter styrke, og tropiske stormer med bane fra GDACS.
+- Byer lyser på nattsiden av kloden.
+- Klikk på et land for fakta: hovedstad, folketall, klokka og været der.
+- Tidsreise: se hvordan kloden så ut en tidligere dag fra arkivet.
+- Strømpris i de fem norske prisområdene, og veitrafikk fra Statens vegvesen (krever gratis DATEX-tilgang).
 
 **Nyheter**
 - Kategorier: krim og ulykker, krig og sikkerhet, politikk, natur og vær, samferdsel, marked, teknologi, helse, vitenskap, energi, kultur, kongehus og sport.
@@ -29,6 +33,9 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Del en sak med lenke eller QR-kode til mobilen.
 - Norske titler på utenlandske saker med en gratis DeepL-nøkkel (valgfritt).
 - Se hvordan en sak har utviklet seg: hvem meldte først, og hvem fulgte opp.
+- Se om en sak er bekreftet av flere uavhengige medier, og hvor i verden de er fra.
+- Døgnet oppsummert, tråder for saker som varer i flere dager, og en lesekø for saker du vil lese senere.
+- Lytt til NRK- og BBC-radio og nyhetspodkaster rett i appen.
 - Søk i arkivet over saker fra de siste 90 dagene.
 - Innsikt: hvilke land, temaer og ord som har fått mest omtale siste uke eller måned.
 - «Mindre av dette»: skjul en kilde, et tema eller et ord rett fra en sak.
@@ -46,7 +53,8 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Daglig oppsummering om morgenen med døgnets viktigste saker.
 
 **Annet**
-- Ticker-stripe som ligger øverst eller nederst på skjermen.
+- Ticker-stripe som ligger øverst eller nederst på skjermen, og en liten widget på skrivebordet.
+- Lagre et bilde av kloden eller dagens saker som PDF.
 - Flytrafikk på kloden, og skipstrafikk langs norskekysten (krever gratis BarentsWatch-konto).
 - Mobilvisning: åpne kloden på mobilen når den er på samme nettverk som PC-en.
 - Mørkt, lyst og høykontrast tema, større tekst og hurtigtaster (trykk ? i appen).
@@ -77,6 +85,7 @@ npm install
 npm start          # start appen
 npm run server     # bare nyhetsmotoren, åpne http://localhost:3000 i nettleseren
 npm test           # kjør testene
+npm run lint       # kodesjekk
 npm run dist:win   # lag installasjonsfil i dist/installer/
 ```
 
@@ -87,7 +96,10 @@ Nye utgivelser lages automatisk av GitHub Actions når versjonsnummeret i `packa
 | `main.js` | Electron: vinduer, ticker, varsler, oppdateringer |
 | `server.js` | Nyhetsmotoren: henter og grupperer saker, finner steder, sanntid |
 | `extras.js` | Marked, vær, fly og skip |
-| `public/index.html` | Kloden og sidepanelet (MapLibre GL) |
+| `public/index.html` | Oppsettet for kloden og sidepanelet |
+| `public/js/` | Koden for siden, delt i moduler (kart, panel, marked, vær …) |
+| `public/css/app.css` | Utseendet |
+| `public/widget.html` | Widgeten på skrivebordet |
 | `build/installer.nsi` | Installasjonsprogrammet (NSIS) |
 
 ## Lisens
