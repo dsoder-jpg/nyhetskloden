@@ -78,6 +78,45 @@ const BUILTIN_FEEDS = [
   { src: 'SVT', url: 'https://www.svt.se/nyheter/rss.xml', lang: 'sv' },
   { src: 'DR', url: 'https://www.dr.dk/nyheder/service/feeds/allenyheder', lang: 'da' },
   { src: 'Yle', url: 'https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_NEWS', lang: 'en' },
+  // 3.6: flere kilder. Kilder som ikke virker settes på pause av seg selv og vises under Innstillinger → Kilder.
+  { src: 'Nettavisen', url: 'https://www.nettavisen.no/service/rss', lang: 'no' },
+  { src: 'Bergens Tidende', url: 'https://www.bt.no/rss', lang: 'no' },
+  { src: 'Stavanger Aftenblad', url: 'https://www.aftenbladet.no/rss', lang: 'no' },
+  { src: 'Adresseavisen', url: 'https://www.adressa.no/rss', lang: 'no' },
+  { src: 'iTromsø', url: 'https://www.itromso.no/rss', lang: 'no' },
+  { src: 'Forskning.no', url: 'https://forskning.no/rss', lang: 'no', cat: 'vitenskap' },
+  { src: 'Digi.no', url: 'https://www.digi.no/rss', lang: 'no', cat: 'teknologi' },
+  { src: 'NRK Urix', url: 'https://www.nrk.no/urix/toppsaker.rss', lang: 'no' },
+  { src: 'NBC News', url: 'https://feeds.nbcnews.com/nbcnews/public/world', lang: 'en' },
+  { src: 'CNBC', url: 'https://www.cnbc.com/id/100727362/device/rss/rss.html', lang: 'en' },
+  { src: 'Fox News', url: 'https://moxie.foxnews.com/google-publisher/world.xml', lang: 'en' },
+  { src: 'Los Angeles Times', url: 'https://www.latimes.com/world-nation/rss2.0.xml', lang: 'en' },
+  { src: 'Axios', url: 'https://api.axios.com/feed/', lang: 'en' },
+  { src: 'Financial Times', url: 'https://www.ft.com/world?format=rss', lang: 'en' },
+  { src: 'The Economist', url: 'https://www.economist.com/international/rss.xml', lang: 'en' },
+  { src: 'Euractiv', url: 'https://www.euractiv.com/feed/', lang: 'en' },
+  { src: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', lang: 'en' },
+  { src: 'Meduza', url: 'https://meduza.io/rss/en/all', lang: 'en' },
+  { src: 'Notes from Poland', url: 'https://notesfrompoland.com/feed/', lang: 'en' },
+  { src: 'Balkan Insight', url: 'https://balkaninsight.com/feed/', lang: 'en' },
+  { src: 'Arab News', url: 'https://www.arabnews.com/rss.xml', lang: 'en' },
+  { src: 'Middle East Eye', url: 'https://www.middleeasteye.net/rss', lang: 'en' },
+  { src: 'Anadolu', url: 'https://www.aa.com.tr/en/rss/default?cat=world', lang: 'en' },
+  { src: 'Dawn', url: 'https://www.dawn.com/feeds/home', lang: 'en' },
+  { src: 'The Hindu', url: 'https://www.thehindu.com/news/international/feeder/default.rss', lang: 'en' },
+  { src: 'NDTV', url: 'https://feeds.feedburner.com/ndtvnews-world-news', lang: 'en' },
+  { src: 'The Straits Times', url: 'https://www.straitstimes.com/news/world/rss.xml', lang: 'en' },
+  { src: 'Taipei Times', url: 'https://www.taipeitimes.com/xml/index.rss', lang: 'en' },
+  { src: 'Nikkei Asia', url: 'https://asia.nikkei.com/rss/feed/nar', lang: 'en' },
+  { src: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/world.xml', lang: 'en' },
+  { src: 'RNZ', url: 'https://www.rnz.co.nz/rss/world.xml', lang: 'en' },
+  { src: 'The Guardian Australia', url: 'https://www.theguardian.com/australia-news/rss', lang: 'en' },
+  { src: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', lang: 'en' },
+  { src: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/dmrss/', lang: 'en' },
+  { src: 'The East African', url: 'https://www.theeastafrican.co.ke/rss.xml', lang: 'en' },
+  { src: 'Mexico News Daily', url: 'https://mexiconewsdaily.com/feed/', lang: 'en' },
+  { src: 'Buenos Aires Times', url: 'https://www.batimes.com.ar/feed', lang: 'en' },
+  { src: 'Rio Times', url: 'https://www.riotimesonline.com/feed/', lang: 'en' },
   // Temaer
   { src: 'BBC Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', lang: 'en', cat: 'marked' },
   { src: 'BBC Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', lang: 'en', cat: 'teknologi' },
@@ -609,10 +648,22 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
     if (url.pathname === '/api/retry-feeds' && req.method === 'POST') { for (const st of Object.values(FEEDSTATE)) { st.pausedUntil = 0; } poll.force = true; poll(); return json({ ok: true }); }
     if (url.pathname === '/api/market') {
       if (!settings.features.market && !settings.features.marketGlobe) return json({ off: true });
-      try { return json(await X.getMarket({ watch: settings.marketWatch, movers: settings.features.movers })); } catch (e) { return json({ error: e.message }, 502); }
+      try { return json(await X.getMarket({ watch: settings.marketWatch, movers: settings.features.movers, range: url.searchParams.get('range') || '1d' })); } catch (e) { return json({ error: e.message }, 502); }
     }
     if (url.pathname === '/api/quote') { // sjekk at en ticker finnes før den legges til
-      try { const m = await X.getMarket({ watch: [String(url.searchParams.get('s') || '')], movers: false }); X.resetMarket(); return json(m.watch[0] || { error: 'fant ikke' }, m.watch[0] ? 200 : 404); } catch (e) { return json({ error: e.message }, 502); }
+      const sym = String(url.searchParams.get('s') || '').toUpperCase();
+      if (!/^[A-Z0-9^.=\-]{1,20}$/.test(sym)) return json({ error: 'ugyldig ticker' }, 400);
+      try { return json(await X.quote(sym)); } catch (e) { return json({ error: 'fant ikke' }, 404); }
+    }
+    if (url.pathname === '/api/mdetail') {
+      const sym = String(url.searchParams.get('s') || '').toUpperCase();
+      if (!/^[A-Z0-9^.=\-]{1,20}$/.test(sym)) return json({ error: 'ugyldig ticker' }, 400);
+      try { return json(await X.getDetail(sym, url.searchParams.get('range'))); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/msearch') {
+      const q = String(url.searchParams.get('q') || '').trim().slice(0, 60);
+      if (q.length < 1) return json([]);
+      try { return json(await X.searchTicker(q)); } catch (e) { return json({ error: e.message }, 502); }
     }
     if (url.pathname === '/api/wxmap') {
       if (!settings.features.wxmap) return json({ off: true, cities: [] });

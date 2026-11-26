@@ -6,36 +6,60 @@ const UA = 'Nyhetskloden/3.1 (privat hobbyapp)';
 // ---------- marked ----------
 // Yahoo Finance sitt åpne chart-endepunkt (forsinkede kurser, ingen nøkkel).
 const INDICES = [
-  { sym: 'OSEBX.OL', name: 'Oslo Børs (OSEBX)', lat: 59.911, lon: 10.749, city: 'Oslo' },
-  { sym: '^GSPC', name: 'S&P 500', lat: 40.706, lon: -74.011, city: 'New York' },
-  { sym: '^IXIC', name: 'Nasdaq', lat: 40.757, lon: -73.986, city: 'New York' },
-  { sym: '^GDAXI', name: 'DAX', lat: 50.115, lon: 8.672, city: 'Frankfurt' },
-  { sym: '^FTSE', name: 'FTSE 100', lat: 51.515, lon: -0.088, city: 'London' },
-  { sym: '^OMX', name: 'OMX Stockholm 30', lat: 59.334, lon: 18.063, city: 'Stockholm' },
-  { sym: '^N225', name: 'Nikkei 225', lat: 35.682, lon: 139.774, city: 'Tokyo' },
-  { sym: '^HSI', name: 'Hang Seng', lat: 22.283, lon: 114.158, city: 'Hongkong' },
-  { sym: '000001.SS', name: 'Shanghai', lat: 31.236, lon: 121.48, city: 'Shanghai' },
+  { sym: 'OSEBX.OL', name: 'Oslo Børs (OSEBX)', lat: 59.911, lon: 10.749, city: 'Oslo', region: 'Norden' },
+  { sym: 'OBX.OL', name: 'OBX', lat: 59.911, lon: 10.749, city: 'Oslo', region: 'Norden', noGlobe: true },
+  { sym: '^OMX', name: 'OMX Stockholm 30', lat: 59.334, lon: 18.063, city: 'Stockholm', region: 'Norden' },
+  { sym: '^OMXC25', name: 'OMX København 25', lat: 55.676, lon: 12.568, city: 'København', region: 'Norden' },
+  { sym: '^OMXH25', name: 'OMX Helsinki 25', lat: 60.17, lon: 24.94, city: 'Helsingfors', region: 'Norden' },
+  { sym: '^GDAXI', name: 'DAX', lat: 50.115, lon: 8.672, city: 'Frankfurt', region: 'Europa' },
+  { sym: '^FTSE', name: 'FTSE 100', lat: 51.515, lon: -0.088, city: 'London', region: 'Europa' },
+  { sym: '^FCHI', name: 'CAC 40', lat: 48.869, lon: 2.341, city: 'Paris', region: 'Europa' },
+  { sym: '^STOXX50E', name: 'Euro Stoxx 50', lat: 50.85, lon: 4.35, city: 'Brussel', region: 'Europa', noGlobe: true },
+  { sym: '^IBEX', name: 'IBEX 35', lat: 40.418, lon: -3.703, city: 'Madrid', region: 'Europa' },
+  { sym: '^GSPC', name: 'S&P 500', lat: 40.706, lon: -74.011, city: 'New York', region: 'Amerika' },
+  { sym: '^IXIC', name: 'Nasdaq', lat: 40.757, lon: -73.986, city: 'New York', region: 'Amerika' },
+  { sym: '^DJI', name: 'Dow Jones', lat: 40.706, lon: -74.011, city: 'New York', region: 'Amerika' },
+  { sym: '^GSPTSE', name: 'TSX', lat: 43.649, lon: -79.381, city: 'Toronto', region: 'Amerika' },
+  { sym: '^BVSP', name: 'Bovespa', lat: -23.547, lon: -46.634, city: 'São Paulo', region: 'Amerika' },
+  { sym: '^N225', name: 'Nikkei 225', lat: 35.682, lon: 139.774, city: 'Tokyo', region: 'Asia og Oseania' },
+  { sym: '^HSI', name: 'Hang Seng', lat: 22.283, lon: 114.158, city: 'Hongkong', region: 'Asia og Oseania' },
+  { sym: '000001.SS', name: 'Shanghai', lat: 31.236, lon: 121.48, city: 'Shanghai', region: 'Asia og Oseania' },
+  { sym: '^KS11', name: 'Kospi', lat: 37.566, lon: 126.978, city: 'Seoul', region: 'Asia og Oseania' },
+  { sym: '^BSESN', name: 'Sensex', lat: 18.93, lon: 72.833, city: 'Mumbai', region: 'Asia og Oseania' },
+  { sym: '^AXJO', name: 'ASX 200', lat: -33.868, lon: 151.207, city: 'Sydney', region: 'Asia og Oseania' },
 ];
 const OTHER = [
-  { sym: 'USDNOK=X', name: 'USD/NOK', kind: 'fx' },
-  { sym: 'EURNOK=X', name: 'EUR/NOK', kind: 'fx' },
-  { sym: 'BZ=F', name: 'Olje (Brent)', kind: 'cmd' },
-  { sym: 'GC=F', name: 'Gull', kind: 'cmd' },
-  { sym: 'BTC-USD', name: 'Bitcoin', kind: 'crypto' },
+  { sym: 'USDNOK=X', name: 'USD/NOK', kind: 'fx' }, { sym: 'EURNOK=X', name: 'EUR/NOK', kind: 'fx' }, { sym: 'GBPNOK=X', name: 'GBP/NOK', kind: 'fx' },
+  { sym: 'SEKNOK=X', name: 'SEK/NOK', kind: 'fx' }, { sym: 'DKKNOK=X', name: 'DKK/NOK', kind: 'fx' }, { sym: 'EURUSD=X', name: 'EUR/USD', kind: 'fx' },
+  { sym: 'BZ=F', name: 'Olje (Brent)', kind: 'cmd' }, { sym: 'CL=F', name: 'Olje (WTI)', kind: 'cmd' }, { sym: 'NG=F', name: 'Naturgass', kind: 'cmd' },
+  { sym: 'GC=F', name: 'Gull', kind: 'cmd' }, { sym: 'SI=F', name: 'Sølv', kind: 'cmd' }, { sym: 'HG=F', name: 'Kobber', kind: 'cmd' },
+  { sym: 'BTC-USD', name: 'Bitcoin', kind: 'crypto' }, { sym: 'ETH-USD', name: 'Ethereum', kind: 'crypto' }, { sym: 'SOL-USD', name: 'Solana', kind: 'crypto' },
 ];
-// Store selskaper på Oslo Børs – grunnlaget for «vinnere og tapere i dag»
+// Store selskaper på Oslo Børs – grunnlaget for «vinnere og tapere»
 const OSLO = ['EQNR', 'DNB', 'KOG', 'MOWI', 'TEL', 'NHY', 'YAR', 'ORK', 'AKRBP', 'GJF', 'SALM', 'STB', 'SUBC', 'TOM', 'NOD', 'FRO',
   'AUTO', 'VAR', 'NAS', 'TGS', 'BAKKA', 'SCATC', 'MPCC', 'HAFNI', 'AKER', 'AKSO', 'BWLPG', 'WAWI', 'ENTRA', 'LSG', 'NEL', 'HAUTO'].map(s => s + '.OL');
+// periode → Yahoo range og oppløsning
+const RANGES = { '1d': ['1d', '5m'], '5d': ['5d', '30m'], '1mo': ['1mo', '1d'], '6mo': ['6mo', '1d'], 'ytd': ['ytd', '1d'], '1y': ['1y', '1d'], '5y': ['5y', '1wk'], 'max': ['max', '1mo'] };
+const okRange = r => (RANGES[r] ? r : '1d');
 
-async function quote(sym) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=15m`, { headers: { 'User-Agent': 'Mozilla/5.0 ' + UA } });
+async function chart(sym, range = '1d') {
+  const [rg, iv] = RANGES[okRange(range)];
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${rg}&interval=${iv}&includePrePost=false`, { headers: { 'User-Agent': 'Mozilla/5.0 ' + UA } });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json(), res = j.chart && j.chart.result && j.chart.result[0];
   if (!res) throw new Error('ukjent ticker');
-  const m = res.meta, prev = m.chartPreviousClose ?? m.previousClose, price = m.regularMarketPrice;
-  const closes = ((res.indicators && res.indicators.quote && res.indicators.quote[0].close) || []).filter(v => v != null);
+  const ts = res.timestamp || [], cl = (res.indicators && res.indicators.quote && res.indicators.quote[0].close) || [];
+  const pts = ts.map((t, i) => [t * 1000, cl[i]]).filter(p => p[1] != null);
+  return { res, m: res.meta, pts };
+}
+async function quote(sym, range = '1d') {
+  const { m, pts } = await chart(sym, range);
+  const price = m.regularMarketPrice ?? (pts.length ? pts[pts.length - 1][1] : null);
+  // 1 dag: mot gårsdagens slutt. Lengre perioder: mot første kurs i perioden.
+  const prev = okRange(range) === '1d' ? (m.chartPreviousClose ?? m.previousClose) : (pts.length ? pts[0][1] : null);
+  const closes = pts.map(p => p[1]);
   return { sym, name: m.shortName || m.longName || sym, long: m.longName || m.shortName || sym, price, prev, cur: m.currency || '',
-    pct: prev ? +((price / prev - 1) * 100).toFixed(2) : null, time: m.regularMarketTime ? new Date(m.regularMarketTime * 1000).toISOString() : null,
+    pct: prev && price != null ? +((price / prev - 1) * 100).toFixed(2) : null, time: m.regularMarketTime ? new Date(m.regularMarketTime * 1000).toISOString() : null,
     spark: closes.length > 60 ? closes.filter((_, i) => i % Math.ceil(closes.length / 60) === 0) : closes };
 }
 async function many(list, fn, conc = 6) {
@@ -43,25 +67,53 @@ async function many(list, fn, conc = 6) {
   await Promise.all(Array.from({ length: Math.min(conc, list.length) }, async () => { while (i < list.length) { const k = i++; try { out[k] = await fn(list[k]); } catch (e) { out[k] = null; } } }));
   return out;
 }
-let market = null, marketAt = 0;
+const marketCache = new Map();
 async function getMarket(cfg) {
-  if (market && Date.now() - marketAt < 4 * 60e3) return market;
+  const range = okRange(cfg.range), key = range + '|' + (cfg.watch || []).join(',') + '|' + !!cfg.movers;
+  const hit = marketCache.get(key);
+  if (hit && Date.now() - hit.at < (range === '1d' ? 4 : 30) * 60e3) return hit.data;
   const watch = (cfg.watch || []).map(s => s.toUpperCase());
   const [idx, oth, osl, wl] = await Promise.all([
-    many(INDICES, i => quote(i.sym).then(q => ({ ...q, ...i, name: i.name }))),
-    many(OTHER, o => quote(o.sym).then(q => ({ ...q, ...o, name: o.name }))),
-    cfg.movers ? many(OSLO, quote) : Promise.resolve([]),
-    many(watch, quote),
+    many(INDICES, i => quote(i.sym, range).then(q => ({ ...q, ...i, name: i.name }))),
+    many(OTHER, o => quote(o.sym, range).then(q => ({ ...q, ...o, name: o.name }))),
+    cfg.movers ? many(OSLO, s => quote(s, range)) : Promise.resolve([]),
+    many(watch, s => quote(s, range)),
   ]);
   const movers = osl.filter(q => q && q.pct != null).sort((a, b) => b.pct - a.pct);
-  market = { at: new Date().toISOString(), indices: idx.filter(Boolean), other: oth.filter(Boolean),
+  const data = { at: new Date().toISOString(), range, indices: idx.filter(Boolean), other: oth.filter(Boolean),
     up: movers.slice(0, 5), down: movers.slice(-5).reverse(), watch: wl.filter(Boolean),
     failed: watch.filter((s, i) => !wl[i]),
     cos: [...new Map([...osl, ...wl].filter(Boolean).map(q => [q.sym, { sym: q.sym, name: q.name, price: q.price, cur: q.cur, pct: q.pct, names: companyNames(q) }])).values()] };
-  marketAt = Date.now();
-  return market;
+  marketCache.set(key, { at: Date.now(), data });
+  if (marketCache.size > 20) marketCache.delete(marketCache.keys().next().value);
+  return data;
 }
-const resetMarket = () => { marketAt = 0; };
+// Detaljer for én ticker: graf og nøkkeltall
+const detailCache = new Map();
+async function getDetail(sym, range) {
+  range = okRange(range); const key = sym + '|' + range, hit = detailCache.get(key);
+  if (hit && Date.now() - hit.at < (range === '1d' ? 3 : 20) * 60e3) return hit.data;
+  const { m, pts } = await chart(sym, range);
+  const price = m.regularMarketPrice ?? (pts.length ? pts[pts.length - 1][1] : null);
+  const first = okRange(range) === '1d' ? (m.chartPreviousClose ?? m.previousClose) : (pts.length ? pts[0][1] : null);
+  const step = Math.ceil(pts.length / 400);
+  const data = { sym, name: m.longName || m.shortName || sym, short: m.shortName || sym, cur: m.currency || '', exch: m.fullExchangeName || m.exchangeName || '', type: m.instrumentType || '',
+    price, first, pct: first && price != null ? +((price / first - 1) * 100).toFixed(2) : null, range,
+    high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null, dayHigh: m.regularMarketDayHigh ?? null, dayLow: m.regularMarketDayLow ?? null, vol: m.regularMarketVolume ?? null,
+    time: m.regularMarketTime ? new Date(m.regularMarketTime * 1000).toISOString() : null, tz: m.exchangeTimezoneName || null,
+    points: pts.filter((_, i) => i % step === 0 || i === pts.length - 1) };
+  detailCache.set(key, { at: Date.now(), data });
+  if (detailCache.size > 60) detailCache.delete(detailCache.keys().next().value);
+  return data;
+}
+// Søk etter aksjer, fond, indekser, valuta og krypto
+async function searchTicker(q) {
+  const r = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=12&newsCount=0&listsCount=0&lang=nb-NO&region=NO`, { headers: { 'User-Agent': 'Mozilla/5.0 ' + UA } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  return (j.quotes || []).filter(x => x.symbol && x.quoteType !== 'OPTION').map(x => ({ sym: x.symbol, name: x.longname || x.shortname || x.symbol, exch: x.exchDisp || x.exchange || '', type: x.typeDisp || x.quoteType || '' }));
+}
+const resetMarket = () => { marketCache.clear(); };
 // Navn som kan nevnes i nyheter: «EQUINOR» → «Equinor», «Kongsberg Gruppen ASA» → «Kongsberg Gruppen»
 function companyNames(q) {
   const clean = s => String(s || '').replace(/\b(ASA|AS|Inc\.?|Corporation|Corp\.?|Ltd\.?|plc|Holding(s)?|Group|SE|AG|N\.V\.)\b/gi, '').replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -330,4 +382,4 @@ async function getTraffic(cfg) {
   return traffic;
 }
 
-module.exports = { getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+module.exports = { getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

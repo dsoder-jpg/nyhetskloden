@@ -70,10 +70,10 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .sidetabs #sideMkt{font-weight:500;margin-left:4px;font-variant-numeric:tabular-nums}
 .side.v-market .newsonly{display:none!important}
 .side:not(.v-market) #mkt{display:none}
-.side.v-market #mkt{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:0}
+.side.v-market #mkt{flex:1 1 0;display:block;min-height:0;overflow:auto;border-bottom:0;scrollbar-width:thin}
 .side.v-market #mkt>summary{pointer-events:none;padding-top:12px}
 .side.v-market #mkt>summary::before{display:none}
-.side.v-market .mb{max-height:none;flex:1}
+.side.v-market .mb{max-height:none;overflow:visible}
 .sumline{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);font:400 15px/1.4 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;color:var(--muted);text-wrap:pretty}
 #cMeta{display:flex;flex-wrap:wrap;gap:2px 12px}
 .sumline b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -301,7 +301,7 @@ body.is-app .web-only{display:none!important}
 .mkt>summary .sum{flex:1;display:flex;gap:10px;justify-content:flex-end;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
 .mb{padding:0 14px 12px;display:grid;align-content:start;gap:8px;max-height:34vh;overflow:auto;scrollbar-width:thin}
 .qg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.q{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 6px;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:12px}
+.q{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 6px;align-items:center;padding:4px 8px;text-align:left;color:var(--ink);font:inherit;font-size:12px;cursor:pointer;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:12px}
 .q .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
 .q .px{font-weight:600;font-variant-numeric:tabular-nums}
 .q svg{grid-column:1/-1;width:100%;height:14px;display:block;margin-top:2px}
@@ -452,3 +452,38 @@ html[data-theme=light] .saved{color:#15803d}
 .ctfacts svg{width:16px!important;height:16px!important;flex:none;display:inline-block}
 .ctfacts dd{flex-wrap:wrap}
 .expmenu{z-index:10}
+
+/* 3.6: marked med søk, perioder og detaljer */
+.q:hover{border-color:#3a5168;background:var(--panel3)}
+.q .pc{grid-column:2;text-align:right;font-variant-numeric:tabular-nums}
+.mtools{padding:4px 14px 8px;display:grid;gap:8px}
+.msearch{position:relative}
+.msearch input{width:100%;min-height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit;font-size:13px}
+.msearch ul{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:6;list-style:none;margin:0;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.45);max-height:320px;overflow:auto}
+.msearch li button{width:100%;text-align:left;border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;padding:6px 8px;border-radius:6px;cursor:pointer;display:grid}
+.msearch li button:hover,.msearch li button:focus-visible{background:var(--panel2)}
+.msearch small{color:var(--dim);font-size:11.5px}
+.msearch li.mnote{padding:8px}
+.mrange{display:flex;gap:2px;flex-wrap:wrap}
+.mrange button{flex:1;min-height:28px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;padding:0 4px}
+.mrange button[aria-pressed=true]{background:var(--panel3);color:var(--ink);border-color:#3a5168}
+.mback{justify-self:start;min-height:28px}
+.mdh{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.mdh h3{margin:0;font:600 16px/1.25 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+.mdp{text-align:right;white-space:nowrap}
+.mdp b{font:600 22px "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.mdp small{color:var(--muted)}
+.mcw{position:relative}
+.mchart{width:100%;height:190px;display:block}
+.mchart .grid line{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.mchart .base{stroke:var(--dim);stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.mchart text{fill:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
+.mchart .hx{stroke:var(--muted);stroke-width:1;vector-effect:non-scaling-stroke}
+.mtip{position:absolute;top:0;width:120px;text-align:center;font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 4px;pointer-events:none;font-variant-numeric:tabular-nums}
+.mstats{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:12.5px}
+.mstats dt{color:var(--muted)}
+.mstats dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.mact{display:flex;gap:8px;flex-wrap:wrap}
+.mact a.btn{text-decoration:none}
+.foot{position:relative;z-index:1;background:var(--panel);flex:none}
+.side.v-market .mtools{position:sticky;top:0;z-index:2;background:var(--panel)}

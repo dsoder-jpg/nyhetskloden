@@ -92,7 +92,10 @@
     <div class="sidetabs" id="sideTabs" role="tablist" hidden><button role="tab" data-v="news" aria-selected="true">Nyheter</button><button role="tab" data-v="market" aria-selected="false">Marked <span id="sideMkt"></span></button></div>
     <p class="sumline newsonly" id="sumline">Henter nyheter …</p>
     <details class="digest newsonly" id="digest" hidden><summary>Døgnet oppsummert</summary><ol id="digestList"></ol></details>
-    <details class="mkt" id="mkt" hidden><summary><h2>Marked</h2><span class="sum" id="mSum"></span></summary><div class="mb" id="mBody"></div></details>
+    <details class="mkt" id="mkt" hidden><summary><h2>Marked</h2><span class="sum" id="mSum"></span></summary>
+      <div class="mtools"><div class="msearch"><input type="search" id="mQ" placeholder="Søk etter aksje, indeks, valuta eller krypto" aria-label="Søk i markedet" autocomplete="off"><ul id="mRes" hidden></ul></div>
+      <div class="mrange" id="mRange" role="group" aria-label="Periode"></div></div>
+      <div class="mb" id="mBody"></div></details>
     <div class="sh newsonly">
       <div class="tabs" id="tabs"><button data-t="all">Alle</button><button data-t="top">Viktigst</button><button data-t="near" id="tabNear" hidden>Nær meg</button><button data-t="threads">Tråder</button><button data-t="watch">Følger</button><button data-t="saved">Lagret</button><button data-t="queue" id="tabQueue">Lesekø</button></div>
       <input class="search" id="q" type="search" placeholder="Søk i sakene" aria-label="Søk i sakene">

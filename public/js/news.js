@@ -6,7 +6,12 @@ const ORIGIN={NRK:'Norge',VG:'Norge',Aftenposten:'Norge',Dagbladet:'Norge',E24:'
   BBC:'Europa','The Guardian':'Europa','Sky News':'Europa','The Independent':'Europa',Euronews:'Europa','Politico Europe':'Europa','Le Monde':'Europa',RFI:'Europa','France 24':'Europa',DW:'Europa','Kyiv Independent':'Europa',
   'New York Times':'Nord-Amerika','Washington Post':'Nord-Amerika',NPR:'Nord-Amerika','CBS News':'Nord-Amerika','ABC News':'Nord-Amerika',CBC:'Nord-Amerika','The Verge':'Nord-Amerika','Ars Technica':'Nord-Amerika',NASA:'Nord-Amerika','STAT News':'Nord-Amerika',
   'Al Jazeera':'Midtøsten','Times of Israel':'Midtøsten','Times of India':'Asia','South China Morning Post':'Asia',CNA:'Asia','The Japan Times':'Asia',Yonhap:'Asia',
-  AllAfrica:'Afrika',MercoPress:'Latin-Amerika','ABC Australia':'Oseania',USGS:'Offisiell',GDACS:'Offisiell','MET farevarsler':'Offisiell'};
+  AllAfrica:'Afrika',MercoPress:'Latin-Amerika','ABC Australia':'Oseania',
+  Nettavisen:'Norge','Bergens Tidende':'Norge','Stavanger Aftenblad':'Norge',Adresseavisen:'Norge','iTromsø':'Norge','Forskning.no':'Norge','Digi.no':'Norge',
+  'NBC News':'Nord-Amerika',CNBC:'Nord-Amerika','Fox News':'Nord-Amerika','Los Angeles Times':'Nord-Amerika',Axios:'Nord-Amerika',
+  'Financial Times':'Europa','The Economist':'Europa',Euractiv:'Europa','The Moscow Times':'Europa',Meduza:'Europa','Notes from Poland':'Europa','Balkan Insight':'Europa',
+  'Arab News':'Midtøsten','Middle East Eye':'Midtøsten',Anadolu:'Midtøsten',Dawn:'Asia','The Hindu':'Asia',NDTV:'Asia','The Straits Times':'Asia','Taipei Times':'Asia','Nikkei Asia':'Asia','Bangkok Post':'Asia',
+  RNZ:'Oseania','The Guardian Australia':'Oseania','Premium Times':'Afrika','Daily Maverick':'Afrika','The East African':'Afrika','Mexico News Daily':'Latin-Amerika','Buenos Aires Times':'Latin-Amerika','Rio Times':'Latin-Amerika',USGS:'Offisiell',GDACS:'Offisiell','MET farevarsler':'Offisiell'};
 const originOf=src=>ORIGIN[OUTLET(src)]||ORIGIN[src]||'Annet';
 function coverage(e){const outs=[...new Set(e.items.map(n=>OUTLET(n.src)))],by=new Map();
   for(const o of outs){const g=originOf(o);by.set(g,(by.get(g)||0)+1)}

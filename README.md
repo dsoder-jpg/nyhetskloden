@@ -42,7 +42,8 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Legg til egne RSS-kilder. Kilder som slutter å virke settes på pause og vises i Innstillinger.
 
 **Marked**
-- Børsindekser (Oslo Børs, S&P 500, Nasdaq, DAX m.fl.), valuta, olje, gull og bitcoin.
+- Over 20 børsindekser fra hele verden, valuta, råvarer og krypto, med valgfri periode fra 1 dag til 5 år.
+- Søk etter aksjer, fond og indekser, og se graf og nøkkeltall for hver enkelt.
 - Dagens største vinnere og tapere på Oslo Børs.
 - Egen liste over aksjer du vil følge.
 
@@ -68,7 +69,7 @@ Appen har ingen konto og sender ingen data om deg noe sted. Den henter bare nyhe
 
 ## Kilder
 
-- Nyheter: over 60 RSS-strømmer fra hele verden, blant annet NRK, VG, Aftenposten, BBC, The Guardian, Al Jazeera, Washington Post, CBC, Le Monde, Euronews, SVT, DR, Yle, Times of India, South China Morning Post og ABC Australia.
+- Nyheter: rundt 100 RSS-strømmer fra hele verden, blant annet NRK, VG, Aftenposten, Bergens Tidende, BBC, Financial Times, The Guardian, Al Jazeera, Washington Post, CBC, Le Monde, Euronews, SVT, DR, Yle, Times of India, South China Morning Post og ABC Australia.
 - Jordskjelv: [USGS](https://earthquake.usgs.gov/). Naturkatastrofer: [GDACS](https://www.gdacs.org/).
 - Vær og farevarsler: [MET Norge / Yr](https://api.met.no/).
 - Kurser: Yahoo Finance. Fly: [adsb.lol](https://adsb.lol/). Skip: [BarentsWatch](https://www.barentswatch.no/).

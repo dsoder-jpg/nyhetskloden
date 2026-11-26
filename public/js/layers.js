@@ -10,8 +10,10 @@ function vehicleIcon(kind){const s=40,c=document.createElement('canvas');c.width
 function addExtraLayers(){
   // bylys om natta (ligger under alt annet)
   map.addSource('lights',{type:'geojson',data:EMPTY});
-  map.addLayer({id:'lights',type:'circle',source:'lights',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,1.1,4,2.2,7,4],'circle-color':'#ffcf6e','circle-blur':.8,
-    'circle-opacity':['*',['get','k'],['interpolate',['linear'],['zoom'],1,.55,6,.8]]}});
+  map.addLayer({id:'lights-glow',type:'circle',source:'lights',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,5,4,9,8,18],'circle-color':'#ffb54a','circle-blur':1,
+    'circle-opacity':['*',['get','k'],.28]}});
+  map.addLayer({id:'lights',type:'circle',source:'lights',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,1.8,4,2.8,8,5],'circle-color':'#ffe2a0','circle-blur':.35,
+    'circle-opacity':['*',['get','k'],.95]}});
   // strømpris i de fem prisområdene
   map.addSource('power',{type:'geojson',data:EMPTY});
   map.addLayer({id:'power',type:'symbol',source:'power',minzoom:3.2,maxzoom:8,layout:{'text-field':['get','label'],'text-font':FONT_B,'text-size':12,'text-justify':'center','text-allow-overlap':true},

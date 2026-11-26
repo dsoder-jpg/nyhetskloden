@@ -7,7 +7,7 @@ async function loadLights(){clearTimeout(loadLights.t);if(!ready||!map.getSource
   if(!F.lights){map.getSource('lights').setData(EMPTY);return}
   if(!LIGHT_PL)try{LIGHT_PL=await (await fetch('/api/places')).json()}catch(e){LIGHT_PL=[]}
   const t=REF(),f=[];
-  for(const p of LIGHT_PL){const a=sunAlt(t,p[1],p[2]);if(a<-4)f.push({type:'Feature',geometry:{type:'Point',coordinates:[p[2],p[1]]},properties:{k:Math.min(1,(-a-4)/8)}})}
+  for(const p of LIGHT_PL){const a=sunAlt(t,p[1],p[2]);if(a<-3)f.push({type:'Feature',geometry:{type:'Point',coordinates:[p[2],p[1]]},properties:{k:Math.min(1,.35+(-a-3)/6)}})}
   map.getSource('lights').setData({type:'FeatureCollection',features:f});loadLights.t=setTimeout(loadLights,5*60e3)}
 
 // ---------- landfakta ----------

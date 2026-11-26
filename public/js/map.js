@@ -73,7 +73,7 @@ function onLoad(){
   if(usingLocal){map.addSource('land',{type:'geojson',data:COUNTRIES||EMPTY});
     map.addLayer({id:'land',type:'fill',source:'land',paint:{'fill-color':'#1c2836'}});
     map.addLayer({id:'land-line',type:'line',source:'land',paint:{'line-color':'#3d5168','line-width':.6}})}
-  map.addLayer({id:'sat',type:'raster',source:'sat',paint:{'raster-saturation':-.1,'raster-brightness-max':.88,'raster-contrast':.06,'raster-fade-duration':200}},usingLocal?'land-line':firstLine);
+  map.addLayer({id:'sat',type:'raster',source:'sat',paint:{'raster-saturation':0,'raster-brightness-max':1,'raster-contrast':.08,'raster-fade-duration':200}},usingLocal?'land-line':firstLine);
   DETAIL=map.getStyle().layers.filter(l=>/^(transportation|transportation_name|building|aeroway|landuse|landcover)$/.test(l['source-layer']||'')).map(l=>({id:l.id,min:l.minzoom||0,max:l.maxzoom||24,
     hybrid:/^transportation/.test(l['source-layer'])&&(l.type==='line'||l.type==='symbol')}));
   map.addSource('countries',{type:'geojson',data:COUNTRIES||EMPTY,promoteId:'a2'});
@@ -85,7 +85,8 @@ function onLoad(){
   map.addLayer({id:'alerts',type:'fill',source:'alerts',paint:{'fill-color':['match',['get','level'],'red',ALERT_COL.red,'orange',ALERT_COL.orange,ALERT_COL.yellow],'fill-opacity':['interpolate',['linear'],['zoom'],2,.35,8,.22]}},beforeLabels);
   map.addLayer({id:'alerts-line',type:'line',source:'alerts',paint:{'line-color':['match',['get','level'],'red',ALERT_COL.red,'orange',ALERT_COL.orange,ALERT_COL.yellow],'line-width':1.3}},beforeLabels);
   map.addSource('night',{type:'geojson',data:nightBands()});
-  map.addLayer({id:'night',type:'fill',source:'night',paint:{'fill-color':'#000818','fill-opacity':['interpolate',['linear'],['zoom'],2,.11,6,.05,9,0],'fill-antialias':false}},beforeLabels);
+  // natt: fem bånd fra skumring til dyp natt. Sammen gir de rundt 70 % mørke der det er natt, og blir svakere når du zoomer inn.
+  map.addLayer({id:'night',type:'fill',source:'night',paint:{'fill-color':'#00040c','fill-opacity':['interpolate',['linear'],['zoom'],2,.21,6,.13,10,.06],'fill-antialias':false}},beforeLabels);
   setInterval(()=>map.getSource('night').setData(nightBands(REF())),60e3);
   map.addSource('arcs',{type:'geojson',data:EMPTY,lineMetrics:true});
   map.addLayer({id:'arcs-base',type:'line',source:'arcs',layout:{'line-cap':'round'},paint:{'line-color':['get','col'],'line-width':['case',['==',['get','sel'],1],2.6,1.4],'line-opacity':['case',['==',['get','sel'],1],.55,.22]}});
