@@ -133,7 +133,7 @@ for(const x of $('basemap').children)x.setAttribute('aria-pressed',x.dataset.b==
 const LAYER_IDS={heat:['heat'],arcs:['arcs','arcs-base'],alerts:['alerts','alerts-line'],night:['night']};
 function applyLayers(){for(const i of $('layers').querySelectorAll('input[data-l]'))i.checked=!!S.layers[i.dataset.l];if(!ready)return;
   for(const[k,ids]of Object.entries(LAYER_IDS))for(const id of ids)if(map.getLayer(id))map.setLayoutProperty(id,'visibility',S.layers[k]?'visible':'none')}
-$('layers').addEventListener('change',e=>{const i=e.target;if(i.dataset.f){setFeature(i.dataset.f,i.checked);return}if(!i.dataset.l)return;S.layers[i.dataset.l]=i.checked;store.set('nk-layers',S.layers);applyLayers()});
+$('layers').addEventListener('change',e=>{const i=e.target;if(i.dataset.f){setFeature(i.dataset.f,i.checked);return}if(!i.dataset.l)return;S.layers[i.dataset.l]=i.checked;store.set('nk-layers',S.layers);applyLayers();if(i.dataset.l==='night')loadLights()});
 
 const DASH=[[0,4,3],[.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,.5],[3,4,0],[0,.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,.5]];
 let t0=performance.now(),dashStep=-1;const flash=new Map();

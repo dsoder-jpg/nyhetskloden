@@ -4,10 +4,11 @@
 let LIGHT_PL=null;
 function sunAlt(t,lat,lon){const s=sun(t),r=Math.PI/180;return Math.asin(Math.sin(lat*r)*Math.sin(s.dec)+Math.cos(lat*r)*Math.cos(s.dec)*Math.cos((lon-s.lon)*r))/r}
 async function loadLights(){clearTimeout(loadLights.t);if(!ready||!map.getSource('lights'))return;
-  if(!F.lights){map.getSource('lights').setData(EMPTY);return}
+  const on=F.lights&&S.layers.night;$('lightsLbl').classList.toggle('off',!S.layers.night);
+  if(!on){map.getSource('lights').setData(EMPTY);return}
   if(!LIGHT_PL)try{LIGHT_PL=await (await fetch('/api/places')).json()}catch(e){LIGHT_PL=[]}
   const t=REF(),f=[];
-  for(const p of LIGHT_PL){const a=sunAlt(t,p[1],p[2]);if(a<-3)f.push({type:'Feature',geometry:{type:'Point',coordinates:[p[2],p[1]]},properties:{k:Math.min(1,.35+(-a-3)/6)}})}
+  for(const p of LIGHT_PL){const a=sunAlt(t,p[1],p[2]);if(a<-3)f.push({type:'Feature',geometry:{type:'Point',coordinates:[p[2],p[1]]},properties:{k:Math.min(1,.3+(-a-3)/8),w:p[4]??1}})}
   map.getSource('lights').setData({type:'FeatureCollection',features:f});loadLights.t=setTimeout(loadLights,5*60e3)}
 
 // ---------- landfakta ----------

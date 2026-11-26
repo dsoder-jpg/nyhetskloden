@@ -10,10 +10,13 @@ function vehicleIcon(kind){const s=40,c=document.createElement('canvas');c.width
 function addExtraLayers(){
   // bylys om natta (ligger under alt annet)
   map.addSource('lights',{type:'geojson',data:EMPTY});
-  map.addLayer({id:'lights-glow',type:'circle',source:'lights',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,5,4,9,8,18],'circle-color':'#ffb54a','circle-blur':1,
-    'circle-opacity':['*',['get','k'],.28]}});
-  map.addLayer({id:'lights',type:'circle',source:'lights',paint:{'circle-radius':['interpolate',['linear'],['zoom'],1,1.8,4,2.8,8,5],'circle-color':'#ffe2a0','circle-blur':.35,
-    'circle-opacity':['*',['get','k'],.95]}});
+  // varmemodell: byer som ligger tett smelter sammen til et mykt lys, slik det ser ut fra verdensrommet
+  map.addLayer({id:'lights',type:'heatmap',source:'lights',paint:{
+    'heatmap-weight':['*',['get','k'],['get','w']],
+    'heatmap-intensity':['interpolate',['linear'],['zoom'],1,.9,5,1,8,1.2],
+    'heatmap-radius':['interpolate',['linear'],['zoom'],1,5,3,8,5,11,8,18],
+    'heatmap-opacity':['interpolate',['linear'],['zoom'],1,.85,7,.7,10,.4],
+    'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',.08,'rgba(120,70,10,0)',.22,'rgba(190,120,40,.35)',.45,'rgba(240,175,80,.6)',.7,'rgba(255,214,130,.82)',1,'rgba(255,244,214,.95)']}});
   // strømpris i de fem prisområdene
   map.addSource('power',{type:'geojson',data:EMPTY});
   map.addLayer({id:'power',type:'symbol',source:'power',minzoom:3.2,maxzoom:8,layout:{'text-field':['get','label'],'text-font':FONT_B,'text-size':12,'text-justify':'center','text-allow-overlap':true},

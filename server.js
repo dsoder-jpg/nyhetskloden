@@ -209,6 +209,7 @@ const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includ
 // ---------- steder ----------
 // [navn, lat, lon, type, landkode]  type: c = by/sted, r = region/land, d = adjektiv/person (russisk, Putin …)
 const PLACES = JSON.parse(fs.readFileSync(path.join(__dirname, 'places.json'), 'utf8'));
+const BASE_PLACES = 1873; // de første oppføringene er verdens byer, resten er norske tettsteder (lagt til i 3.3)
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RANK = { c: 0, r: 1, d: 2 };
 const PLACE_RE = PLACES.map(p => ({ p, rank: RANK[p[3]], first: p[0].split(/[\s\-/]/)[0], re: new RegExp(`(?<![\\p{L}\\-])${esc(p[0])}(?:s|'s|’s)?(?![\\p{L}])`, p[3] === 'd' ? 'iu' : 'u') }));
@@ -382,6 +383,7 @@ function parseRss(xml) {
   return [...items, ...entries].map(item => {
     let link = decode(tag(item, 'link'));
     if (!link) { const m = item.match(/<link[^>]*href="([^"]+)"/i); if (m) link = m[1]; }
+    if (/^http:\/\//i.test(link)) link = 'https://' + link.slice(7); // noen kilder (blant annet GDACS) lenker med http
     const d = decode(tag(item, 'pubDate') || tag(item, 'dc:date') || tag(item, 'updated') || tag(item, 'published'));
     const out = { title: decode(tag(item, 'title')), link, desc: decode(tag(item, 'description') || tag(item, 'summary')).slice(0, 400), date: new Date(d || Date.now()).toISOString() };
     const pt = decode(tag(item, 'georss:point')).split(/\s+/).map(Number);
@@ -687,7 +689,7 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       if (!settings.features.ships) return json({ off: true });
       try { return json(await X.getShips(settings.ships)); } catch (e) { return json({ error: e.message }, 502); }
     }
-    if (url.pathname === '/api/places') return json(PLACES.filter(p => p[3] === 'c').map(p => [p[0], p[1], p[2], p[4]]));
+    if (url.pathname === '/api/places') return json(PLACES.map((p, i) => [p, i]).filter(([p]) => p[3] === 'c').map(([p, i]) => [p[0], p[1], p[2], p[4], i < BASE_PLACES ? 1 : 0.07]));
     if (url.pathname === '/api/top') return json(X.topEvents(news, 24, 5, settings.catsOff));
     if (url.pathname === '/api/news') return json({ news, lastPoll, nextPoll, pollMin: settings.pollMin, status });
     if (url.pathname === '/api/alerts') return json(alerts);

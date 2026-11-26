@@ -58,6 +58,12 @@ test('samme hendelse fra to kilder', () => {
   assert.ok(!e.sameEvent(tok('Minst 12 drept i russisk angrep på Kharkiv'), tok('Norge vant VM-gull i stafett')));
 });
 
+test('http-lenker gjøres om til https', () => {
+  const items = e.parseRss('<rss><channel><item><title>Flom</title><link>http://www.gdacs.org/report.aspx?x=1</link></item></channel></rss>');
+  assert.equal(items.length, 1);
+  assert.equal(items[0].link, 'https://www.gdacs.org/report.aspx?x=1');
+});
+
 test('RSS leses', () => {
   const xml = `<?xml version="1.0"?><rss><channel><item><title>Hei &amp; hå</title><link>https://x.no/1</link><description>&lt;p&gt;Tekst&lt;/p&gt;</description><pubDate>Wed, 25 Nov 2026 10:00:00 GMT</pubDate></item></channel></rss>`;
   const items = e.parseRss(xml);
