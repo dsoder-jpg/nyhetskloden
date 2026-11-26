@@ -1,7 +1,7 @@
 {
   "name": "nyhetskloden",
   "productName": "Nyhetskloden",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "3D-klode som viser nyheter fra hele verden i sanntid",
   "main": "main.js",
   "author": "Daniel",
@@ -10,7 +10,8 @@
     "start": "electron .",
     "server": "node server.js",
     "dist:win": "node scripts/dist.js",
-    "release": "node scripts/dist.js --release"
+    "release": "node scripts/dist.js --release",
+    "test": "node --test test/engine.test.js"
   },
   "dependencies": {},
   "devDependencies": {

@@ -152,4 +152,49 @@ function topEvents(news, hours = 24, n = 5, off = []) {
   }).sort((a, b) => b.score - a.score).slice(0, n);
 }
 
-module.exports = { getMarket, resetMarket, companyNames, getWeather, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+// ---------- vær på kloden: norske byer ----------
+// Henter Yr-varsel for de største byene. Mellomlagres i 45 min, så MET får få forespørsler.
+const WX_CITIES = [['Oslo', 59.91, 10.75], ['Bergen', 60.39, 5.32], ['Trondheim', 63.43, 10.39], ['Stavanger', 58.97, 5.73], ['Kristiansand', 58.15, 8.0],
+  ['Tromsø', 69.65, 18.96], ['Bodø', 67.28, 14.4], ['Ålesund', 62.47, 6.15], ['Lillehammer', 61.12, 10.47], ['Hamar', 60.8, 11.07],
+  ['Skien', 59.21, 9.61], ['Drammen', 59.74, 10.2], ['Fredrikstad', 59.22, 10.93], ['Haugesund', 59.41, 5.27], ['Førde', 61.45, 5.85],
+  ['Molde', 62.74, 7.16], ['Mo i Rana', 66.31, 14.14], ['Narvik', 68.44, 17.43], ['Alta', 69.97, 23.27], ['Kirkenes', 69.73, 30.05],
+  ['Hammerfest', 70.66, 23.68], ['Svolvær', 68.23, 14.57], ['Røros', 62.57, 11.38], ['Geilo', 60.53, 8.21], ['Rjukan', 59.88, 8.59],
+  ['Arendal', 58.46, 8.77], ['Gjøvik', 60.8, 10.69], ['Steinkjer', 64.01, 11.5], ['Vadsø', 70.07, 29.75], ['Longyearbyen', 78.22, 15.65]];
+let wxMap = null, wxMapAt = 0, wxMapBusy = null;
+async function getWxMap(home) {
+  if (wxMap && Date.now() - wxMapAt < 45 * 60e3) return wxMap;
+  if (wxMapBusy) return wxMapBusy;
+  wxMapBusy = (async () => {
+    const list = [...WX_CITIES];
+    if (home && isFinite(home.lat) && !list.some(c => distKm({ lat: c[1], lon: c[2] }, home) < 15)) list.push([home.name, home.lat, home.lon]);
+    const out = [];
+    for (let i = 0; i < list.length; i += 5) {
+      const part = await Promise.all(list.slice(i, i + 5).map(async ([name, lat, lon]) => {
+        try {
+          const r = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}`, { headers: { 'User-Agent': UA } });
+          if (!r.ok) return null;
+          const t = (await r.json()).properties.timeseries[0];
+          return { name, lat, lon, temp: t.data.instant.details.air_temperature, wind: t.data.instant.details.wind_speed, sym: (t.data.next_1_hours || t.data.next_6_hours || {}).summary?.symbol_code || '' };
+        } catch { return null; }
+      }));
+      out.push(...part.filter(Boolean));
+    }
+    if (out.length) { wxMap = { at: new Date().toISOString(), cities: out }; wxMapAt = Date.now(); }
+    return wxMap || { at: null, cities: [], error: 'Fikk ikke kontakt med Yr' };
+  })();
+  try { return await wxMapBusy; } finally { wxMapBusy = null; }
+}
+// ---------- nedbørsradar (RainViewer) ----------
+let radar = null, radarAt = 0;
+async function getRadar() {
+  if (radar && Date.now() - radarAt < 5 * 60e3) return radar;
+  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { headers: { 'User-Agent': UA } });
+  if (!r.ok) throw new Error('RainViewer HTTP ' + r.status);
+  const d = await r.json(), past = d.radar?.past || [];
+  if (!past.length) throw new Error('ingen radarbilder');
+  const last = past[past.length - 1];
+  radar = { host: d.host || 'https://tilecache.rainviewer.com', path: last.path, time: new Date(last.time * 1000).toISOString() }; radarAt = Date.now();
+  return radar;
+}
+
+module.exports = { getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

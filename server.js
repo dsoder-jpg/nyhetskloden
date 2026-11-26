@@ -99,9 +99,9 @@ let SETTINGS_FILE = null;
 const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], dailyChars: 15000, usage: { day: '', chars: 0 },
   pollMin: POLL_MIN, keepHours: KEEP_HOURS, disabledFeeds: [],
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
-  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true,
+  closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false },
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
 function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) } }; } catch {} }
@@ -115,7 +115,8 @@ const publicSettings = () => {
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  if (b.channel === 'stable' || b.channel === 'beta') { const was = settings.channel; settings.channel = b.channel; if (was !== b.channel) setTimeout(() => events.emit('channel', b.channel), 50); }
   if (Array.isArray(b.watch)) settings.watch = [...new Set(b.watch.map(String).map(s => s.trim()).filter(Boolean))].slice(0, 50);
   if (Array.isArray(b.customFeeds)) settings.customFeeds = b.customFeeds.filter(f => f && /^https:\/\//.test(f.url)).slice(0, 40).map(f => ({ src: String(f.src || '').slice(0, 40), url: String(f.url).slice(0, 300) })).filter((f, i, a) => a.findIndex(x => x.url === f.url) === i);
   if (Array.isArray(b.disabledFeeds)) settings.disabledFeeds = b.disabledFeeds.map(String).slice(0, 100);
@@ -160,18 +161,41 @@ const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includ
 const PLACES = JSON.parse(fs.readFileSync(path.join(__dirname, 'places.json'), 'utf8'));
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RANK = { c: 0, r: 1, d: 2 };
-const PLACE_RE = PLACES.map(p => ({ p, rank: RANK[p[3]], re: new RegExp(`(?<![\\p{L}\\-])${esc(p[0])}(?:s|'s|’s)?(?![\\p{L}])`, p[3] === 'd' ? 'iu' : 'u') }));
-const loc = p => ({ place: p[0], lat: p[1], lon: p[2], cc: p[4] || null });
+const PLACE_RE = PLACES.map(p => ({ p, rank: RANK[p[3]], first: p[0].split(/[\s\-/]/)[0], re: new RegExp(`(?<![\\p{L}\\-])${esc(p[0])}(?:s|'s|’s)?(?![\\p{L}])`, p[3] === 'd' ? 'iu' : 'u') }));
+// Raskt forfilter: et sted med stor forbokstav kan bare finnes hvis første ord står i teksten
+const wordSet = text => { const w = new Set(); for (const m of text.matchAll(/[\p{L}][\p{L}.'’]*/gu)) { const x = m[0].replace(/[.'’]+$/, ''); w.add(m[0]); w.add(x); w.add(x.replace(/(?:'s|’s|s)$/, '')); } return w; };
+// Land-navn på norsk (første r-oppføring per landkode). Personer og adjektiver (Putin, russisk) vises som landet.
+const COUNTRY = {};
+for (const p of PLACES) if (p[3] === 'r' && p[4] && !COUNTRY[p[4]]) COUNTRY[p[4]] = p;
+COUNTRY.PS = ['Palestina', ...COUNTRY.PS?.slice(1) || [31.9, 35.2, 'r', 'PS']];
+const loc = p => {
+  // engelske landnavn (Norway, Russia) og personer vises med norsk landnavn
+  if (p[4] && COUNTRY[p[4]] && (p[3] === 'd' || (p[3] === 'r' && p[1] === COUNTRY[p[4]][1] && p[2] === COUNTRY[p[4]][2]))) { const c = COUNTRY[p[4]]; return { place: c[0], lat: c[1], lon: c[2], cc: p[4] }; }
+  return { place: p[0], lat: p[1], lon: p[2], cc: p[4] || null };
+};
+// Stedsnavn som også er vanlige personnavn eller navn på ting: hopp over når de står sammen med et annet navn
+// («Michael Jordan», «Paris Hilton», «Washington Post»).
+const AMBIG = new Set(['Jordan', 'Paris', 'Georgia', 'Victoria', 'Florence', 'Hamilton', 'Lincoln', 'Kennedy', 'Chelsea', 'Phoenix', 'Austin', 'Dallas', 'Houston', 'Orlando', 'Charlotte', 'Sydney', 'Adelaide', 'Washington', 'Jackson', 'Madison', 'Columbia', 'Santiago', 'Cuba', 'Chad', 'Niger', 'Mali', 'Bergen', 'Moss', 'Lier', 'Gran', 'Nome', 'Vega', 'Luster']);
+const NAMEY = /\p{Lu}[\p{Ll}'’.-]+\s+$/u, NAMEY_AFTER = /^(?:s|'s|’s)?\s+\p{Lu}[\p{Ll}]/u;
+function personLike(text, m, name) {
+  if (!AMBIG.has(name)) return false;
+  const before = text.slice(Math.max(0, m.index - 25), m.index), after = text.slice(m.index + m[0].length, m.index + m[0].length + 12);
+  const prevWord = (before.match(/(\S+)\s+$/) || [])[1] || '';
+  if (NAMEY.test(before) && !/^(i|in|to|from|til|fra|ved|near|nær|of|av|at|på|around|outside|utenfor|nord|sør|øst|vest|north|south|east|west|central|greater|sentrale|New|Nye|Sankt|San|St\.?|Lake|Port|Fort|Mount)$/i.test(prevWord) && /\p{Lu}/u.test(prevWord[0] || '')) return true;
+  if (NAMEY_AFTER.test(after) && !/^(?:s|'s|’s)?\s+(?:Airport|Lufthavn|County|State|Street|Square|City)/.test(after)) return true;
+  return false;
+}
 
 // Beste sted + alle land som nevnes (for buer mellom land)
 function findPlaces(title, desc, region) {
   let best = null; const ccs = new Set();
   for (const [ti, text] of [title, desc].entries()) {
     if (!text) continue;
-    let b = null;
-    for (const { p, rank, re } of PLACE_RE) {
+    let b = null; const ws = wordSet(text);
+    for (const { p, rank, re, first } of PLACE_RE) {
+      if (p[3] !== 'd' && !ws.has(first)) continue;
       const m = re.exec(text);
-      if (!m) continue;
+      if (!m || personLike(text, m, p[0])) continue;
       if (p[4]) ccs.add(p[4]);
       if (!b || rank < b.rank || (rank === b.rank && (m.index < b.i || (m.index === b.i && p[0].length > b.p[0].length)))) b = { p, i: m.index, rank };
     }
@@ -189,39 +213,41 @@ const findPlace = (t, d, r) => findPlaces(t, d, r).where;
 // "ord*" = alt som begynner på ordet, "ord" = bare hele ordet
 const CAT_WORDS = {
   krim: 'drept drap* skutt skyting* knivstukket knivstikk* siktet* tiltalt* dømt* pågrep* politi* ran voldtekt* vold* ulykke* omkom* døde dødsulykke* brann* eksplosjon* savnet* leteaksjon* redningsaksjon* kollisjon* skadd* kriminell* narkotika* svindel* ' +
-        'killed kill murder* shot shooting* stabb* arrest* charged convicted sentenced police crash* accident* fire blaze explosion* dead died missing rescue* injured gunman hostage* kidnap* trial',
+        'killed kill murder* shot shooting* stabb* arrest* charged convicted sentenced police crash* accident* blaze house_fire fire_at fire_in fire_destroys fire_kills firefighter* explosion* dead died missing rescue* injured gunman hostage* kidnap* trial',
   forsvar: 'forsvar* nato militær* soldat* krig* drone* rakett* angrep* hæren sjøforsvar* fregatt* kampfly* pst våpen* atomvåpen* invasjon* bombe* opprør* terror* våpenhvile* styrker* front* flykt* gissel* ' +
-           'war military army troops missile* drone* airstrike* strike strikes attack* invasion* bomb* ceasefire defence defense nuclear rebel* militant* terror* soldier* weapon* fighting refugee* reinforce* border* flee* hostilit* front*',
+           'war military army troops missile* drone* airstrike* drone_strike* missile_strike* attack* invasion* bomb* ceasefire defence defense nuclear rebel* militant* terror* soldier* weapon* fighting refugee* reinforce* border* flee* hostilit* front* trade_fire exchange_fire shelling artillery gunfire skuddveksling* skyter_mot',
   vaer: 'vær været uvær* storm* orkan* flom* ras skred* snø* regn* vind* farevarsel* met temperatur* varmerekord* kulde* hete* klima* tørke* jordskjelv* vulkan* tsunami* skogbrann* ' +
         'storm* hurricane* typhoon* cyclone* flood* earthquake* quake* wildfire* bushfire* heatwave* climate drought* volcan* tsunami* tornado* snow* landslide* weather',
   samferdsel: 'tog toget togene bane nor vy buss* ferje* fly flyet flyplass* avinor vei veien veier e6 e18 e39 e16 trafikk* tunnel* bru brua bro elsparkesyk* kø ' +
               'train* railway* rail flight* airline* airport* plane traffic road* ferry',
   kongehus: 'kong kongen dronning* kronprins* prinsesse* prins slottet kongehus* kongefamilie* king queen prince princess royal*',
-  politikk: 'regjering* storting* statsminister* minister* statsråd* statsbudsjett* budsjett* parti* frp høyre ap sv krf venstre mdg rødt senterpartiet valg* skatt* rente* norges bank oljefond* økonomi* inflasjon* strømpris* avgift* lovforslag* eu toll* aksje* børs* ' +
-            'election* president* minister* parliament* government* vote* voting tariff* economy econom* inflation interest rate* budget* congress senate summit* sanction* trade policy stocks market*',
-  marked: 'aksje* børs* oslo børs osebx kurs* kursfall* kurshopp* kvartalsresultat* kvartalstall* utbytte* rente* renteheving* rentekutt* valuta* kronekurs* dollar* euro euroen inflasjon* finans* bank* investor* fond* bitcoin krypto* ' +
-          'stock* shares market* earnings profit* revenue* investor* nasdaq dow s&p wall street interest rate* currency bitcoin crypto* ipo merger* acquisition* bank*',
-  teknologi: 'teknologi* ki kunstig intelligens chatbot* app appen apper apple google microsoft meta openai anthropic nvidia mobil* smarttelefon* datasenter* hack* dataangrep* cyber* robot* software programvare* chip* brikke* ' +
-             'technology tech ai artificial intelligence chatbot* smartphone* iphone android software hack* hacker* cyber* robot* chip* semiconductor* startup*',
+  politikk: 'regjering* storting* statsminister* minister* statsråd* statsbudsjett* budsjett* parti* frp høyre ap sv krf venstre mdg rødt senterpartiet valg* skatt* norges_bank oljefond* økonomi* avgift* lovforslag* eu toll* ' +
+            'election* president* minister* parliament* government* vote* voting tariff* economy econom* inflation interest_rate* budget* congress senate summit* sanction* trade_policy meets talks diplomat* treaty strike strikes walkout union* streik* lockout møte* møtes samtaler* diplomat*',
+  marked: 'aksje* børs* oslo_børs osebx kurs* kursfall* kurshopp* kvartalsresultat* kvartalstall* utbytte* rente* renteheving* rentekutt* valuta* kronekurs* dollar* euro euroen inflasjon* finans* bank* investor* fond* bitcoin krypto* gullpris* oljepris* brent strømpris* konkurs* ' +
+          'stock* shares market* earnings profit* revenue* investor* nasdaq dow s&p wall_street interest_rate* currency bitcoin crypto* ipo merger* acquisition* bank* gold_price* oil_price* bankrupt*',
+  teknologi: 'teknologi* ki kunstig_intelligens chatbot* app appen apper apple google microsoft openai anthropic nvidia smarttelefon* mobiltelefon* datasenter* hack* dataangrep* cyber* robot* software programvare* mikrobrikke* ' +
+             'technology tech ai artificial_intelligence chatbot* smartphone* iphone android software hack* hacker* cyber* robot* chip* semiconductor* startup*',
   helse: 'helse* sykehus* lege* legevakt* sykdom* virus* vaksine* kreft* pandemi* utbrudd* smitte* fhi medisin* pasient* psykisk* ' +
-         'health hospital* doctor* disease* virus* vaccine* cancer pandemic* outbreak* infection* who medicine* patient* mental health',
+         'health hospital* doctor* disease* virus* vaccine* cancer pandemic* outbreak* infection* who medicine* patient* mental_health',
   vitenskap: 'forsk* forsker* forskning* romfart* nasa esa romferd* rakett* oppskyting* astronaut* planet* månen mars teleskop* fossil* oppdag* ' +
-             'science scientist* research* space spacecraft rocket* launch* astronaut* planet* moon mars telescope* fossil* discover* study',
-  energi: 'energi* strøm* strømpris* kraft* kraftpris* olje* gass* vindkraft* havvind* solkraft* vannkraft* atomkraft* opec equinor elbil* batteri* ' +
-          'energy oil gas opec renewable* wind power solar nuclear power electricity grid battery batteries',
+             'science scientist* research* space spacecraft rocket* rocket_launch space_launch astronaut* planet* moon mars telescope* fossil* archaeolog* species study_finds',
+  energi: 'energi* strømmen strømnett* strømbrudd* strømstøtte* kraftpris* kraftverk* kraftselskap* kraftproduksjon* kraftlinje* olje* oljefelt* gass* gassrør* vindkraft* vindmølle* havvind* solkraft* solcelle* vannkraft* atomkraft* opec equinor elbil* batteri* ' +
+          'energy oil gas opec renewable* wind_power solar nuclear power electricity grid battery batteries',
   kultur: 'kultur* film* musikk* konsert* festival* artist* bok* forfatter* teater* kjendis* tv-serie* serie* spillfilm* kino* eurovision mgp ' +
           'film movie* music album* concert* festival* celebrit* actor* actress* oscar* grammy* eurovision book* author* theatre theater',
-  sport: 'fotball* ski langrenn* skiskyting* hopp alpin* håndball* vm ol landslag* eliteserien haaland ødegaard finale* cupfinale* medalje* gull sølv bronse sjakk* carlsen ' +
-         'football soccer world cup olympic* tennis champions league premier league match goal* medal* tournament',
+  sport: 'fotball* ski langrenn* skiskyting* skihopp* alpin* håndball* vm ol em nm landslag* eliteserie* obos-liga* toppserie* haaland ødegaard klæbo johaug warholm finale* cupfinale* semifinale* medalje* sølv bronse sjakk* carlsen kamp kampen seier* scoret* scoring* målet trener* tippeligaen rosenborg vålerenga lillestrøm bodø/glimt glimt strømsgodset sarpsborg haugesund kristiansund fredrikstad hamkam tromsø il ' +
+         'football soccer world_cup olympic* tennis champions_league premier_league europa_league match goal* medal* tournament nba nfl formula_1 f1 grand_prix golf cricket rugby boxing ufc liverpool arsenal chelsea manchester_united manchester_city real_madrid barcelona bayern juventus psg',
 };
 const CAT_RE = Object.fromEntries(Object.entries(CAT_WORDS).map(([k, words]) => [k,
-  [...new Set(words.split(/\s+/))].filter(Boolean).map(w => new RegExp(`(?<![\\p{L}])${esc(w.replace('*', ''))}${w.endsWith('*') ? '' : '(?![\\p{L}])'}`, 'iu'))]));
-const PRIORITY = ['vaer', 'krim', 'forsvar', 'helse', 'samferdsel', 'energi', 'marked', 'teknologi', 'vitenskap', 'kongehus', 'kultur', 'politikk', 'sport'];
+  [...new Set(words.split(/\s+/))].filter(Boolean).map(w => new RegExp(`(?<![\\p{L}])${esc(w.replace('*', '')).replace(/_/g, '\\s+')}${w.endsWith('*') ? '' : '(?![\\p{L}])'}`, 'iu'))]));
+const SCORE_RE = /(?<![\d.,:])\d{1,2}\s?[-–]\s?\d{1,2}(?![\d.,:%])(?!\s?(?:år|years|mill|prosent))/;
+const PRIORITY = ['vaer', 'krim', 'forsvar', 'helse', 'samferdsel', 'marked', 'energi', 'teknologi', 'vitenskap', 'kongehus', 'kultur', 'politikk', 'sport'];
 function categorize(title, desc, feedCat) {
   if (feedCat) return feedCat;
   let best = 'annet', score = 0;
   for (const k of PRIORITY) {
-    const s = CAT_RE[k].reduce((n, re) => n + (re.test(title) ? 2 : 0) + (re.test(desc) ? 1 : 0), 0);
+    let s = CAT_RE[k].reduce((n, re) => n + (re.test(title) ? 2 : 0) + (re.test(desc) ? 1 : 0), 0);
+    if (k === 'sport' && SCORE_RE.test(title)) s += 2;
     if (s > score) { best = k; score = s; }
   }
   return best;
@@ -331,19 +357,74 @@ const clients = new Set();
 const save = () => { if (!DATA_FILE) return; try { fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true }); fs.writeFileSync(DATA_FILE, JSON.stringify(news)); } catch (e) { console.warn('Kunne ikke lagre:', e.message); } };
 function broadcast(event, data) { const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`; for (const res of clients) res.write(msg); }
 
-async function fetchFeed(feed) {
+// ---------- kildesjekk ----------
+// En kilde som feiler 3 ganger på rad settes på pause (30 min, så 1 t, 2 t … maks 12 t) og prøves igjen senere.
+// En kilde uten nye saker på 14 dager merkes som «stille».
+let FEEDSTATE = {}, FEEDSTATE_FILE = null;
+const saveFeedState = () => { try { fs.writeFileSync(FEEDSTATE_FILE, JSON.stringify(FEEDSTATE)); } catch {} };
+const ERR_NO = e => e.name === 'AbortError' ? 'svarer ikke (tidsavbrudd)' : /HTTP 404/.test(e.message) ? 'finnes ikke lenger (404)' : /HTTP 403|HTTP 401/.test(e.message) ? 'stenger oss ute (' + e.message.slice(5) + ')' : /HTTP 5\d\d/.test(e.message) ? 'feil hos kilden (' + e.message.slice(5) + ')' : /ingen saker/.test(e.message) ? e.message : 'kan ikke leses (' + e.message.slice(0, 60) + ')';
+async function fetchFeed(feed, force) {
+  const st = FEEDSTATE[feed.url] || (FEEDSTATE[feed.url] = { fails: 0 });
+  const base = { src: feed.src, custom: !!feed.custom, since: st.since || null, lastNew: st.lastNew || null };
+  if (!force && st.pausedUntil && Date.now() < st.pausedUntil) {
+    status[feed.url] = { ...base, ok: false, paused: true, err: st.err, until: new Date(st.pausedUntil).toISOString() };
+    return [];
+  }
   const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
   try {
     const r = await fetch(feed.url, { signal: ctrl.signal, headers: { 'User-Agent': UA } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const body = await r.text();
     const items = feed.type === 'usgs' ? parseUsgs(body) : parseRss(body);
-    status[feed.url] = { src: feed.src, ok: true, n: items.length, custom: !!feed.custom };
+    if (!items.length && feed.type !== 'usgs') throw new Error('ingen saker i strømmen');
+    const newest = items.reduce((m, i) => (i.date > m ? i.date : m), '');
+    Object.assign(st, { fails: 0, pausedUntil: 0, err: null, since: null, lastOk: new Date().toISOString(), lastNew: newest || st.lastNew || null });
+    const stale = st.lastNew && Date.now() - new Date(st.lastNew) > 14 * 864e5;
+    status[feed.url] = { ...base, since: null, lastNew: st.lastNew, ok: true, n: items.length, stale: !!stale };
     return items.map(i => ({ ...i, feed }));
   } catch (e) {
-    status[feed.url] = { src: feed.src, ok: false, err: e.name === 'AbortError' ? 'tidsavbrudd' : e.message, custom: !!feed.custom };
+    st.fails = (st.fails || 0) + 1; st.err = ERR_NO(e); st.since = st.since || new Date().toISOString();
+    if (st.fails >= 3) st.pausedUntil = Date.now() + Math.min(12 * 60, 30 * 2 ** (st.fails - 3)) * 60e3;
+    status[feed.url] = { ...base, since: st.since, ok: false, err: st.err, fails: st.fails, paused: !!st.pausedUntil && st.fails >= 3, until: st.pausedUntil ? new Date(st.pausedUntil).toISOString() : null };
     return [];
   } finally { clearTimeout(t); }
+}
+
+// ---------- arkiv ----------
+// Alle saker lagres kort (uten ingress) i én fil per måned, og ryddes etter 90 dager.
+let ARCHIVE_DIR = null;
+function archive(items) {
+  if (!ARCHIVE_DIR || !items.length) return;
+  try {
+    fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+    const by = new Map();
+    for (const n of items) { const f = (n.date || '').slice(0, 7) || 'ukjent'; if (!by.has(f)) by.set(f, []); by.get(f).push(JSON.stringify({ id: n.id, eid: n.eid, title: n.title, titleNo: n.titleNo, url: n.url, date: n.date, src: n.src, cat: n.cat, place: n.place, lat: n.lat, lon: n.lon, cc: n.cc, lang: n.lang })); }
+    for (const [f, lines] of by) fs.appendFileSync(path.join(ARCHIVE_DIR, f + '.jsonl'), lines.join('\n') + '\n');
+    const keep = new Date(Date.now() - 95 * 864e5).toISOString().slice(0, 7);
+    for (const f of fs.readdirSync(ARCHIVE_DIR)) if (/^\d{4}-\d{2}\.jsonl$/.test(f) && f.slice(0, 7) < keep) fs.unlinkSync(path.join(ARCHIVE_DIR, f));
+  } catch (e) { console.warn('Arkiv:', e.message); }
+}
+function searchArchive(q, days = 90, limit = 200) {
+  if (!ARCHIVE_DIR) return [];
+  const words = (q || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(w => w.length > 1);
+  const from = new Date(Date.now() - days * 864e5).toISOString();
+  const seen = new Set(), out = [];
+  let files = [];
+  try { files = fs.readdirSync(ARCHIVE_DIR).filter(f => f.endsWith('.jsonl')).sort().reverse(); } catch { return []; }
+  for (const f of files) {
+    if (f.slice(0, 7) < from.slice(0, 7)) break;
+    const lines = fs.readFileSync(path.join(ARCHIVE_DIR, f), 'utf8').split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i]) continue;
+      let n; try { n = JSON.parse(lines[i]); } catch { continue; }
+      if (n.date < from || seen.has(n.id)) continue;
+      const hay = (n.title + ' ' + (n.titleNo || '') + ' ' + (n.place || '') + ' ' + n.src).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+      if (words.length && !words.every(w => hay.includes(w))) continue;
+      seen.add(n.id); out.push(n);
+    }
+  }
+  out.sort((a, b) => b.date.localeCompare(a.date));
+  return out.slice(0, limit);
 }
 
 let pollTimer = null;
@@ -353,7 +434,9 @@ async function poll() {
   try {
     const list = feeds();
     for (const k of Object.keys(status)) if (k !== 'deepl' && k !== 'met' && !list.some(f => f.url === k)) delete status[k];
-    const results = (await Promise.all(list.map(fetchFeed))).flat();
+    const force = poll.force; poll.force = false;
+    const results = (await Promise.all(list.map(f => fetchFeed(f, force)))).flat();
+    saveFeedState();
     const byId = new Map(news.map(n => [n.id, n]));
     const added = [];
     for (const i of results) {
@@ -385,6 +468,7 @@ async function poll() {
     const isFirst = !lastPoll && !news.length;
     news = [...byId.values()].filter(n => new Date(n.date) > cutoff).sort((a, b) => b.date.localeCompare(a.date)).slice(0, MAX_ITEMS);
     for (const n of news) { if (!n.eid) n.eid = n.id; delete n._tok; }
+    archive(added);
     lastPoll = new Date(); schedule();
     save();
     const ok = Object.values(status).filter(s => s.ok).length;
@@ -428,6 +512,8 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 function readBody(req) { return new Promise((res, rej) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { res(JSON.parse(b || '{}')); } catch (e) { rej(e); } }); }); }
 function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname, 'data') } = {}) {
   DATA_FILE = path.join(dataDir, 'news.json'); SETTINGS_FILE = path.join(dataDir, 'settings.json');
+  FEEDSTATE_FILE = path.join(dataDir, 'feedstate.json'); ARCHIVE_DIR = path.join(dataDir, 'arkiv');
+  try { FEEDSTATE = JSON.parse(fs.readFileSync(FEEDSTATE_FILE, 'utf8')) || {}; } catch { FEEDSTATE = {}; }
   loadSettings();
   try { news = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); for (const n of news) if (!n.eid) n.eid = n.id; } catch { news = []; }
   const pub = path.join(__dirname, 'public');
@@ -442,12 +528,25 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       if (!cookie || cookie[1] !== tok) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Åpne lenken fra Nyhetskloden-innstillingene (Mobil) på denne enheten.'); }
       if (req.method !== 'GET' && url.pathname !== '/api/refresh') { res.writeHead(403); return res.end(); }
     }
+    if (url.pathname === '/api/archive') {
+      const days = Math.min(90, Math.max(1, +url.searchParams.get('days') || 90));
+      return json({ items: searchArchive(url.searchParams.get('q') || '', days) });
+    }
+    if (url.pathname === '/api/retry-feeds' && req.method === 'POST') { for (const st of Object.values(FEEDSTATE)) { st.pausedUntil = 0; } poll.force = true; poll(); return json({ ok: true }); }
     if (url.pathname === '/api/market') {
       if (!settings.features.market && !settings.features.marketGlobe) return json({ off: true });
       try { return json(await X.getMarket({ watch: settings.marketWatch, movers: settings.features.movers })); } catch (e) { return json({ error: e.message }, 502); }
     }
     if (url.pathname === '/api/quote') { // sjekk at en ticker finnes før den legges til
       try { const m = await X.getMarket({ watch: [String(url.searchParams.get('s') || '')], movers: false }); X.resetMarket(); return json(m.watch[0] || { error: 'fant ikke' }, m.watch[0] ? 200 : 404); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/wxmap') {
+      if (!settings.features.wxmap) return json({ off: true, cities: [] });
+      try { return json(await X.getWxMap(settings.home)); } catch (e) { return json({ error: e.message, cities: [] }, 502); }
+    }
+    if (url.pathname === '/api/radar') {
+      if (!settings.features.radar) return json({ off: true });
+      try { return json(await X.getRadar()); } catch (e) { return json({ error: e.message }, 502); }
     }
     if (url.pathname === '/api/weather') {
       if (!settings.features.weather || !settings.home) return json({ off: true, home: settings.home });

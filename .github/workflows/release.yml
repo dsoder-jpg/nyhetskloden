@@ -1,5 +1,7 @@
 # Lager en ny utgivelse automatisk når versjonsnummeret i package.json endres.
 # Push uten nytt versjonsnummer gjør ingenting.
+# Versjoner med «-beta.N» (for eksempel 3.4.0-beta.1) blir forhåndsutgivelser som bare beta-brukere får.
+# Testene må gå gjennom før noe bygges.
 name: Utgivelse
 
 on:
@@ -49,6 +51,10 @@ jobs:
           choco install nsis -y --no-progress
           echo "C:\\Program Files (x86)\\NSIS" >> "$GITHUB_PATH"
 
+      - name: Test
+        if: steps.v.outputs.skip != 'true'
+        run: npm test
+
       - name: Bygg
         if: steps.v.outputs.skip != 'true'
         run: node scripts/dist.js
@@ -58,5 +64,6 @@ jobs:
         run: |
           V=${{ steps.v.outputs.version }}
           git log -1 --format=%B > notes.txt
+          PRE=""; case "$V" in *-*) PRE="--prerelease";; esac
           gh release create "$V" dist/installer/Nyhetskloden-Setup-$V.exe dist/installer/nyhetskloden-app-$V-e*.asar \
-            --title "Nyhetskloden $V" --notes-file notes.txt --target "$GITHUB_SHA"
+            --title "Nyhetskloden $V" --notes-file notes.txt --target "$GITHUB_SHA" $PRE

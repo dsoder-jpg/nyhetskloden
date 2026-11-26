@@ -10,7 +10,7 @@ Nyhetskloden er en gratis Windows-app som viser nyheter fra hele verden på en 3
 
 Appen installeres bare for din bruker, uten administratortilgang. Den får snarvei i startmenyen og på skrivebordet, og kan avinstalleres fra **Innstillinger → Apper** i Windows.
 
-Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt.
+Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt. Under **Innstillinger → Oppdateringer** kan du velge betaversjonen for å få nye funksjoner før alle andre.
 
 ## Funksjoner
 
@@ -19,6 +19,7 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Land farges etter hvor mye de er omtalt, og buer viser land som nevnes i samme sak.
 - Saker om det samme fra flere kilder slås sammen til én markør. Store saker får større markør.
 - Tidslinje for siste time, 6 timer, døgn eller uke, med avspilling.
+- Vær i norske byer fra Yr og nedbørsradar som eget lag.
 
 **Nyheter**
 - Kategorier: krim og ulykker, krig og sikkerhet, politikk, natur og vær, samferdsel, marked, teknologi, helse, vitenskap, energi, kultur, kongehus og sport.
@@ -26,7 +27,9 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Følg ord eller steder og få varsel når de dukker opp.
 - Del en sak med lenke eller QR-kode til mobilen.
 - Norske titler på utenlandske saker med en gratis DeepL-nøkkel (valgfritt).
-- Legg til egne RSS-kilder.
+- Se hvordan en sak har utviklet seg: hvem meldte først, og hvem fulgte opp.
+- Søk i arkivet over saker fra de siste 90 dagene.
+- Legg til egne RSS-kilder. Kilder som slutter å virke settes på pause og vises i Innstillinger.
 
 **Marked**
 - Børsindekser (Oslo Børs, S&P 500, Nasdaq, DAX m.fl.), valuta, olje, gull og bitcoin.
@@ -68,8 +71,11 @@ Krever [Node.js](https://nodejs.org/) 20 eller nyere. For installasjonsfilen tre
 npm install
 npm start          # start appen
 npm run server     # bare nyhetsmotoren, åpne http://localhost:3000 i nettleseren
+npm test           # kjør testene
 npm run dist:win   # lag installasjonsfil i dist/installer/
 ```
+
+Nye utgivelser lages automatisk av GitHub Actions når versjonsnummeret i `package.json` endres på `main`. Testene (`npm test`) må gå gjennom først. Versjoner som `3.4.0-beta.1` blir betaversjoner.
 
 | Fil | Innhold |
 |---|---|

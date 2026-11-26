@@ -10,6 +10,9 @@ Unicode true
 !ifndef VERSION
   !define VERSION "0.0.0"
 !endif
+!ifndef VNUM
+  !define VNUM "${VERSION}"
+!endif
 !ifndef SRC
   !define SRC "..\dist\Nyhetskloden-win32-x64"
 !endif
@@ -25,10 +28,10 @@ RequestExecutionLevel user
 SetCompressor /SOLID lzma
 SetCompressorDictSize 64
 BrandingText "${APP} ${VERSION}"
-VIProductVersion "${VERSION}.0"
+VIProductVersion "${VNUM}.0"
 VIAddVersionKey "ProductName" "${APP}"
 VIAddVersionKey "FileDescription" "${APP} installasjon"
-VIAddVersionKey "FileVersion" "${VERSION}"
+VIAddVersionKey "FileVersion" "${VNUM}"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "LegalCopyright" "Daniel"
 

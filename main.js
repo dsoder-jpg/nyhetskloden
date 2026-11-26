@@ -110,6 +110,11 @@ engine.events.on('top', all => {
   else notify(`${first.sev >= 5 ? 'Stor sak' : 'Toppsak'} · ${first.src}`, label(first), first.eid || first.id);
 });
 engine.events.on('settings', () => buildTrayMenu());
+// bytte mellom stabil og beta: glem en nedlastet beta og se etter oppdateringer på nytt
+engine.events.on('channel', ch => {
+  if (pendingUpdate && ch === 'stable' && isBeta(pendingUpdate.ver)) { try { fs.unlinkSync(pendingUpdate.file); } catch {} pendingUpdate = null; buildTrayMenu(); }
+  setUpd({ state: 'idle' }); checkUpdates(false);
+});
 engine.events.on('watch', items => {
   if (!S().notifyWatch) return;
   const first = items[0];
@@ -135,7 +140,15 @@ let pendingUpdate = null, applying = false;
 // status som vises i appen: idle | checking | downloading | ready | none | error | off
 let upd = { state: 'idle', current: app.getVersion() };
 function setUpd(s) { upd = { ...upd, ...s, current: app.getVersion(), at: new Date().toISOString() }; for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('update', upd); }
-const cmp = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
+// Sammenligner versjoner, også beta: 3.3.0-beta.1 < 3.3.0-beta.2 < 3.3.0
+const cmp = (a, b) => {
+  const [ma, pa] = a.split('-'), [mb, pb] = b.split('-');
+  const x = ma.split('.').map(Number), y = mb.split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0);
+  if (!pa && !pb) return 0; if (!pa) return 1; if (!pb) return -1;
+  return (+(pa.match(/\d+/) || [0])[0]) - (+(pb.match(/\d+/) || [0])[0]);
+};
+const isBeta = v => /-/.test(v);
 function plain(title, body, onClick) { if (!Notification.isSupported()) return; const n = new Notification({ title, body, icon: ICON }); if (onClick) n.on('click', onClick); n.show(); }
 const okUrl = u => /^https:\/\/github\.com\//.test(u || '');
 
@@ -156,15 +169,22 @@ async function checkUpdates(manual) {
   try {
     const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=10`, { headers: { 'User-Agent': 'Nyhetskloden', Accept: 'application/vnd.github+json' } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const assets = (await r.json()).filter(rel => !rel.draft).flatMap(rel => rel.assets || []).filter(a => okUrl(a.browser_download_url));
+    // stabil kanal: bare vanlige utgivelser. Beta: også forhåndsutgivelser (3.3.0-beta.1).
+    const beta = engine.getSettings().channel === 'beta';
+    const assets = (await r.json()).filter(rel => !rel.draft && (beta || !rel.prerelease)).flatMap(rel => rel.assets || []).filter(a => okUrl(a.browser_download_url));
     let best = null;
     for (const a of assets) {
-      let m = a.name.match(/^nyhetskloden-app-(\d+\.\d+\.\d+)-e(\d+)\.asar$/i);
+      let m = a.name.match(/^nyhetskloden-app-(\d+\.\d+\.\d+(?:-beta\.\d+)?)-e(\d+)\.asar$/i);
+      if (m && isBeta(m[1]) && !beta) continue;
       if (m && m[2] === ELECTRON_MAJOR) { if (!best || cmp(m[1], best.ver) > 0 || (cmp(m[1], best.ver) === 0 && best.kind === 'setup')) best = { ver: m[1], kind: 'asar', asset: a }; continue; }
-      m = a.name.match(/^Nyhetskloden-Setup-(\d+\.\d+\.\d+)\.exe$/i);
+      m = a.name.match(/^Nyhetskloden-Setup-(\d+\.\d+\.\d+(?:-beta\.\d+)?)\.exe$/i);
+      if (m && isBeta(m[1]) && !beta) continue;
       if (m && (!best || cmp(m[1], best.ver) > 0)) best = { ver: m[1], kind: 'setup', asset: a };
     }
-    if (!best || cmp(best.ver, app.getVersion()) <= 0) { setUpd({ state: 'none', ver: null }); if (manual === true) plain('Ingen oppdatering', `Du har nyeste versjon (${app.getVersion()}).`); return; }
+    if (!best || cmp(best.ver, app.getVersion()) <= 0) {
+      const note = !beta && isBeta(app.getVersion()) ? 'Du har en betaversjon. Du får neste stabile versjon når den er nyere enn denne.' : null;
+      setUpd({ state: 'none', ver: null, msg: note }); if (manual === true) plain('Ingen oppdatering', note || `Du har nyeste versjon (${app.getVersion()}).`); return;
+    }
     setUpd({ state: 'downloading', ver: best.ver, size: best.asset.size, kind: best.kind });
     const buf = await download(best.asset);
     if (best.kind === 'asar') { const file = path.join(RES, 'app.asar.new'); ofs.writeFileSync(file, buf); pendingUpdate = { ...best, file }; }

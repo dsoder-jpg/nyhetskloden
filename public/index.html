@@ -72,6 +72,17 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .src{display:inline-flex;align-items:center;gap:6px;margin-top:10px;color:var(--focus);font-weight:600;font-size:13px;text-decoration:none}
 .src:hover{text-decoration:underline}
 .side{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);background:var(--panel)}
+.sidetabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.sidetabs button{min-height:40px;border:0;background:transparent;color:var(--muted);font:600 13.5px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;cursor:pointer;box-shadow:inset 0 -2px 0 transparent}
+.sidetabs button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent,#ff6a3d)}
+.sidetabs button:hover{color:var(--ink)}
+.sidetabs #sideMkt{font-weight:500;margin-left:4px;font-variant-numeric:tabular-nums}
+.side.v-market .newsonly{display:none!important}
+.side:not(.v-market) #mkt{display:none}
+.side.v-market #mkt{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:0}
+.side.v-market #mkt>summary{pointer-events:none;padding-top:12px}
+.side.v-market #mkt>summary::before{display:none}
+.side.v-market .mb{max-height:none;flex:1}
 .sumline{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);font:400 15px/1.4 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;color:var(--muted);text-wrap:pretty}
 #cMeta{display:flex;flex-wrap:wrap;gap:2px 12px}
 .sumline b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -140,8 +151,15 @@ body.has-breaking{grid-template-rows:auto auto minmax(0,1fr)}
 .layers{position:absolute;right:14px;bottom:80px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12px;display:grid;gap:2px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .layers label{display:flex;align-items:center;gap:7px;cursor:pointer;min-height:24px;white-space:nowrap}
 .layers input{accent-color:var(--accent)}
-.card .srcs{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;max-height:140px;overflow:auto}
-.card .srcs a{color:#bcd6ff;text-decoration:none;font-size:12.5px}
+.card .flow{margin:10px 0 4px;font-size:12.5px;color:var(--muted)}
+.card .srcs{list-style:none;margin:0;padding:0 0 0 2px;display:grid;gap:0;max-height:170px;overflow:auto;scrollbar-width:thin}
+.card .srcs li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:4px 0 4px 12px;position:relative;font-size:12.5px;line-height:1.35}
+.card .srcs li::before{content:"";position:absolute;left:0;top:10px;width:5px;height:5px;border-radius:50%;background:var(--cc)}
+.card .srcs li::after{content:"";position:absolute;left:2px;top:17px;bottom:-6px;border-left:1px solid var(--line)}
+.card .srcs li:last-child::after{display:none}
+.card .srcs time{color:var(--dim);font-variant-numeric:tabular-nums;min-width:38px}
+.card .srcs b{font-weight:600}
+.card .srcs a{color:#bcd6ff;text-decoration:none}
 .card .srcs a:hover{text-decoration:underline}
 .card .srcs span{color:var(--muted);font-size:11.5px;margin-left:6px}
 .card .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
@@ -174,6 +192,27 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 @media(max-height:760px){.layers{display:none}}
 /* innstillinger */
 dialog.settings{width:min(980px,94vw);height:min(720px,90vh);padding:0}
+dialog.welcome{width:min(560px,94vw);padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink)}
+dialog.welcome::backdrop{background:rgba(2,6,12,.72)}
+.welcome form{display:grid;gap:0}
+.wstep{padding:26px 28px 8px;min-height:320px}
+.wstep h2{margin:0 0 8px;font:600 22px/1.25 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+.wstep h3{margin:22px 0 4px;font-size:15px}
+.wstep .lead{color:var(--muted);margin:0 0 6px;max-width:60ch;line-height:1.5}
+.wstep input[type=text]{width:100%;margin-top:8px;min-height:38px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit}
+.wcats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px}
+.wcats label{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13.5px}
+.wcats label:has(input:not(:checked)){opacity:.5}
+.wcats .sw{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none}
+.wcats input{margin-left:auto}
+.wopts{display:grid;gap:8px;margin-top:14px}
+.wopts label{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.wopts label:has(input:checked){border-color:var(--accent);background:var(--panel2)}
+.wopts span{display:grid;gap:2px;font-size:13px;color:var(--muted)}
+.wopts b{color:var(--ink);font-size:14px}
+.wchk{display:flex;gap:10px;align-items:center;margin-top:16px;font-size:13.5px}
+.wtips{margin:8px 0 0;padding-left:18px;display:grid;gap:8px;color:var(--muted);line-height:1.45}
+.wfoot{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
 .sx{display:grid;grid-template-columns:220px minmax(0,1fr);height:100%}
 .snav{background:#080e16;border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow:auto}
 .snav-h{font:600 15px/1 "Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;padding:6px 10px 14px}
@@ -212,6 +251,7 @@ dialog.settings{width:min(980px,94vw);height:min(720px,90vh);padding:0}
 .chips2 button{border:0;background:none;color:inherit;cursor:pointer;width:24px;height:24px;border-radius:12px}
 .chips2 button:hover{background:rgba(255,255,255,.1)}
 .srclist{display:grid;gap:0}
+.st.warn,.foot .warn{color:#f0b429}
 .src-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .src-row small{display:block;color:var(--dim);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .src-row .st{font-size:12px;white-space:nowrap}
@@ -233,7 +273,7 @@ body.is-app .web-only{display:none!important}
 .mkt[open]>summary::before{transform:rotate(90deg)}
 .mkt>summary h2{margin:0;font-size:13px;font-weight:600;color:var(--ink)}
 .mkt>summary .sum{flex:1;display:flex;gap:10px;justify-content:flex-end;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
-.mb{padding:0 14px 12px;display:grid;gap:8px;max-height:34vh;overflow:auto;scrollbar-width:thin}
+.mb{padding:0 14px 12px;display:grid;align-content:start;gap:8px;max-height:34vh;overflow:auto;scrollbar-width:thin}
 .qg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .q{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 6px;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:12px}
 .q .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
@@ -282,7 +322,7 @@ body.is-app .web-only{display:none!important}
 .codebox{font:12px/1.4 ui-monospace,Consolas,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;word-break:break-all;user-select:all}
 .catrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
 .catrow .sw{width:22px;height:22px;border-radius:50%;display:grid;place-items:center}
-.layers .lg{display:grid;grid-auto-flow:column;grid-template-rows:repeat(4,auto);column-gap:16px;row-gap:2px}
+.layers .lg{display:grid;grid-auto-flow:column;grid-template-rows:repeat(5,auto);column-gap:16px;row-gap:2px}
 .layers small{max-width:300px;white-space:normal!important}
 .layers small{color:var(--dim);font-size:11px;white-space:nowrap}
 body.is-lan .app-only{display:none!important}
@@ -353,6 +393,8 @@ html[data-theme=light] .saved{color:#15803d}
       <label><input type="checkbox" data-f="marketGlobe">Børser</label>
       <label><input type="checkbox" data-f="flights">Fly</label>
       <label><input type="checkbox" data-f="ships">Skip</label>
+      <label><input type="checkbox" data-f="wxmap">Vær i byer</label>
+      <label><input type="checkbox" data-f="radar">Nedbørsradar</label>
       </div>
       <small id="trafNote" hidden></small>
     </div>
@@ -364,16 +406,18 @@ html[data-theme=light] .saved{color:#15803d}
       <div class="orig" id="cOrig"></div>
       <div class="meta" id="cMeta"></div>
       <p id="cText"></p>
+      <p class="flow" id="cFlow" hidden></p>
       <ul class="srcs" id="cSrcs"></ul>
       <div class="tk" id="cTk" hidden></div>
       <div class="acts"><a class="src" id="cSrc" target="_blank" rel="noopener"></a><span class="sp"></span><button class="btn" id="cShare" title="Del saken">Del</button><button class="star" id="cStar" aria-pressed="false" title="Lagre saken" aria-label="Lagre saken">☆</button></div>
       <div class="share" id="cShareBox" hidden><div class="qr" id="cQr"></div><div><span>Skann med mobilen for å åpne saken.</span><button class="btn" id="cCopy">Kopier lenke</button></div></div>
     </div>
   </div>
-  <aside class="side">
-    <p class="sumline" id="sumline">Henter nyheter …</p>
+  <aside class="side" id="side">
+    <div class="sidetabs" id="sideTabs" role="tablist" hidden><button role="tab" data-v="news" aria-selected="true">Nyheter</button><button role="tab" data-v="market" aria-selected="false">Marked <span id="sideMkt"></span></button></div>
+    <p class="sumline newsonly" id="sumline">Henter nyheter …</p>
     <details class="mkt" id="mkt" hidden><summary><h2>Marked</h2><span class="sum" id="mSum"></span></summary><div class="mb" id="mBody"></div></details>
-    <div class="sh">
+    <div class="sh newsonly">
       <div class="tabs" id="tabs"><button data-t="all">Alle</button><button data-t="top">Viktigst</button><button data-t="near" id="tabNear" hidden>Nær meg</button><button data-t="watch">Følger</button><button data-t="saved">Lagret</button></div>
       <input class="search" id="q" type="search" placeholder="Søk i sakene" aria-label="Søk i sakene">
       <div class="cats" id="cats" role="group" aria-label="Kategorier" title="Klikk for å vise bare én kategori. Ctrl-klikk for å velge flere."></div>
@@ -384,12 +428,51 @@ html[data-theme=light] .saved{color:#15803d}
         <div class="rl"><span>for 7 døgn siden</span><span>nå</span></div>
       </div>
     </div>
-    <div class="lh"><span id="lhName">Hendelser</span><span id="count2"></span></div>
-    <ul class="list" id="list"></ul>
+    <div class="lh newsonly"><span id="lhName">Hendelser</span><span id="count2"></span></div>
+    <ul class="list newsonly" id="list"></ul>
     <div class="foot"><details><summary id="srcSum">Kilder</summary><ul id="srcList"></ul></details></div>
   </aside>
 </div>
 <button class="toast" id="toast" hidden></button>
+
+<dialog id="wel" class="welcome" aria-labelledby="wTitle">
+ <form method="dialog" id="wForm">
+  <div class="wstep" data-s="0">
+   <h2 id="wTitle">Velkommen til Nyhetskloden</h2>
+   <p class="lead">Kloden viser hva som skjer i verden akkurat nå. Hver sak plasseres der den skjer, og alt oppdateres av seg selv. Svar på tre korte spørsmål, så tilpasser vi appen til deg.</p>
+   <h3>Hvor bor du?</h3>
+   <p class="meta">Brukes til været fra Yr, saker i nærheten og farevarsler der du bor.</p>
+   <input type="text" id="wHome" list="hList" placeholder="For eksempel Bø i Telemark" aria-label="Hjemsted" autocomplete="off">
+   <p class="meta" id="wHomeMsg"></p>
+  </div>
+  <div class="wstep" data-s="1" hidden>
+   <h2>Hva vil du se?</h2>
+   <p class="lead">Slå av det du ikke bryr deg om. Du kan endre det senere under Innstillinger og Kategorier.</p>
+   <div class="wcats" id="wCats"></div>
+  </div>
+  <div class="wstep" data-s="2" hidden>
+   <h2>Varsler</h2>
+   <p class="lead">Appen kan si fra på skrivebordet når noe viktig skjer, også når vinduet er lukket.</p>
+   <div class="wopts">
+    <label><input type="radio" name="wN" value="big" checked><span><b>Bare store saker</b>Krig, store ulykker, naturkatastrofer og annet som får mye omtale.</span></label>
+    <label><input type="radio" name="wN" value="top"><span><b>Alle toppsaker</b>Det som står øverst hos de store nyhetssidene.</span></label>
+    <label><input type="radio" name="wN" value="off"><span><b>Ingen varsler</b>Du ser alt når du åpner appen.</span></label>
+   </div>
+   <label class="wchk"><input type="checkbox" id="wDigest" checked> Send meg de fem viktigste sakene hver morgen kl. 07</label>
+  </div>
+  <div class="wstep" data-s="3" hidden>
+   <h2>Klart</h2>
+   <p class="lead">Noen tips før du starter:</p>
+   <ul class="wtips">
+    <li>Klikk på et land for å se bare saker derfra.</li>
+    <li>Dra i tidslinjen nederst for å se hva som skjedde tidligere i dag.</li>
+    <li>Fanen Marked i sidepanelet viser børs, valuta og råvarer.</li>
+    <li>Alt du valgte nå kan endres under Innstillinger.</li>
+   </ul>
+  </div>
+  <footer class="wfoot"><span class="meta" id="wStep"></span><span class="sp"></span><button class="btn" type="button" id="wBack" hidden>Tilbake</button><button class="btn" type="button" id="wSkip">Hopp over</button><button class="btn primary" type="button" id="wNext">Neste</button></footer>
+ </form>
+</dialog>
 
 <dialog id="dlg" class="settings" aria-labelledby="sTitle">
  <div class="sx">
@@ -502,6 +585,7 @@ html[data-theme=light] .saved{color:#15803d}
 
     <section data-sec="sources">
      <p class="lead">Slå av kilder du ikke vil ha. Endringer gjelder fra neste henting, som starter med en gang.</p>
+     <div class="opt"><div><p id="srcHealth" style="margin:0"></p></div><button class="btn" type="button" id="srcRetry" hidden>Prøv alle på nytt</button></div>
      <div class="srclist" id="srcTbl"></div>
      <h3>Egne kilder</h3>
      <p class="meta">Hvilken som helst RSS- eller Atom-feed som starter med https://.</p>
@@ -526,6 +610,7 @@ html[data-theme=light] .saved{color:#15803d}
     <section data-sec="updates">
      <div class="updcard"><div class="big" id="uVer">–</div><div id="updStatus" class="meta">Laster …</div>
       <div class="inl"><button class="btn" id="updCheck">Se etter oppdateringer</button><button class="btn primary" id="updApply" hidden>Start på nytt og oppdater</button></div></div>
+     <div class="opt nk-only"><div><b>Oppdateringskanal</b><p>Stabil får bare ferdigtestede versjoner. Beta får nye funksjoner først, men kan ha feil. Bytter du tilbake til stabil, beholder du betaen til neste stabile versjon er nyere.</p></div><select data-k="channel"><option value="stable">Stabil (anbefalt)</option><option value="beta">Beta</option></select></div>
      <div class="opt nk-only"><div><b>Installer automatisk når appen lukkes</b><p>Nye versjoner lastes ned i bakgrunnen. Slå av for å bare installere når du trykker selv.</p></div><label class="tg"><input type="checkbox" data-k="autoInstall"><i></i></label></div>
      <p class="meta">Appen ser etter nye versjoner ved oppstart og hver sjette time. Små oppdateringer er rundt 3 MB. <a href="https://github.com/dsoder-jpg/nyhetskloden/releases" target="_blank" rel="noopener">Se alle versjoner på GitHub</a></p>
     </section>
@@ -797,7 +882,7 @@ function onLoad(){
     const a2=countryAt(e.lngLat.lng,e.lngLat.lat);setCountry(a2&&a2!==S.cc?a2:null)});
   let hov=null;map.on('mousemove',e=>{if(!COUNTRIES)return;const a2=countryAt(e.lngLat.lng,e.lngLat.lat);if(a2===hov)return;
     if(hov)map.setFeatureState({source:'countries',id:hov},{hover:false});hov=a2;if(a2)map.setFeatureState({source:'countries',id:a2},{hover:true})});
-  ready=true;applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();
+  ready=true;applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();
 }
 let DETAIL=[];
 function applyBase(){if(!map||!map.getLayer('sat'))return;const sat=S.base==='sat';
@@ -844,9 +929,15 @@ let cardEv=null;
 function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star}){
   const c=$('card');c.hidden=false;c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
   $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;const mm=$('cMeta');mm.textContent='';for(const x of (Array.isArray(meta)?meta:[meta]).filter(Boolean)){const sp=document.createElement('span');sp.textContent=x;mm.append(sp)}$('cText').textContent=text||'';$('cText').hidden=!text;
-  const ul=$('cSrcs');ul.textContent='';ul.hidden=!(srcs&&srcs.length>1);
-  for(const n of (srcs||[])){const li=document.createElement('li');if(n.url&&n.url.startsWith('https://')){const a=document.createElement('a');a.href=n.url;a.target='_blank';a.rel='noopener';a.textContent=n.src+': '+(n.titleNo||n.title);li.append(a)}else li.append(n.src+': '+n.title);
-    const s=document.createElement('span');s.textContent=tfmt.format(new Date(n.date));li.append(s);ul.append(li)}
+  const ul=$('cSrcs');ul.textContent='';const many=srcs&&srcs.length>1;ul.hidden=!many;$('cFlow').hidden=!many;
+  if(many){const so=[...srcs].sort((a,b)=>a.date.localeCompare(b.date)),t0=new Date(so[0].date),t1=new Date(so[so.length-1].date),hrs=(t1-t0)/36e5;
+    const sameDay=t0.toDateString()===t1.toDateString(),fmt=d=>sameDay?tfmt.format(d):dfmt.format(d);
+    const nS=new Set(so.map(n=>n.src)).size;
+    $('cFlow').textContent=`Først meldt av ${so[0].src} ${sameDay?'kl. ':''}${fmt(t0)}. `+(nS>1?`Fulgt opp av ${nS-1} ${nS-1===1?'kilde':'andre kilder'}`:`${so.length} oppdateringer`)+(hrs>=1?` over ${hrs<24?Math.round(hrs)+' '+(Math.round(hrs)===1?'time':'timer'):Math.round(hrs/24)+' døgn'}.`:hrs>0?` i løpet av ${Math.max(1,Math.round(hrs*60))} minutter.`:'.');
+    for(const n of so){const li=document.createElement('li');const tm=document.createElement('time');tm.textContent=fmt(new Date(n.date));
+      const d=document.createElement('div');const b=document.createElement('b');b.textContent=n.src;d.append(b,' ');
+      if(n.url&&n.url.startsWith('https://')){const a=document.createElement('a');a.href=n.url;a.target='_blank';a.rel='noopener';a.textContent=n.titleNo||n.title;d.append(a)}else d.append(n.titleNo||n.title);
+      li.append(tm,d);ul.append(li)}}
   const ok=typeof url==='string'&&url.startsWith('https://');$('cSrc').hidden=!ok;if(ok){$('cSrc').href=url;$('cSrc').textContent=urlText}
   $('cStar').hidden=!star;
   $('cShare').hidden=!ok;$('cShareBox').hidden=true;shareUrl=ok?url:null;$('cTk').hidden=true;
@@ -907,7 +998,8 @@ $('period').addEventListener('click',e=>{const b=e.target.closest('button');if(!
 $('scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.scope=b.dataset.s;store.set('nk-scope',S.scope);refresh();
   if(!map)return;if(S.scope==='no')map.fitBounds(NOR_BOUNDS,{padding:60,duration:reduced?0:1600});else if(map.getZoom()>3)map.flyTo({center:map.getCenter(),zoom:1.9,duration:reduced?0:1400})});
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.t;refresh()});
-let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim();refresh()},150)});
+let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim();if(ARCH&&ARCH.q!==S.q)ARCH=null;refresh()},150)});
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&S.q.length>=2&&!view().length)searchArchive()});
 
 function li(e,saved){
   const c=CATS[e.cat]||CATS.annet,el=document.createElement('li'),b=document.createElement('button');
@@ -928,14 +1020,28 @@ function li(e,saved){
   if(!saved&&e.srcs.length>1){const k=document.createElement('span');k.className='ls';const n=e.srcs.length,shown=e.srcs.slice(0,4);
     k.innerHTML='<b>Kilder:</b> '+esc(shown.join(', '))+(n>4?' og '+(n-4)+' til':'');k.title='Kilder: '+e.srcs.join(', ');b.append(k)}
   el.append(b);return el}
+let ARCH=null;
+async function searchArchive(){const q=S.q;if(q.length<2)return;$('count2').textContent='Søker i arkivet …';
+  try{const d=await (await fetch('/api/archive?q='+encodeURIComponent(q))).json();ARCH={q,items:d.items||[]}}catch(e){ARCH={q,items:[],err:true}}list()}
+function archiveRow(n){const c=CATS[n.cat]||CATS.annet,el=document.createElement('li'),b=document.createElement('button');b.style.setProperty('--cc',c.c);
+  b.onclick=()=>{S.sel=null;showCard({color:c.c,tag:c.n+', fra arkivet',title:n.lang==='no'?n.title:(n.titleNo||n.title),orig:n.lang!=='no'&&n.titleNo?n.title:null,meta:[n.place,dfmt.format(new Date(n.date)),'Kilde: '+n.src],srcs:[],url:n.url,urlText:'Les saken hos '+n.src,star:false});
+    if(n.lat!=null&&map)map.flyTo({center:[n.lon,n.lat],zoom:Math.max(map.getZoom(),4),duration:reduced?0:1600})};
+  const t=document.createElement('span');t.className='lt';t.textContent=n.lang==='no'?n.title:(n.titleNo||n.title);
+  const m=document.createElement('span');m.className='lm';for(const[x,cl]of[[c.n,'c'],[n.place,''],[dfmt.format(new Date(n.date)),''],[n.src,'']])if(x){const sp=document.createElement('span');if(cl)sp.className=cl;sp.textContent=x;m.append(sp)}
+  b.append(t,m);el.append(b);return el}
 function list(){
   const ul=$('list');ul.textContent='';
+  if(ARCH&&ARCH.q===S.q&&S.q.length>=2){$('count2').textContent=ARCH.items.length+(ARCH.items.length===1?' treff':' treff')+' i arkivet';
+    const bk=document.createElement('li');bk.className='empty';const bb=document.createElement('button');bb.className='btn';bb.type='button';bb.textContent='Tilbake til dagens saker';bb.onclick=()=>{ARCH=null;list()};
+    bk.append(ARCH.err?'Fikk ikke søkt i arkivet. ':ARCH.items.length?'':'Ingen treff for «'+S.q+'» de siste 90 dagene. ',bb);ul.append(bk);
+    for(const n of ARCH.items)ul.append(archiveRow(n));return}
   if(S.tab==='saved'){const sv=[...SAVED.values()].filter(e=>catOn(e.cat)).reverse();$('count2').textContent=sv.length+(sv.length===1?' sak':' saker');
     if(!sv.length){const l=document.createElement('li');l.className='empty';l.textContent='Ingen lagrede saker. Åpne en sak og trykk på stjerna for å lagre den.';ul.append(l)}
     for(const e of sv)ul.append(li(e,true));return}
   const ev=view();$('count2').textContent=ev.length+(ev.length===1?' hendelse':' hendelser');
-  if(!ev.length){const l=document.createElement('li');l.className='empty';l.textContent=!EVENTS.length?'Henter nyheter …':S.tab==='watch'?'Ingen saker nevner ordene du følger ennå. Legg til ord under Innstillinger.':S.tab==='near'?'Ingen saker innenfor '+(SET.nearKm||50)+' km fra '+(HOME?HOME.name:'hjemstedet')+' i denne perioden.':'Ingen hendelser med disse filtrene.';ul.append(l);return}
-  for(const e of ev.slice(0,300))ul.append(li(e))
+  if(!ev.length&&!(S.q.length>=2)){const l=document.createElement('li');l.className='empty';l.textContent=!EVENTS.length?'Henter nyheter …':S.tab==='watch'?'Ingen saker nevner ordene du følger ennå. Legg til ord under Innstillinger.':S.tab==='near'?'Ingen saker innenfor '+(SET.nearKm||50)+' km fra '+(HOME?HOME.name:'hjemstedet')+' i denne perioden.':'Ingen hendelser med disse filtrene.';ul.append(l);return}
+  for(const e of ev.slice(0,300))ul.append(li(e));
+  if(S.q.length>=2){const l=document.createElement('li');l.className='empty';const b=document.createElement('button');b.className='btn';b.type='button';b.textContent='Søk etter «'+S.q+'» i arkivet (90 dager)';b.onclick=searchArchive;l.append(b);ul.append(l)}
 }
 function kpis(){const b=base(),h=heatMap(),n1=EVENTS.filter(e=>{const a=age(e);return a>=0&&a<=60&&inScope(e)}).length,n2=b.filter(e=>e.score>=3.5).length;
   if(EVENTS.length){const P={1:'siste time',6:'siste seks timer',24:'siste døgn',168:'siste uke'}[S.period]||'';
@@ -951,9 +1057,16 @@ function breaking(){brList=EVENTS.filter(e=>e.score>=6&&(Date.now()-ms(e.date))/
 function showBr(){if(!brList.length)return;const e=brList[brIdx%brList.length];$('brTxt').textContent=e.title;$('brMeta').textContent=[e.place,when(e),e.srcs.length>1?e.srcs.length+' kilder':e.src].filter(Boolean).join(', ');$('breaking').dataset.id=e.id}
 setInterval(()=>{brIdx++;showBr()},7000);
 $('breaking').onclick=()=>{const id=$('breaking').dataset.id;if(id){S.cats=new Set(KEYS);S.tab='all';refresh();select(id,true)}};
-function sources(st){if(!st)return;STATUS=st;const v=Object.values(st),ok=v.filter(s=>s.ok).length;$('srcSum').textContent=`Kilder: ${ok} av ${v.length} svarer`;
+const shortDate=new Intl.DateTimeFormat('nb-NO',{day:'numeric',month:'short'});
+function stText(st){if(!st)return'venter';if(st.ok)return st.stale&&st.lastNew?'Ingen nye saker siden '+shortDate.format(new Date(st.lastNew)):st.n+' saker';
+  return(st.paused&&st.until?'På pause til '+tfmt.format(new Date(st.until))+': ':'')+(st.err||'feil')}
+const stCls=st=>!st?'':st.ok?(st.stale?'warn':'ok'):'bad';
+function srcCounts(v){return{ok:v.filter(s=>s.ok&&!s.stale).length,paused:v.filter(s=>s.paused).length,stale:v.filter(s=>s.ok&&s.stale).length,bad:v.filter(s=>!s.ok&&!s.paused).length}}
+function sources(st){if(!st)return;STATUS=st;const v=Object.values(st),c=srcCounts(v);
+  $('srcSum').textContent=`Kilder: ${c.ok+c.stale} av ${v.length} virker`+(c.paused?`, ${c.paused} på pause`:'');
   if($('dlg').open&&$('srcTbl').children.length)renderSettings(true);
-  for(const ul of [$('srcList')]){ul.textContent='';for(const s of v){const l=document.createElement('li');const sp=document.createElement('span');sp.className=s.ok?'ok':'bad';sp.textContent=s.ok?'✓ ':'✗ ';l.append(sp,s.src+': '+(s.ok?s.n+' saker':'feil ('+s.err+')'));ul.append(l)}}}
+  const ul=$('srcList');ul.textContent='';
+  for(const s of [...v].sort((a,b)=>(a.ok-b.ok)||a.src.localeCompare(b.src,'nb'))){const l=document.createElement('li');const sp=document.createElement('span');sp.className=stCls(s);sp.textContent=s.ok?(s.stale?'! ':'✓ '):'✗ ';l.append(sp,s.src+': '+stText(s));ul.append(l)}}
 function refresh(){segUI();cats();countryPanel();list();kpis();updateMap()}
 
 // ---------- tidslinje ----------
@@ -1016,7 +1129,13 @@ function spark(v,p){if(!v||v.length<2)return'';const mn=Math.min(...v),mx=Math.m
   return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${p>0?'#3ddc84':p<0?'#ff6b6b':'#8a9bb0'}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`}
 const qCard=(q,label)=>`<div class="q" title="${esc(q.long||q.name)}"><span class="nm">${esc(label||q.name)}</span><span class="px">${fmtNum(q.price)}</span><span class="${pcls(q.pct)}" style="grid-column:2;text-align:right;font-variant-numeric:tabular-nums">${pctTxt(q.pct)}</span>${spark(q.spark,q.pct)}</div>`;
 const moverList=a=>'<ol>'+a.map(q=>`<li><span title="${esc(q.name)}">${esc(q.sym.replace(/\.OL$/,''))}</span><span class="${pcls(q.pct)}">${pctTxt(q.pct)}</span></li>`).join('')+'</ol>';
-function renderMarket(){const box=$('mkt');box.hidden=!F.market;if(!F.market)return;
+let SIDEV=store.get('nk-side','news');
+function setSide(v){SIDEV=F.market&&v==='market'?'market':'news';store.set('nk-side',SIDEV);$('side').classList.toggle('v-market',SIDEV==='market');
+  for(const b of $('sideTabs').children)b.setAttribute('aria-selected',b.dataset.v===SIDEV);if(SIDEV==='market')$('mkt').open=true}
+$('sideTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setSide(b.dataset.v)});
+function renderMarket(){const box=$('mkt');box.hidden=!F.market;$('sideTabs').hidden=!F.market;setSide(SIDEV);
+  const o0=MKT&&(MKT.indices||[]).find(q=>q.sym==='OSEBX.OL');$('sideMkt').innerHTML=o0?`<span class="${pcls(o0.pct)}">${pctTxt(o0.pct)}</span>`:'';
+  if(!F.market)return;
   if(!MKT||MKT.error||!(MKT.indices||[]).length&&!(MKT.other||[]).length){$('mSum').innerHTML='<span class="fl">'+(MKT?'ingen kontakt':'henter …')+'</span>';$('mBody').innerHTML='<div class="mnote">'+(MKT?'Fant ikke kursene akkurat nå. Prøver igjen om noen minutter.':'Henter kurser …')+'</div>';return}
   const ix=MKT.indices||[],o=ix.find(q=>q.sym==='OSEBX.OL'),sp=ix.find(q=>q.sym==='^GSPC');
   $('mSum').innerHTML=[o&&`<span>OSEBX <b class="${pcls(o.pct)}">${pctTxt(o.pct)}</b></span>`,sp&&`<span>S&amp;P <b class="${pcls(sp.pct)}">${pctTxt(sp.pct)}</b></span>`].filter(Boolean).join('');
@@ -1054,6 +1173,12 @@ function vehicleIcon(kind){const s=40,c=document.createElement('canvas');c.width
   else{x.fillStyle='#5eead4';x.strokeStyle='#04312b';x.lineWidth=1.4;const p=new Path2D('M0-12 6 6 0 3-6 6Z');x.fill(p);x.shadowColor='transparent';x.stroke(p)}
   return{width:s,height:s,data:x.getImageData(0,0,s,s).data}}
 function addExtraLayers(){
+  map.addSource('radar',{type:'raster',tiles:[],tileSize:256,maxzoom:7,attribution:'Radar: <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a>'});
+  map.addLayer({id:'radar',type:'raster',source:'radar',layout:{visibility:'none'},paint:{'raster-opacity':.7,'raster-fade-duration':0}});
+  map.addSource('wxmap',{type:'geojson',data:EMPTY});
+  map.addLayer({id:'wxmap',type:'symbol',source:'wxmap',minzoom:3.6,layout:{'icon-image':['concat','wx-',['get','icon']],'icon-size':.5,'icon-allow-overlap':false,
+    'text-field':['get','t'],'text-font':FONT_B,'text-size':12,'text-anchor':'left','text-offset':[1.05,0],'text-optional':true,'symbol-sort-key':['get','rank']},
+    paint:{'text-color':['case',['>',['get','temp'],0],'#ff8a7a','#7cc0ff'],'text-halo-color':'rgba(5,10,18,.95)','text-halo-width':1.6}});
   map.addSource('mkts',{type:'geojson',data:EMPTY});
   map.addLayer({id:'mk-glow',type:'circle',source:'mkts',paint:{'circle-radius':16,'circle-color':['get','col'],'circle-opacity':.22,'circle-blur':.8}});
   map.addLayer({id:'mk-dot',type:'circle',source:'mkts',paint:{'circle-radius':5,'circle-color':['get','col'],'circle-stroke-width':1.5,'circle-stroke-color':'#08111b'}});
@@ -1066,12 +1191,33 @@ function addExtraLayers(){
   map.addSource('planes',{type:'geojson',data:EMPTY});
   map.addLayer({id:'planes',type:'symbol',source:'planes',layout:{'icon-image':'plane','icon-rotate':['get','r'],'icon-rotation-alignment':'map','icon-allow-overlap':true,'icon-ignore-placement':true,
     'icon-size':['interpolate',['linear'],['zoom'],4,.6,8,.9,12,1.2]}});}
+// værsymboler som bilder på kartet
+const wxImg=new Set();
+function wxIcon(sym){const k=(sym||'x').replace(/[^a-z_]/g,'');if(wxImg.has(k)||!ready)return k;wxImg.add(k);
+  const im=new Image(48,48);im.onload=()=>{if(!map.hasImage('wx-'+k))map.addImage('wx-'+k,im,{pixelRatio:1})};
+  im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(wxSvg(sym,48).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" '));return k}
+async function loadWxMap(){clearTimeout(loadWxMap.t);if(!ready||!map.getSource('wxmap'))return;
+  if(!F.wxmap){map.getSource('wxmap').setData(EMPTY);return}
+  try{const d=await (await fetch('/api/wxmap')).json();
+    map.getSource('wxmap').setData({type:'FeatureCollection',features:(d.cities||[]).map((c,i)=>({type:'Feature',geometry:{type:'Point',coordinates:[c.lon,c.lat]},
+      properties:{icon:wxIcon(c.sym),t:deg(c.temp),temp:Math.round(c.temp),name:c.name,rank:i}}))})}catch(e){}
+  loadWxMap.t=setTimeout(loadWxMap,30*60e3)}
+async function loadRadar(){clearTimeout(loadRadar.t);if(!ready||!map.getSource('radar'))return;
+  if(!F.radar){map.setLayoutProperty('radar','visibility','none');trafMsg.r='';showTraf();return}
+  try{const d=await (await fetch('/api/radar')).json();if(d.error)throw new Error(d.error);
+    map.getSource('radar').setTiles([d.host+d.path+'/256/{z}/{x}/{y}/2/1_1.png']);map.setLayoutProperty('radar','visibility','visible');
+    trafMsg.r='Radar kl. '+tfmt.format(new Date(d.time))}
+  catch(e){trafMsg.r='Radar: fikk ikke kontakt'}
+  showTraf();loadRadar.t=setTimeout(loadRadar,10*60e3)}
 function extraEvents(){const pop=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:12});
+  map.on('mousemove','wxmap',e=>{const p=e.features[0].properties;map.getCanvas().style.cursor='pointer';pop.setLngLat(e.features[0].geometry.coordinates).setHTML(`<div class="pt"><b>${esc(p.name)}</b><span>${esc(p.t)}, fra Yr</span></div>`).addTo(map)});
+  map.on('mouseleave','wxmap',()=>{map.getCanvas().style.cursor='';pop.remove()});
+  map.on('click','wxmap',e=>{const p=e.features[0].properties;if(HOME&&p.name===HOME.name){$('wxPop').hidden=false;renderWx()}});
   for(const id of ['planes','ships']){map.on('mousemove',id,e=>{map.getCanvas().style.cursor='pointer';const p=e.features[0].properties;pop.setLngLat(e.features[0].geometry.coordinates).setHTML(`<div class="pt"><b>${esc(p.t)}</b><span>${esc(p.d)}</span></div>`).addTo(map)});
     map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';pop.remove()})}
   map.on('moveend',()=>{clearTimeout(loadFlights.d);loadFlights.d=setTimeout(loadFlights,600)})}
 const trafNote=t=>{$('trafNote').textContent=t||'';$('trafNote').hidden=!t};
-let trafMsg={};const showTraf=()=>trafNote([trafMsg.f,trafMsg.s].filter(Boolean).join('. '));
+let trafMsg={};const showTraf=()=>trafNote([trafMsg.f,trafMsg.s,trafMsg.r].filter(Boolean).join('. '));
 async function loadFlights(){clearTimeout(loadFlights.t);if(!ready)return;const src=map.getSource('planes');
   if(!F.flights){src.setData(EMPTY);trafMsg.f='';showTraf();return}
   if(map.getZoom()<3.8){src.setData(EMPTY);trafMsg.f='Zoom inn for å se fly';showTraf();loadFlights.t=setTimeout(loadFlights,30e3);return}
@@ -1147,9 +1293,37 @@ function applyFeatures(){OFF=new Set(SET.catsOff||[]);HOME=SET.home||null;const 
   $('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
   for(const i of $('layers').querySelectorAll('[data-f]'))i.checked=!!F[i.dataset.f];
   const sig=JSON.stringify([F,SET.marketWatch,HOME,SET.nearKm,SET.shipsClient]);if(sig===lastF){refresh();return}lastF=sig;
-  tkCache.clear();renderMarket();loadMarket();loadWeather();loadFlights();setShipLayer();refresh()}
+  tkCache.clear();renderMarket();loadMarket();loadWeather();loadFlights();setShipLayer();loadWxMap();loadRadar();refresh()}
 function setFeature(k,v){F[k]=v;postSet({features:{...(SET.features||{}),...F,[k]:v}},true)}
-async function initSettings(){try{SET=await (await fetch('/api/settings')).json()}catch(e){SET={}}applyFeatures()}
+async function initSettings(){try{SET=await (await fetch('/api/settings')).json()}catch(e){SET={}}applyFeatures();if(SET&&SET.onboarded===false&&!IS_LAN)setTimeout(openWelcome,600)}
+// ---------- oppstartsveiviser ----------
+let wS=0;const W_STEPS=4;
+async function openWelcome(){if($('wel').open)return;
+  if(!PLACES.length)try{PLACES=await (await fetch('/api/places')).json();$('hList').innerHTML=PLACES.map(p=>`<option value="${esc(p[0]+(p[3]&&p[3]!=='NO'?', '+p[3]:''))}">`).join('')}catch(e){}
+  if(SET.home)$('wHome').value=SET.home.name;
+  const wc=$('wCats');wc.textContent='';const off=new Set(SET.catsOff||[]);
+  for(const[k,c]of Object.entries(CATS)){const l=document.createElement('label');l.innerHTML=`<span class="sw" style="background:${c.c}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="${ICON[k]}"/></svg></span><span>${c.n}</span>`;
+    const i=document.createElement('input');i.type='checkbox';i.checked=!off.has(k);i.dataset.c=k;l.append(i);wc.append(l)}
+  if(!IS_APP){for(const x of document.querySelectorAll('#wel [data-s="2"]'))x.dataset.skip='1'}
+  wS=0;wShow();$('wel').showModal()}
+function wHomePick(){const v=$('wHome').value.trim().toLowerCase();if(!v)return null;
+  return PLACES.find(p=>(p[0]+(p[3]&&p[3]!=='NO'?', '+p[3]:'')).toLowerCase()===v)||PLACES.find(p=>p[0].toLowerCase()===v)||PLACES.find(p=>p[0].toLowerCase().startsWith(v))||false}
+function wShow(){for(const x of document.querySelectorAll('#wel .wstep'))x.hidden=+x.dataset.s!==wS;
+  $('wStep').textContent=`Steg ${wS+1} av ${W_STEPS}`;$('wBack').hidden=wS===0;$('wNext').textContent=wS===W_STEPS-1?'Start':'Neste';$('wSkip').hidden=wS===W_STEPS-1;
+  const f=document.querySelector(`#wel .wstep[data-s="${wS}"] input`);if(f)setTimeout(()=>f.focus(),50)}
+$('wNext').onclick=()=>{
+  if(wS===0&&$('wHome').value.trim()){const m=wHomePick();if(m===false){$('wHomeMsg').textContent='Fant ikke stedet. Velg fra lista som dukker opp når du skriver, eller la feltet stå tomt.';return}$('wHomeMsg').textContent=''}
+  if(wS<W_STEPS-1){wS++;if(document.querySelector(`#wel .wstep[data-s="${wS}"]`).dataset.skip)wS++;wShow();return}
+  wFinish(true)};
+$('wBack').onclick=()=>{wS--;if(document.querySelector(`#wel .wstep[data-s="${wS}"]`).dataset.skip)wS--;wShow()};
+$('wSkip').onclick=()=>wFinish(false);
+$('wel').addEventListener('cancel',e=>{e.preventDefault();wFinish(false)});
+function wFinish(apply){const b={onboarded:true};
+  if(apply){const m=wHomePick();if(m)b.home={name:m[0],lat:m[1],lon:m[2]};
+    b.catsOff=[...document.querySelectorAll('#wCats input')].filter(i=>!i.checked).map(i=>i.dataset.c);if(b.catsOff.length>=KEYS.length)b.catsOff=[];
+    if(IS_APP){const n=(document.querySelector('#wel input[name=wN]:checked')||{}).value;if(n==='off')b.notify=false;else if(n){b.notify=true;b.notifyMode=n}b.digest=$('wDigest').checked;
+      if(window.nk.setNotify)window.nk.setNotify(b.notify!==false)}}
+  $('wel').close();postSet(b,true)}
 
 // ---------- utseende ----------
 const LOOK=Object.assign({theme:'dark',zoom:1},store.get('nk-look',{}));
@@ -1196,12 +1370,16 @@ function renderSettings(soft){
   const off=new Set(SET.disabledFeeds||[]),tb=$('srcTbl');tb.textContent='';
   const row=(f,custom)=>{const st=STATUS[f.url];const d=document.createElement('div');d.className='src-row';
     const n=document.createElement('div');n.append(f.src||f.url);const sm=document.createElement('small');sm.textContent=f.url;n.append(sm);
-    const s=document.createElement('span');s.className='st '+(off.has(f.url)?'':st?(st.ok?'ok':'bad'):'');s.textContent=off.has(f.url)?'av':st?(st.ok?'✓ '+st.n+' saker':'✗ '+st.err):'venter';
+    const s=document.createElement('span');s.className='st '+(off.has(f.url)?'':stCls(st));s.textContent=off.has(f.url)?'av':st?(st.ok?(st.stale?'! ':'✓ '):'✗ ')+stText(st):'venter';if(st&&!st.ok&&st.since)s.title='Feilet første gang '+dfmt.format(new Date(st.since));
     let ctl;if(custom){ctl=document.createElement('button');ctl.className='btn';ctl.type='button';ctl.textContent='Fjern';ctl.onclick=()=>postSet({customFeeds:(SET.customFeeds||[]).filter(x=>x.url!==f.url)},true)}
     else{ctl=document.createElement('label');ctl.className='tg';ctl.title=off.has(f.url)?'Slå på':'Slå av';const i=document.createElement('input');i.type='checkbox';i.checked=!off.has(f.url);i.setAttribute('aria-label',(f.src||'')+' på');
       i.onchange=()=>{const s2=new Set(SET.disabledFeeds||[]);i.checked?s2.delete(f.url):s2.add(f.url);postSet({disabledFeeds:[...s2]},true)};ctl.append(i,document.createElement('i'))}
     d.append(n,s,ctl);return d};
-  for(const f of SET.builtinFeeds||[])tb.append(row(f,false));
+  const rank=f=>{const st=STATUS[f.url];return off.has(f.url)?3:!st?2:st.ok?(st.stale?1:2):0};
+  for(const f of [...(SET.builtinFeeds||[])].sort((a,b)=>rank(a)-rank(b)))tb.append(row(f,false));
+  const c=srcCounts(Object.values(STATUS||{}).filter(x=>x.src&&!/^(Nyhetsmotor|Mobilvisning|DeepL)/.test(x.src)));
+  $('srcHealth').innerHTML=`<b>${c.ok+c.stale}</b> kilder virker.`+(c.paused?` <b>${c.paused}</b> er satt på pause fordi de feilet flere ganger på rad, og prøves igjen automatisk.`:'')+(c.bad?` <b>${c.bad}</b> feilet sist.`:'')+(c.stale?` <b>${c.stale}</b> har ikke hatt nye saker på 14 dager.`:'');
+  $('srcRetry').hidden=!(c.paused||c.bad);
   const cu=$('srcCustom');cu.textContent='';for(const f of SET.customFeeds||[])cu.append(row(f,true));
   // oversettelse
   $('kStatus').textContent=SET.hasKey?'✓ En nøkkel er lagret.':'Ingen nøkkel lagret ennå.';$('kDel').hidden=!SET.hasKey;
@@ -1259,6 +1437,7 @@ $('fForm').onsubmit=e=>{e.preventDefault();const url=$('fUrl').value.trim(),src=
   $('fUrl').value='';$('fName').value='';postSet({customFeeds:[...(SET.customFeeds||[]),{src,url}]},true)};
 $('kForm').onsubmit=e=>{e.preventDefault();const k=$('sKey').value.trim();if(!k)return;$('sKey').value='';postSet({deeplKey:k,translate:true},true)};
 $('kDel').onclick=()=>postSet({deeplKey:''},true);
+$('srcRetry').onclick=async()=>{$('srcRetry').disabled=true;$('srcRetry').textContent='Prøver …';try{await fetch('/api/retry-feeds',{method:'POST'})}catch(e){}setTimeout(()=>{$('srcRetry').disabled=false;$('srcRetry').textContent='Prøv alle på nytt'},8000)};
 $('tkForm').onsubmit=async e=>{e.preventDefault();const v=$('tkIn').value.trim().toUpperCase();if(!v)return;
   if(!/^[A-Z0-9^.=\-]{1,15}$/.test(v)){$('tkStatus').textContent='Ugyldig ticker.';return}
   if((SET.marketWatch||[]).includes(v)){$('tkStatus').textContent=v+' er allerede lagt til.';return}
