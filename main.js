@@ -217,6 +217,32 @@ const isBeta = v => /-/.test(v);
 function plain(title, body, onClick) { if (!Notification.isSupported()) return; const n = new Notification({ title, body, icon: ICON }); if (onClick) n.on('click', onClick); n.show(); }
 const okUrl = u => /^https:\/\/github\.com\//.test(u || '');
 
+// Finner filene i nyeste utgivelse. Først fra channels.json (vanlig nedlasting, ingen grense),
+// så fra GitHub-API-et, som bare tillater 60 forespørsler i timen per nettverk (delt på hele studentbyen, for eksempel).
+let apiCache = { etag: null, body: null }, retryTimer = null;
+async function releaseAssets(beta) {
+  try {
+    const r = await fetch(`https://github.com/${UPDATE_REPO}/releases/download/updates/channels.json`, { headers: { 'User-Agent': 'Nyhetskloden' } });
+    if (r.ok) {
+      const ch = await r.json(), list = [ch.stable, beta ? ch.beta : null].filter(Boolean);
+      const files = list.flatMap(e => e.files || []).map(f => ({ name: f.name, size: f.size, digest: 'sha256:' + f.sha256, browser_download_url: f.url }));
+      if (files.length) return files;
+    }
+  } catch {}
+  const headers = { 'User-Agent': 'Nyhetskloden', Accept: 'application/vnd.github+json' };
+  if (apiCache.etag) headers['If-None-Match'] = apiCache.etag; // svar 304 teller ikke mot grensen
+  const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=10`, { headers });
+  let rels;
+  if (r.status === 304 && apiCache.body) rels = apiCache.body;
+  else if (r.ok) { rels = await r.json(); apiCache = { etag: r.headers.get('etag'), body: rels }; }
+  else if ((r.status === 403 || r.status === 429) && r.headers.get('x-ratelimit-remaining') === '0') {
+    const reset = new Date((+r.headers.get('x-ratelimit-reset') || Date.now() / 1000 + 3600) * 1000);
+    clearTimeout(retryTimer); retryTimer = setTimeout(() => checkUpdates(false), Math.max(60e3, reset - Date.now() + 30e3));
+    throw new Error(`GitHub tar imot for mange sjekker fra nettverket ditt akkurat nå. Appen prøver igjen selv etter kl. ${reset.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}.`);
+  } else throw new Error('GitHub svarte med feil ' + r.status);
+  return rels.filter(rel => !rel.draft && rel.tag_name !== 'updates' && (beta || !rel.prerelease)).flatMap(rel => rel.assets || []);
+}
+
 async function download(asset) {
   const res = await fetch(asset.browser_download_url, { headers: { 'User-Agent': 'Nyhetskloden' } });
   if (!res.ok) throw new Error('nedlasting HTTP ' + res.status);
@@ -232,11 +258,9 @@ async function checkUpdates(manual) {
   if (pendingUpdate) { setUpd({ state: 'ready', ver: pendingUpdate.ver }); if (manual === true) plain(`Nyhetskloden ${pendingUpdate.ver} er klar`, 'Den installeres når du lukker appen. Klikk for å starte på nytt nå.', () => applyUpdate(true)); return; }
   setUpd({ state: 'checking', msg: null });
   try {
-    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases?per_page=10`, { headers: { 'User-Agent': 'Nyhetskloden', Accept: 'application/vnd.github+json' } });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
     // stabil kanal: bare vanlige utgivelser. Beta: også forhåndsutgivelser (3.3.0-beta.1).
     const beta = engine.getSettings().channel === 'beta';
-    const assets = (await r.json()).filter(rel => !rel.draft && (beta || !rel.prerelease)).flatMap(rel => rel.assets || []).filter(a => okUrl(a.browser_download_url));
+    const assets = (await releaseAssets(beta)).filter(a => okUrl(a.browser_download_url));
     let best = null;
     for (const a of assets) {
       let m = a.name.match(/^nyhetskloden-app-(\d+\.\d+\.\d+(?:-beta\.\d+)?)-e(\d+)\.asar$/i);

@@ -71,3 +71,12 @@ jobs:
           PRE=""; case "$V" in *-*) PRE="--prerelease";; esac
           gh release create "$V" dist/installer/Nyhetskloden-Setup-$V.exe dist/installer/nyhetskloden-app-$V-e*.asar \
             --title "Nyhetskloden $V" --notes-file notes.txt --target "$GITHUB_SHA" $PRE
+
+      - name: Oppdater oppdateringsinfo
+        if: steps.v.outputs.skip != 'true'
+        run: |
+          V=${{ steps.v.outputs.version }}
+          gh release view updates >/dev/null 2>&1 || gh release create updates --prerelease --title "Oppdateringsinfo for appen" --notes "Brukes av appen for å finne nye versjoner. Denne skal ikke lastes ned." --target "$GITHUB_SHA"
+          gh release download updates --pattern channels.json --dir . --clobber || true
+          node scripts/channels.js channels.json "$V" "$GITHUB_REPOSITORY" dist/installer/Nyhetskloden-Setup-$V.exe dist/installer/nyhetskloden-app-$V-e*.asar
+          gh release upload updates channels.json --clobber
