@@ -58,6 +58,45 @@ test('samme hendelse fra to kilder', () => {
   assert.ok(!e.sameEvent(tok('Minst 12 drept i russisk angrep på Kharkiv'), tok('Norge vant VM-gull i stafett')));
 });
 
+test('samme hendelse på tvers av språk', () => {
+  const tok = t => ({ title: t, _tok: e.tokens(t), date: new Date().toISOString() });
+  assert.ok(e.sameEvent(tok('Russian attack on Kharkov kills 12'), tok('Minst 12 drept i russisk angrep på Kharkiv')));
+  assert.ok(e.sameEvent(tok('Powerful earthquake hits Japan, tsunami warning issued'), tok('Kraftig jordskjelv i Japan – tsunamivarsel')));
+  assert.ok(!e.sameEvent(tok('Russian attack on Kharkiv kills 12'), tok('Ceasefire talks resume in Cairo')));
+  assert.ok(!e.sameEvent(tok('Storm hits Bergen'), tok('Election in Germany')));
+});
+
+test('søk tåler skrivefeil, bøyning og stavemåter', () => {
+  const F = require('../public/js/fuzzy.js');
+  assert.ok(F.match('karkiv', 'Angrep i Kharkiv'));
+  assert.ok(F.match('kharkov', 'Angrep i Kharkiv'));
+  assert.ok(F.match('angrepene', 'Nytt angrep mot Kyiv'));
+  assert.ok(F.match('kiev', 'Droner over Kyiv'));
+  assert.ok(F.match('peking', 'Toppmøte i Beijing'));
+  assert.ok(F.match('jordskelv', 'Kraftig jordskjelv i Japan'));
+  assert.ok(F.match('ukraine', 'Krigen i Ukraina'));
+  assert.ok(!F.match('fotball', 'Kraftig jordskjelv i Japan'));
+  assert.ok(!F.match('bergen', 'Brann i Bodø'));
+});
+
+test('bilde hentes fra RSS (bare https)', () => {
+  const x = '<rss><channel>' +
+    '<item><title>A</title><link>https://a.no/1</link><media:content url="https://img.a.no/s.jpg" width="100" medium="image"/><media:content url="https://img.a.no/b.jpg" width="800" medium="image"/></item>' +
+    '<item><title>B</title><link>https://a.no/2</link><description><![CDATA[<p><img src="http://x.no/p.jpg"/> tekst</p>]]></description></item>' +
+    '<item><title>C</title><link>https://a.no/3</link><enclosure url="https://x.no/e.png" type="image/png"/></item>' +
+    '<item><title>D</title><link>https://a.no/4</link><enclosure url="https://x.no/lyd.mp3" type="audio/mpeg"/></item>' +
+    '</channel></rss>';
+  assert.deepEqual(e.parseRss(x).map(i => i.img || null), ['https://img.a.no/b.jpg', 'https://x.no/p.jpg', 'https://x.no/e.png', null]);
+});
+
+test('kildelister og portefølje valideres', () => {
+  e.applySettings({ srcLists: [{ name: '  Morgen ', srcs: ['NRK', 'BBC', 'NRK'] }, { name: '', srcs: ['x'] }, { name: 'Morgen', srcs: [] }], portfolio: [{ sym: 'eqnr.ol', qty: 10, price: 280 }, { sym: 'bad sym', qty: 1 }, { sym: 'NVDA', qty: 0 }], priceAlertPct: 99 });
+  const s = e.getSettings();
+  assert.deepEqual(s.srcLists, [{ name: 'Morgen', srcs: ['NRK', 'BBC'] }]);
+  assert.deepEqual(s.portfolio, [{ sym: 'EQNR.OL', qty: 10, price: 280 }]);
+  assert.equal(s.priceAlertPct, 50);
+});
+
 test('http-lenker gjøres om til https', () => {
   const items = e.parseRss('<rss><channel><item><title>Flom</title><link>http://www.gdacs.org/report.aspx?x=1</link></item></channel></rss>');
   assert.equal(items.length, 1);

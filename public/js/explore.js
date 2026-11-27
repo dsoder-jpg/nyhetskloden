@@ -101,3 +101,11 @@ $('expPng').onclick=()=>{$('expMenu').hidden=true;exportPng()};$('expPdf').oncli
 
 // kartlag-panelet kan lukkes, og husker om det var åpent
 $('layers').open=store.get('nk-layers-open',false);$('layers').addEventListener('toggle',()=>store.set('nk-layers-open',$('layers').open));
+// ---------- nattbilder fra NASA ----------
+// Vises når natt er på, du har zoomet inn, og det er natt (sola under horisonten) midt i bildet.
+const LIGHTS_OP=['interpolate',['linear'],['zoom'],1,.85,7,.7,10,.4],LIGHTS_OP_BM=['interpolate',['linear'],['zoom'],1,.85,3.4,.6,4.6,0];
+function nightImgUpdate(){if(!ready||!map.getLayer('bm'))return;const c=map.getCenter();
+  const on=F.nightImg!==false&&!!S.layers.night&&map.getZoom()>=3.2&&sunAlt(REF(),c.lat,c.lng)<-3;
+  if(on===nightImgUpdate.on)return;nightImgUpdate.on=on;map.setLayoutProperty('bm','visibility',on?'visible':'none');
+  if(map.getLayer('lights'))map.setPaintProperty('lights','heatmap-opacity',on?LIGHTS_OP_BM:LIGHTS_OP)}
+setInterval(nightImgUpdate,60e3);

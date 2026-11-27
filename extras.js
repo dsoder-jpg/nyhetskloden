@@ -382,4 +382,29 @@ async function getTraffic(cfg) {
   return traffic;
 }
 
-module.exports = { getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+// ---------- portefølje ----------
+// Verdi i kroner: kurs × antall × valutakurs. Innkjøpskurs er i aksjens egen valuta.
+const qCache = new Map();
+async function quoteCached(sym, maxMin = 2) { const h = qCache.get(sym); if (h && Date.now() - h.at < maxMin * 60e3) return h.q; const q = await quote(sym); qCache.set(sym, { at: Date.now(), q }); return q; }
+async function fxNok(cur) {
+  if (!cur || cur === 'NOK') return 1;
+  if (cur === 'GBp' || cur === 'GBX') return (await fxNok('GBP')) / 100;
+  if (cur === 'ZAc') return (await fxNok('ZAR')) / 100;
+  if (cur === 'ILA') return (await fxNok('ILS')) / 100;
+  const q = await quoteCached(cur + 'NOK=X', 30); return q.price || null;
+}
+async function getPortfolio(holdings) {
+  const rows = await many(holdings, async h => {
+    const q = await quoteCached(h.sym); const fx = await fxNok(q.cur);
+    const unit = q.cur; // innkjøpskurs tastes i samme enhet som kursen vises i
+    const value = q.price != null && fx ? h.qty * q.price * fx : null, cost = h.price && fx ? h.qty * h.price * fx : null;
+    return { sym: h.sym, name: q.name, cur: unit, qty: h.qty, buy: h.price || null, price: q.price, pct: q.pct, fx,
+      value, cost, gain: value != null && cost != null ? value - cost : null, gainPct: value != null && cost ? (value / cost - 1) * 100 : null,
+      day: q.price != null && q.prev && fx ? h.qty * (q.price - q.prev) * fx : null, time: q.time };
+  }, 4);
+  const ok = rows.filter(Boolean), sum = k => ok.reduce((a, r) => a + (r[k] || 0), 0);
+  const value = sum('value'), cost = ok.filter(r => r.cost != null).reduce((a, r) => a + r.cost, 0), costVal = ok.filter(r => r.cost != null).reduce((a, r) => a + (r.value || 0), 0);
+  return { rows: holdings.map((h, i) => rows[i] || { sym: h.sym, qty: h.qty, buy: h.price || null, error: true }), value, day: sum('day'),
+    gain: cost ? costVal - cost : null, gainPct: cost ? (costVal / cost - 1) * 100 : null, dayPct: value ? sum('day') / (value - sum('day')) * 100 : null, at: new Date().toISOString() };
+}
+module.exports = { getPortfolio, quoteCached, getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

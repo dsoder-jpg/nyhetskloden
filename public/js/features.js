@@ -3,10 +3,10 @@
 let lastF='';
 function applyFeatures(){OFF=new Set(SET.catsOff||[]);HOME=SET.home||null;const prev=F;F=SET.features||{};
   const ms0=JSON.stringify([SET.muteWords,SET.hiddenSrc]);if(ms0!==applyFeatures.m){applyFeatures.m=ms0;muteSetup();if(NEWS.length)buildEvents()}
-  $('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
+  srcListSetup();$('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
   for(const i of $('layers').querySelectorAll('[data-f]'))i.checked=!!F[i.dataset.f];
-  const sig=JSON.stringify([F,SET.marketWatch,HOME,SET.nearKm,SET.shipsClient]);if(sig===lastF){refresh();return}lastF=sig;
-  tkCache.clear();renderMarket();loadMarket();loadWeather();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();refresh()}
+  const sig=JSON.stringify([F,SET.marketWatch,SET.portfolio,HOME,SET.nearKm,SET.shipsClient]);if(sig===lastF){refresh();return}lastF=sig;
+  tkCache.clear();renderMarket();loadMarket();loadPortfolio();nightImgUpdate();loadWeather();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();refresh()}
 function setFeature(k,v){F[k]=v;postSet({features:{...(SET.features||{}),...F,[k]:v}},true)}
 async function initSettings(){try{SET=await (await fetch('/api/settings')).json()}catch(e){SET={}}applyFeatures();if(SET&&SET.onboarded===false&&!IS_LAN)setTimeout(openWelcome,600)}
 // ---------- innsikt ----------

@@ -175,6 +175,17 @@ engine.events.on('followup', items => {
   notify(`Ny utvikling: ${(first.eventTitle || label(first)).slice(0, 80)}`, items.slice(0, 3).map(i => `${i.src}: ${label(i)}`).join('\n'), first.eid || first.id);
 });
 engine.events.on('settings', () => { buildTrayMenu(); if (!!S().widget !== !!widget) setTimeout(() => { if (!!S().widget !== !!widget) toggleWidget(); }, 50); if (widget) widget.setAlwaysOnTop(!!S().widgetOnTop); });
+// en kilde har vært nede i et døgn
+engine.events.on('feeddown', list => {
+  notify(list.length > 1 ? `${list.length} kilder har vært nede i et døgn` : `${list[0].src} har vært nede i et døgn`,
+    list.length > 1 ? list.slice(0, 4).map(f => `• ${f.src}: ${f.err}`).join('\n') : `${list[0].err}. Appen prøver igjen automatisk. Klikk for å se kildene.`, 'nk:sources');
+});
+// kursvarsel for aksjer i porteføljen eller på følgelista
+engine.events.on('price', list => {
+  const f = list[0];
+  notify(list.length > 1 ? `${list.length} kursbevegelser` : `${f.name} ${f.pct > 0 ? 'opp' : 'ned'} ${Math.abs(f.pct).toFixed(1).replace('.', ',')} %`,
+    list.slice(0, 4).map(x => `${x.name}: ${x.pct > 0 ? '+' : '−'}${Math.abs(x.pct).toFixed(1).replace('.', ',')} % i dag`).join('\n'), 'nk:market:' + f.sym);
+});
 // bytte mellom stabil og beta: glem en nedlastet beta og se etter oppdateringer på nytt
 engine.events.on('channel', ch => {
   if (pendingUpdate && ch === 'stable' && isBeta(pendingUpdate.ver)) { try { fs.unlinkSync(pendingUpdate.file); } catch {} pendingUpdate = null; buildTrayMenu(); }

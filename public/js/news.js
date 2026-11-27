@@ -23,9 +23,22 @@ function coverageText(e){const c=coverage(e);
   return`Bekreftet av ${c.outs.length} uavhengige medier (${parts.join(', ')}).`+(c.by.size===1&&!c.by.has('Offisiell')?` Bare ${[...c.by.keys()][0]==='Norge'?'norske':'medier fra '+[...c.by.keys()][0]} så langt.`:'')}
 
 // ---------- døgnet oppsummert ----------
-function digest(){const box=$('digestList');if(!box)return;const cut=REF()-864e5;
-  const top=EVENTS.filter(e=>catOn(e.cat)&&inScope(e)&&ms(e.last)>=cut).sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,5);
-  $('digest').hidden=!top.length;box.textContent='';
+// «Siden sist»: når du kommer tilbake etter minst fire timer, viser oppsummeringen det viktigste som har skjedd mens du var borte
+let SINCE=null;{const s0=store.get('nk-seen',0);if(s0&&Date.now()-s0>4*3600e3)SINCE=s0}
+const markSeen=()=>{if(!document.hidden&&!HIST)store.set('nk-seen',Date.now())};
+setInterval(markSeen,60e3);setTimeout(markSeen,5e3);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(!HIST)store.set('nk-seen',Date.now());return}
+  const s0=store.get('nk-seen',0);if(s0&&Date.now()-s0>4*3600e3){SINCE=s0;$('digest').open=true;digest()}markSeen()});
+$('digestX').onclick=()=>{SINCE=null;digest()};
+function digest(){const box=$('digestList');if(!box)return;
+  const since=SINCE&&S.tl==null&&!HIST?SINCE:null,cut=since||REF()-864e5;
+  const pool=EVENTS.filter(e=>catOn(e.cat)&&inScope(e)&&inSrcList(e)&&(since?ms(e.date)>=since:ms(e.last)>=cut));
+  if(since&&!EVENTS.length){$('digest').hidden=true;return}
+  if(since&&!pool.length){SINCE=null;return digest()}
+  const top=[...pool].sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,since?6:5);
+  $('digest').hidden=!top.length;$('digest').classList.toggle('since',!!since);box.textContent='';
+  $('digestT').textContent=since?'Siden sist du var her, '+dfmt.format(new Date(since)):'Døgnet oppsummert';
+  $('digestM').hidden=!since;if(since){const big=pool.filter(e=>e.score>=3.5).length;$('digestN').textContent=pool.length+(pool.length===1?' ny hendelse':' nye hendelser')+(big?', '+big+(big===1?' stor sak':' store saker'):'')}
   for(const e of top){const li=document.createElement('li'),b=document.createElement('button');b.type='button';
     const t=document.createElement('span');t.textContent=e.title;const m=document.createElement('small');const n=coverage(e).outs.length;
     m.textContent=[e.place,n>1?n+' medier':e.src].filter(Boolean).join(', ');b.append(t,m);b.onclick=()=>{S.tab='all';S.cats=new Set(KEYS);refresh();select(e.id,true)};li.append(b);box.append(li)}}

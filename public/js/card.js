@@ -1,8 +1,8 @@
 // Nyhetskloden: card.js (lastes i rekkefølge fra index.html, deler globale navn med de andre filene)
 // ---------- kort ----------
 let cardEv=null;
-function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star}){
-  const c=$('card');c.hidden=false;c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
+function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star,img}){
+  const c=$('card');c.hidden=false;cardImg(img);c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
   $('cCov').hidden=true;$('cQueue').hidden=true;
   $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;const mm=$('cMeta');mm.textContent='';for(const x of (Array.isArray(meta)?meta:[meta]).filter(Boolean)){const sp=document.createElement('span');sp.textContent=x;mm.append(sp)}$('cText').textContent=text||'';$('cText').hidden=!text;
   const ul=$('cSrcs');ul.textContent='';const many=srcs&&srcs.length>1;ul.hidden=!many;$('cFlow').hidden=!many;
@@ -19,6 +19,9 @@ function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star}){
   $('cShare').hidden=!ok;$('cShareBox').hidden=true;shareUrl=ok?url:null;$('cTk').hidden=true;$('cLess').hidden=!star;$('cLessBox').hidden=true;
 }
 let shareUrl=null;
+// bilde fra kilden (skjules hvis det ikke lastes, eller hvis bilder er slått av)
+function cardImg(src){const im=$('cImg');const ok=typeof src==='string'&&src.startsWith('https://')&&F.images!==false;im.hidden=true;im.removeAttribute('src');
+  if(!ok)return;im.onload=()=>{if(im.naturalWidth>=120)im.hidden=false};im.onerror=()=>{im.hidden=true};im.src=src}
 $('cLess').onclick=()=>{const b=$('cLessBox');if(!cardEv)return;b.hidden=!b.hidden;if(b.hidden)return;$('cShareBox').hidden=true;
   const e=cardEv,c=CATS[e.cat]||CATS.annet,srcs=[...new Set(e.items.map(n=>n.src))];
   const stop=new Set('etter mellom eller blir skal ikke dette denne disse også mens fordi under over mange flere sier nytt første siste about after their there these says said with from into over amid more what when where while would could'.split(' '));
@@ -47,7 +50,7 @@ function select(id,go){
   const c=CATS[e.cat];
   showCard({color:c.c,tag:c.n+(e.score>=7?', stor sak':''),title:e.title,orig:e.orig,
     meta:[e.place||(e.lat==null?'Uten sted':null),when(e),e.watch.length?'Følger «'+e.watch.join('», «')+'»':null,(e.srcs.length>1?'Kilder: ':'Kilde: ')+e.srcs.join(', ')],
-    text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden'),star:true});
+    text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden'),star:true,img:(e.items.find(n=>n.img&&n.url===e.url)||e.items.find(n=>n.img)||{}).img});
   $('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';cardTickers(e);
   $('cCov').textContent=coverageText(e);$('cCov').hidden=false;queueBtn();
   if(go&&e.lat!=null&&map){const no=ccOf(e)==='NO';map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),no?5.2:e.exact?4.5:4),duration:reduced?0:1800,essential:true})}

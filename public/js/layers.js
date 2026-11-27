@@ -8,6 +8,11 @@ function vehicleIcon(kind){const s=40,c=document.createElement('canvas');c.width
   else{x.fillStyle='#5eead4';x.strokeStyle='#04312b';x.lineWidth=1.4;const p=new Path2D('M0-12 6 6 0 3-6 6Z');x.fill(p);x.shadowColor='transparent';x.stroke(p)}
   return{width:s,height:s,data:x.getImageData(0,0,s,s).data}}
 function addExtraLayers(){
+  map.on('moveend',()=>nightImgUpdate());
+  // ekte nattbilder fra NASA (VIIRS Black Marble) når du zoomer inn der det er natt
+  map.addSource('bm',{type:'raster',tiles:['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png'],tileSize:256,maxzoom:8,
+    attribution:'Nattbilder: <a href="https://earthobservatory.nasa.gov/features/NightLights" target="_blank" rel="noopener">NASA Black Marble</a>'});
+  map.addLayer({id:'bm',type:'raster',source:'bm',minzoom:3.2,layout:{visibility:'none'},paint:{'raster-opacity':['interpolate',['linear'],['zoom'],3.2,0,4.6,.9],'raster-fade-duration':300}});
   // bylys om natta (ligger under alt annet)
   map.addSource('lights',{type:'geojson',data:EMPTY});
   // varmemodell: byer som ligger tett smelter sammen til et mykt lys, slik det ser ut fra verdensrommet
@@ -19,7 +24,7 @@ function addExtraLayers(){
     'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',.08,'rgba(120,70,10,0)',.22,'rgba(190,120,40,.35)',.45,'rgba(240,175,80,.6)',.7,'rgba(255,214,130,.82)',1,'rgba(255,244,214,.95)']}});
   // strømpris i de fem prisområdene
   map.addSource('power',{type:'geojson',data:EMPTY});
-  map.addLayer({id:'power',type:'symbol',source:'power',minzoom:3.2,maxzoom:8,layout:{'text-field':['get','label'],'text-font':FONT_B,'text-size':12,'text-justify':'center','text-allow-overlap':true},
+  map.addLayer({id:'power',type:'symbol',source:'power',minzoom:3.4,maxzoom:6.4,layout:{'text-field':['get','label'],'text-font':FONT_B,'text-size':11.5,'text-justify':'center','text-allow-overlap':false,'text-padding':6},
     paint:{'text-color':['get','col'],'text-halo-color':'rgba(5,10,18,.95)','text-halo-width':1.8}});
   // veitrafikk
   map.addSource('traffic',{type:'geojson',data:EMPTY});
@@ -40,13 +45,14 @@ function addExtraLayers(){
   map.addSource('radar',{type:'raster',tiles:[],tileSize:256,maxzoom:7,attribution:'Radar: <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a>'});
   map.addLayer({id:'radar',type:'raster',source:'radar',layout:{visibility:'none'},paint:{'raster-opacity':.7,'raster-fade-duration':0}});
   map.addSource('wxmap',{type:'geojson',data:EMPTY});
-  map.addLayer({id:'wxmap',type:'symbol',source:'wxmap',minzoom:3.6,layout:{'icon-image':['concat','wx-',['get','icon']],'icon-size':.5,'icon-allow-overlap':false,
+  map.addLayer({id:'wxmap',type:'symbol',source:'wxmap',minzoom:4.3,layout:{'icon-image':['concat','wx-',['get','icon']],'icon-size':.5,'icon-allow-overlap':false,'icon-padding':6,'text-padding':4,
     'text-field':['get','t'],'text-font':FONT_B,'text-size':12,'text-anchor':'left','text-offset':[1.05,0],'text-optional':true,'symbol-sort-key':['get','rank']},
     paint:{'text-color':['case',['>',['get','temp'],0],'#ff8a7a','#7cc0ff'],'text-halo-color':'rgba(5,10,18,.95)','text-halo-width':1.6}});
+  map.moveLayer('power'); // strømprisen vinner over værsymbolene når de kolliderer
   map.addSource('mkts',{type:'geojson',data:EMPTY});
-  map.addLayer({id:'mk-glow',type:'circle',source:'mkts',paint:{'circle-radius':16,'circle-color':['get','col'],'circle-opacity':.22,'circle-blur':.8}});
-  map.addLayer({id:'mk-dot',type:'circle',source:'mkts',paint:{'circle-radius':5,'circle-color':['get','col'],'circle-stroke-width':1.5,'circle-stroke-color':'#08111b'}});
-  map.addLayer({id:'mk-txt',type:'symbol',source:'mkts',layout:{'text-field':['get','label'],'text-font':FONT_B,'text-size':11,'text-anchor':'top','text-offset':[0,.9],'text-justify':'center','text-max-width':30,'text-allow-overlap':false},
+  map.addLayer({id:'mk-glow',type:'circle',source:'mkts',maxzoom:5,paint:{'circle-radius':16,'circle-color':['get','col'],'circle-opacity':.22,'circle-blur':.8}});
+  map.addLayer({id:'mk-dot',type:'circle',source:'mkts',maxzoom:5,paint:{'circle-radius':5,'circle-color':['get','col'],'circle-stroke-width':1.5,'circle-stroke-color':'#08111b'}});
+  map.addLayer({id:'mk-txt',type:'symbol',source:'mkts',maxzoom:4.2,layout:{'text-field':['get','label'],'text-font':FONT_B,'text-size':11,'text-anchor':'top','text-offset':[0,.9],'text-justify':'center','text-max-width':30,'text-allow-overlap':false},
     paint:{'text-color':['get','col'],'text-halo-color':'rgba(5,10,18,.95)','text-halo-width':1.6}});
   map.addImage('plane',vehicleIcon('plane'),{pixelRatio:2});map.addImage('ship',vehicleIcon('ship'),{pixelRatio:2});
   map.addSource('ships',{type:'geojson',data:EMPTY});

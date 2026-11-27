@@ -89,7 +89,10 @@ function buildEvents(){
 function inScope(e){if(S.scope==='all')return true;const no=ccOf(e)==='NO'||(e.lat==null&&/^(NRK|VG|Aftenposten|Dagbladet|E24)/.test(e.src||''));return S.scope==='no'?no:!no&&e.lat!=null}
 function base(){const q=S.q.toLowerCase(),P=+S.period*60;
   return EVENTS.filter(e=>{const a=age(e);return a>=0&&a<=P&&inScope(e)&&(S.tab!=='watch'||e.watch.length)&&(S.tab!=='near'||nearMe(e))&&
-    (!q||e.items.some(n=>(n.title+' '+(n.titleNo||'')+' '+(n.text||'')+' '+(n.place||'')).toLowerCase().includes(q)))})}
+    inSrcList(e)&&(!q||e.items.some(n=>qHit(n,q)))})}
+// søk: eksakt treff først, ellers tåler det skrivefeil, bøyninger og andre stavemåter (Kharkov → Kharkiv)
+const qHay=n=>n._hay||(n._hay=(n.title+' '+(n.titleNo||'')+' '+(n.text||'')+' '+(n.place||'')+' '+(n.src||'')).toLowerCase());
+const qHit=(n,q)=>qHay(n).includes(q)||FUZZY.match(q,n._fz||(n._fz=FUZZY.prep(qHay(n))));
 const shown=()=>base().filter(e=>catOn(e.cat)&&(!S.cc||ccOf(e)===S.cc||e.ccs.includes(S.cc)));
 const view=()=>{const ev=shown();return S.tab==='top'?[...ev].sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,25):ev};
 const size=e=>e.score>=7?'x':(e.score>=3.5||e.top)?'t':'n';

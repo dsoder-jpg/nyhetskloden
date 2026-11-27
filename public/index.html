@@ -73,6 +73,7 @@
     <div class="wxpop" id="wxPop" hidden></div>
     <div class="card" id="card" hidden>
       <button class="x" id="cardX" aria-label="Lukk">×</button>
+      <img class="cimg" id="cImg" alt="" referrerpolicy="no-referrer" hidden>
       <span class="tag" id="cTag"></span>
       <h3 id="cTitle"></h3>
       <div class="orig" id="cOrig"></div>
@@ -90,14 +91,14 @@
   <aside class="side" id="side">
     <div class="sidetabs" id="sideTabs" role="tablist" hidden><button role="tab" data-v="news" aria-selected="true">Nyheter</button><button role="tab" data-v="market" aria-selected="false">Marked <span id="sideMkt"></span></button></div>
     <p class="sumline newsonly" id="sumline">Henter nyheter …</p>
-    <details class="digest newsonly" id="digest" hidden><summary>Døgnet oppsummert</summary><ol id="digestList"></ol></details>
+    <details class="digest newsonly" id="digest" hidden><summary id="digestT">Døgnet oppsummert</summary><div class="dgm" id="digestM" hidden><span id="digestN"></span><button class="btn" type="button" id="digestX">Ferdig</button></div><ol id="digestList"></ol></details>
     <details class="mkt" id="mkt" hidden><summary><h2>Marked</h2><span class="sum" id="mSum"></span></summary>
       <div class="mtools"><div class="msearch"><input type="search" id="mQ" placeholder="Søk etter aksje, indeks, valuta eller krypto" aria-label="Søk i markedet" autocomplete="off"><ul id="mRes" hidden></ul></div>
       <div class="mrange" id="mRange" role="group" aria-label="Periode"></div></div>
       <div class="mb" id="mBody"></div></details>
     <div class="sh newsonly">
       <div class="tabs" id="tabs"><button data-t="all">Alle</button><button data-t="top">Viktigst</button><button data-t="near" id="tabNear" hidden>Nær meg</button><button data-t="threads">Tråder</button><button data-t="watch">Følger</button><button data-t="saved">Lagret</button><button data-t="queue" id="tabQueue">Lesekø</button></div>
-      <input class="search" id="q" type="search" placeholder="Søk i sakene" aria-label="Søk i sakene">
+      <div class="qrow"><input class="search" id="q" type="search" placeholder="Søk i sakene" aria-label="Søk i sakene"><select id="srcSel" aria-label="Kildeliste" title="Vis bare saker fra en kildeliste"></select></div>
       <div class="cats" id="cats" role="group" aria-label="Kategorier" title="Klikk for å vise bare én kategori. Ctrl-klikk for å velge flere."></div>
       <div class="ctry" id="ctry" hidden>
         <header><h3 id="ctName"></h3><button class="btn" id="ctX">Vis alle land</button></header>
@@ -231,6 +232,10 @@
      <form class="addrow" id="tkForm"><input type="text" id="tkIn" placeholder="For eksempel DNB.OL" aria-label="Ny ticker" autocomplete="off"><button class="btn primary" type="submit">Legg til</button></form>
      <div class="meta" id="tkStatus"></div>
      <div class="chips2" id="tkChips"></div>
+     <h3>Portefølje og kursvarsler</h3>
+     <p class="meta">Legg aksjer i porteføljen fra detaljvisningen i markedet: klikk på en kurs eller søk den opp, og fyll inn antall og kjøpskurs. Porteføljen lagres bare på denne PC-en og vises ikke på mobilen.</p>
+     <div class="opt nk-only"><div><b>Varsle om store kursbevegelser</b><p>Gjelder aksjer i porteføljen og aksjer du følger. Ett varsel per aksje og retning per dag.</p></div><label class="tg"><input type="checkbox" data-k="priceAlerts"><i></i></label></div>
+     <div class="opt nk-only"><div><b>Grense for varsel</b><p>Hvor mye kursen må ha endret seg i løpet av dagen.</p></div><select data-k="priceAlertPct" data-num><option value="2">±2 %</option><option value="3">±3 %</option><option value="5">±5 %</option><option value="7">±7 %</option><option value="10">±10 %</option></select></div>
      <p class="meta">Kursene kommer fra Yahoo Finance, kan være forsinket og er ikke investeringsråd.</p>
     </section>
 
@@ -269,6 +274,7 @@
      <div class="opt nk-only"><div><b>Samle varsler</b><p>Flere store saker innen ett minutt blir ett varsel.</p></div><label class="tg"><input type="checkbox" data-k="notifyGroup"><i></i></label></div>
      <div class="opt nk-only"><div><b>Ny utvikling i lagrede saker</b><p>Varsel når en sak du har lagret med ☆ får nye kilder eller oppdateringer.</p></div><label class="tg"><input type="checkbox" data-k="notifyFollow"><i></i></label></div>
      <div class="opt nk-only"><div><b>Saker som nevner ord jeg følger</b><p>Gir alltid varsel, uansett hvor viktig saken er.</p></div><label class="tg"><input type="checkbox" data-k="notifyWatch"><i></i></label></div>
+     <div class="opt nk-only"><div><b>Kilder som er nede</b><p>Ett varsel når en kilde har feilet i over et døgn.</p></div><label class="tg"><input type="checkbox" data-k="notifyDown"><i></i></label></div>
      <div class="opt nk-only"><div><b>Lyd</b><p>Spill av Windows-lyden ved varsel.</p></div><label class="tg"><input type="checkbox" data-k="sound"><i></i></label></div>
      <div class="opt nk-only"><div><b>Stille timer</b><p>Ingen varsler i dette tidsrommet.</p><div class="inl"><select id="qFrom"></select><span>til</span><select id="qTo"></select></div></div><label class="tg"><input type="checkbox" id="qOn"><i></i></label></div>
      <div class="opt nk-only"><div><b>Daglig oppsummering</b><p>Et varsel med døgnets fem viktigste saker.</p><div class="inl"><span>Klokka</span><select data-k="digestTime" id="dgTime"></select></div></div><label class="tg"><input type="checkbox" data-k="digest"><i></i></label></div>
@@ -287,6 +293,9 @@
      <div class="opt"><div><b>Buer mellom land</b><p>Linjer mellom land som nevnes i samme sak.</p></div><label class="tg"><input type="checkbox" data-layer="arcs"><i></i></label></div>
      <div class="opt"><div><b>Farevarsler fra MET</b><p>Gule, oransje og røde varselområder i Norge.</p></div><label class="tg"><input type="checkbox" data-layer="alerts"><i></i></label></div>
      <div class="opt"><div><b>Natt</b><p>Skygge over den delen av jorda der det er natt.</p></div><label class="tg"><input type="checkbox" data-layer="night"><i></i></label></div>
+     <div class="opt"><div><b>Nattbilder fra NASA</b><p>Når du zoomer inn på et område der det er natt, vises ekte satellittbilder av bylysene.</p></div><label class="tg"><input type="checkbox" data-f="nightImg"><i></i></label></div>
+     <div class="opt"><div><b>Kloden snurrer sakte</b><p>Når du ikke har rørt kartet på et minutt, og hele kloden vises.</p></div><label class="tg"><input type="checkbox" data-f="spin"><i></i></label></div>
+     <div class="opt"><div><b>Bilder i sakene</b><p>Viser bildet fra kilden øverst i saken, når kilden har et.</p></div><label class="tg"><input type="checkbox" data-f="images"><i></i></label></div>
      <div class="opt"><div><b>Animasjoner</b><p>Pulserende nye saker og bevegelse i buene.</p></div><label class="tg"><input type="checkbox" data-ui="anim"><i></i></label></div>
      <div class="opt"><div><b>Panelet «Mest omtalt»</b></div><label class="tg"><input type="checkbox" data-ui="legend"><i></i></label></div>
      <div class="opt"><div><b>Tidslinje</b></div><label class="tg"><input type="checkbox" data-ui="timeline"><i></i></label></div>
@@ -297,6 +306,12 @@
     <section data-sec="sources">
      <p class="lead">Slå av kilder du ikke vil ha. Endringer gjelder fra neste henting, som starter med en gang.</p>
      <div class="opt"><div><p id="srcHealth" style="margin:0"></p></div><button class="btn" type="button" id="srcRetry" hidden>Prøv alle på nytt</button></div>
+     <h3>Kildelister</h3>
+     <p class="meta">Lag egne lister og bytt mellom dem i lista ved søkefeltet. Klikk på en liste for å endre den.</p>
+     <div class="chips2" id="slChips"></div>
+     <form class="sledit" id="slForm"><div class="addrow"><input type="text" id="slName" placeholder="Navn på lista, for eksempel Morgenlesing" aria-label="Navn på kildelista" autocomplete="off" maxlength="40"><input type="search" id="slFind" placeholder="Finn kilde" aria-label="Finn kilde" style="max-width:150px"><button class="btn primary" type="submit">Lagre lista</button></div>
+      <div class="slpick" id="slPick"></div><div class="meta" id="slStatus"></div></form>
+     <h3>Alle kilder</h3>
      <div class="srclist" id="srcTbl"></div>
      <h3>Egne kilder</h3>
      <p class="meta">Hvilken som helst RSS- eller Atom-feed som starter med https://.</p>
@@ -359,6 +374,7 @@
 <script src="/vendor/maplibre-gl.js"></script>
 <script src="/vendor/topojson-client.min.js"></script>
 <script src="/vendor/qrcode.js"></script>
+<script src="/js/fuzzy.js"></script>
 <script src="/js/core.js"></script>
 <script src="/js/map.js"></script>
 <script src="/js/card.js"></script>

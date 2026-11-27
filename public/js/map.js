@@ -51,7 +51,12 @@ class Tools{onAdd(){const d=document.createElement('div');d.className='maplibreg
 let spin=false;
 function spinStep(){if(!spin||!map)return;if(map.isMoving()||map.getZoom()>4){setTimeout(spinStep,500);return}
   const c=map.getCenter();map.easeTo({center:[c.lng+6,c.lat],duration:3000,easing:t=>t});map.once('moveend',spinStep)}
-['mousedown','touchstart','wheel'].forEach(ev=>$('map').addEventListener(ev,()=>{if(spin){spin=false;const b=$('bSpin');if(b)b.setAttribute('aria-pressed','false')}},{passive:true}));
+let lastTouch=Date.now();
+['mousedown','touchstart','wheel'].forEach(ev=>$('map').addEventListener(ev,()=>{lastTouch=Date.now();if(spin){spin=false;const b=$('bSpin');if(b)b.setAttribute('aria-pressed','false')}},{passive:true}));
+document.addEventListener('keydown',()=>{lastTouch=Date.now()},true);
+// kloden snurrer sakte av seg selv når ingen har rørt den på et minutt og hele kloden vises
+setInterval(()=>{if(!ready||spin||F.spin===false||reduced||document.hidden||playing||S.sel||Date.now()-lastTouch<60e3||map.getZoom()>3||map.isMoving())return;
+  spin=true;const b=$('bSpin');if(b)b.setAttribute('aria-pressed','true');spinStep()},5e3);
 
 function iconImage(cat,kind){const r=kind==='x'?17:kind==='t'?13:10,pad=kind==='x'?9:3,s=(r+pad)*2,pr=2,c=document.createElement('canvas');c.width=c.height=s*pr;const x=c.getContext('2d');x.scale(pr,pr);
   if(kind==='x'){const g=x.createRadialGradient(s/2,s/2,r*.8,s/2,s/2,r+pad);g.addColorStop(0,CATS[cat].c+'aa');g.addColorStop(1,CATS[cat].c+'00');x.fillStyle=g;x.beginPath();x.arc(s/2,s/2,r+pad,0,7);x.fill()}
@@ -104,6 +109,9 @@ function onLoad(){
     'icon-allow-overlap':true,'icon-ignore-placement':true,'symbol-sort-key':['get','sort'],
     'text-field':['case',['>',['get','nsrc'],1],['to-string',['get','nsrc']],''],'text-font':FONT_B,'text-size':10.5,'text-offset':[1.15,-1.05],'text-allow-overlap':true,'text-ignore-placement':true},
     paint:{'text-color':'#fff','text-halo-color':'#1d4ed8','text-halo-width':3}});
+  // nye saker «popper» opp under avspilling av tidslinjen
+  map.addSource('pop',{type:'geojson',data:EMPTY});
+  map.addLayer({id:'pop',type:'circle',source:'pop',paint:{'circle-radius':['get','r'],'circle-color':['get','col'],'circle-opacity':['*',.25,['get','o']],'circle-stroke-width':2,'circle-stroke-color':['get','col'],'circle-stroke-opacity':['get','o']}});
   map.addLayer({id:'pt-sel',type:'circle',source:'news',filter:['==',['get','id'],''],paint:{'circle-radius':21,'circle-color':'rgba(0,0,0,0)','circle-stroke-width':2.5,'circle-stroke-color':'#fff'}});
   // samspill
   const pop=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:16,maxWidth:'300px'});
@@ -133,7 +141,7 @@ for(const x of $('basemap').children)x.setAttribute('aria-pressed',x.dataset.b==
 const LAYER_IDS={heat:['heat'],arcs:['arcs','arcs-base'],alerts:['alerts','alerts-line'],night:['night']};
 function applyLayers(){for(const i of $('layers').querySelectorAll('input[data-l]'))i.checked=!!S.layers[i.dataset.l];if(!ready)return;
   for(const[k,ids]of Object.entries(LAYER_IDS))for(const id of ids)if(map.getLayer(id))map.setLayoutProperty(id,'visibility',S.layers[k]?'visible':'none')}
-$('layers').addEventListener('change',e=>{const i=e.target;if(i.dataset.f){setFeature(i.dataset.f,i.checked);return}if(!i.dataset.l)return;S.layers[i.dataset.l]=i.checked;store.set('nk-layers',S.layers);applyLayers();if(i.dataset.l==='night')loadLights()});
+$('layers').addEventListener('change',e=>{const i=e.target;if(i.dataset.f){setFeature(i.dataset.f,i.checked);return}if(!i.dataset.l)return;S.layers[i.dataset.l]=i.checked;store.set('nk-layers',S.layers);applyLayers();if(i.dataset.l==='night'){loadLights();nightImgUpdate()}});
 
 const DASH=[[0,4,3],[.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,.5],[3,4,0],[0,.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,.5]];
 let t0=performance.now(),dashStep=-1;const flash=new Map();
@@ -145,6 +153,13 @@ function animate(){if(!ready)return;const t=(performance.now()-t0)/1000;
 
 let prevHeat=new Set(),prevSel=null;
 function heatMap(){const h=new Map();for(const e of (S.tab==='top'?view():base())){if(!catOn(e.cat))continue;const cc=ccOf(e);if(!cc)continue;h.set(cc,(h.get(cc)||0)+1+e.score/5)}return h}
+// ringer som vokser og blekner der en ny sak dukker opp
+let POPS=[],popRaf=null;
+function popAdd(evs){if(!ready||reduced||UI.anim===false)return;const t0=performance.now();for(const e of evs)if(e.lat!=null)POPS.push({t0,lon:e.lon,lat:e.lat,col:CATS[e.cat].c,big:e.score>=3.5});
+  if(POPS.length>60)POPS=POPS.slice(-60);if(!popRaf)popRaf=requestAnimationFrame(popTick)}
+function popTick(now){POPS=POPS.filter(p=>now-p.t0<1100);
+  map.getSource('pop').setData({type:'FeatureCollection',features:POPS.map(p=>{const k=(now-p.t0)/1100;return{type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{r:6+k*(p.big?34:24),o:1-k,col:p.col}}})});
+  popRaf=POPS.length?requestAnimationFrame(popTick):null}
 function updateMap(){
   if(!ready)return;
   const ev=view(),feats=[];

@@ -140,9 +140,10 @@ const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], da
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
   closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false, widget: false, widgetOnTop: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true },
   datex: { user: '', pass: '' },
   muteWords: [], hiddenSrc: [], notifyCats: null, notifyFollow: true, notifyGroup: true, followEids: [],
+  srcLists: [], portfolio: [], priceAlerts: true, priceAlertPct: 5, notifyDown: true,
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
 function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) }, datex: { ...DEFAULTS.datex, ...(s.datex || {}) } }; } catch {} }
@@ -151,12 +152,12 @@ const publicSettings = () => {
   const { deeplKey, usage, ships, lanToken, datex, ...rest } = settings;
   return { ...rest, datexUser: datex && datex.user || '', hasDatexPass: !!(datex && datex.pass), hasKey: !!deeplKey, usedToday: usage.day === today() ? usage.chars : 0,
     shipsClient: ships.clientId || '', hasShipsSecret: !!ships.clientSecret, lanUrls: lanUrls(),
-    builtinFeeds: BUILTIN_FEEDS.map(f => ({ url: f.url, src: f.src, lang: f.lang })) };
+    builtinFeeds: BUILTIN_FEEDS.map(f => ({ url: f.url, src: f.src, lang: f.lang, cat: f.cat || null })) };
 };
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown']) if (typeof b[k] === 'boolean') settings[k] = b[k];
   if (b.datex && typeof b.datex === 'object') {
     if (typeof b.datex.user === 'string') settings.datex.user = b.datex.user.trim().slice(0, 100);
     if (typeof b.datex.pass === 'string' && b.datex.pass) settings.datex.pass = b.datex.pass.slice(0, 200);
@@ -179,6 +180,11 @@ function applySettings(b) {
   if (Array.isArray(b.muteWords)) settings.muteWords = [...new Set(b.muteWords.map(w => String(w).trim().toLowerCase()).filter(w => w.length >= 2))].slice(0, 100).map(w => w.slice(0, 40));
   if (Array.isArray(b.hiddenSrc)) settings.hiddenSrc = [...new Set(b.hiddenSrc.map(String))].slice(0, 100).map(w => w.slice(0, 60));
   if (Array.isArray(b.followEids)) settings.followEids = [...new Set(b.followEids.map(String).filter(x => /^https?:\/\//.test(x)))].slice(-100);
+  if (Array.isArray(b.srcLists)) settings.srcLists = b.srcLists.filter(l => l && typeof l.name === 'string' && l.name.trim() && Array.isArray(l.srcs)).slice(0, 20)
+    .map(l => ({ name: l.name.trim().slice(0, 40), srcs: [...new Set(l.srcs.map(String))].slice(0, 200).map(x => x.slice(0, 60)) })).filter((l, i, a) => a.findIndex(x => x.name === l.name) === i);
+  if (Array.isArray(b.portfolio)) settings.portfolio = b.portfolio.filter(h => h && /^[A-Z0-9^.=\-]{1,15}$/.test(String(h.sym || '').toUpperCase()) && +h.qty > 0).slice(0, 50)
+    .map(h => ({ sym: String(h.sym).toUpperCase(), qty: clampNum(h.qty, 0, 1e9, 0), price: clampNum(h.price, 0, 1e9, 0) }));
+  if (b.priceAlertPct != null) settings.priceAlertPct = clampNum(b.priceAlertPct, 1, 50, 5);
   if (b.home === null) settings.home = null;
   else if (b.home && isFinite(b.home.lat) && isFinite(b.home.lon)) settings.home = { name: String(b.home.name || '').slice(0, 60), lat: +b.home.lat, lon: +b.home.lon };
   if (b.nearKm != null) settings.nearKm = clampNum(b.nearKm, 5, 500, 50);
@@ -323,8 +329,8 @@ function severity(i) {
 }
 
 // ---------- gruppering av saker om samme hendelse ----------
-const STOP = new Set('this that with from have will been were their after over into about than what when where which while would could says said says amid more most also just only first year years week news live update updates video watch over under være etter etter mellom eller blir ble skal kan vil ikke dette denne disse også både mens fordi under over mange flere sier sier mener nytt nyhet nyheter nrk'.split(' '));
-const tokens = s => new Set((s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').match(/[a-zæøå0-9]{4,}/g)?.filter(w => !STOP.has(w)) || []);
+const FUZZY = require('./public/js/fuzzy.js');
+const tokens = s => FUZZY.tokens(s);
 function sameEvent(a, b) {
   const ta = a._tok, tb = b._tok; let shared = 0;
   for (const w of ta) if (tb.has(w)) shared++;
@@ -377,6 +383,27 @@ function decode(s = '') {
     .replace(/\s+/g, ' ').trim();
 }
 function tag(xml, name) { const m = xml.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, 'i')); return m ? m[1] : ''; }
+// bilde til saken: media:content / media:thumbnail / enclosure / første <img> i teksten (kun https)
+function pickImage(item) {
+  const cands = [];
+  for (const m of item.matchAll(/<media:(?:content|thumbnail)\b[^>]*>/gi)) {
+    const u = (m[0].match(/\burl="([^"]+)"/i) || [])[1], t = (m[0].match(/\b(?:type|medium)="([^"]+)"/i) || [])[1] || 'image', w = +((m[0].match(/\bwidth="(\d+)"/i) || [])[1] || 0);
+    if (u && /image/i.test(t)) cands.push({ u, w });
+  }
+  for (const m of item.matchAll(/<enclosure\b[^>]*>/gi)) { const u = (m[0].match(/\burl="([^"]+)"/i) || [])[1]; if (u && /type="image/i.test(m[0])) cands.push({ u, w: 0 }); }
+  if (!cands.length) {
+    const html = (tag(item, 'description') + tag(item, 'content:encoded') + tag(item, 'content')).replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    const m = html.match(/<img[^>]+src=["']([^"']+)["']/i); if (m) cands.push({ u: m[1], w: 0 });
+  }
+  cands.sort((a, b) => (b.w || 0) - (a.w || 0));
+  for (const c of cands) {
+    let u = c.u.replace(/&amp;/g, '&').trim();
+    if (u.startsWith('//')) u = 'https:' + u;
+    if (/^http:\/\//i.test(u)) u = 'https://' + u.slice(7);
+    if (/^https:\/\/[^\s"'<>]+$/i.test(u) && !/\.(gif|svg)(\?|$)/i.test(u) && !/pixel|tracking|1x1|spacer/i.test(u)) return u.slice(0, 600);
+  }
+  return null;
+}
 function parseRss(xml) {
   const items = [...xml.matchAll(/<item[\s>][\s\S]*?<\/item>/gi)].map(m => m[0]);
   const entries = items.length ? [] : [...xml.matchAll(/<entry[\s>][\s\S]*?<\/entry>/gi)].map(m => m[0]); // Atom
@@ -392,6 +419,8 @@ function parseRss(xml) {
     else if (tag(item, 'geo:lat') && isFinite(glat) && isFinite(glon)) { out.lat = glat; out.lon = glon; }
     const alert = decode(tag(item, 'gdacs:alertlevel')).toLowerCase();
     if (alert) { out.alert = alert; if (alert === 'red' || alert === 'orange') out.top = true; if (alert === 'green') out.minor = true; }
+    const img = pickImage(item);
+    if (img) out.img = img;
     if (isNaN(new Date(out.date))) out.date = new Date().toISOString();
     return out;
   }).filter(i => i.title && /^https:\/\//.test(i.link));
@@ -484,7 +513,8 @@ function searchArchive(q, days = 90, limit = 200) {
   if (!ARCHIVE_DIR) return [];
   const words = (q || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(w => w.length > 1);
   const from = new Date(Date.now() - days * 864e5).toISOString();
-  const seen = new Set(), out = [];
+  const seen = new Set(), out = [], fuzzy = [];
+  const heads = FUZZY.prep(q || '').map(w => FUZZY.norm(w.f).slice(0, 3) === w.f.slice(0, 3) ? w.f.slice(0, 3) : '').filter(Boolean);
   let files = [];
   try { files = fs.readdirSync(ARCHIVE_DIR).filter(f => f.endsWith('.jsonl')).sort().reverse(); } catch { return []; }
   for (const f of files) {
@@ -495,12 +525,17 @@ function searchArchive(q, days = 90, limit = 200) {
       let n; try { n = JSON.parse(lines[i]); } catch { continue; }
       if (n.date < from || seen.has(n.id)) continue;
       const hay = (n.title + ' ' + (n.titleNo || '') + ' ' + (n.place || '') + ' ' + n.src).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-      if (words.length && !words.every(w => hay.includes(w))) continue;
+      if (words.length && !words.every(w => hay.includes(w))) {
+        // tåler skrivefeil, bøyning og andre stavemåter, men bare når begynnelsen av ordene stemmer (raskt filter først)
+        if (fuzzy.length >= limit) continue;
+        const hf = FUZZY.fold(hay); if (!heads.every(h => hf.includes(h)) || !FUZZY.match(q, hf)) continue;
+        seen.add(n.id); fuzzy.push(n); continue;
+      }
       seen.add(n.id); out.push(n);
     }
   }
-  out.sort((a, b) => b.date.localeCompare(a.date));
-  return out.slice(0, limit);
+  out.sort((a, b) => b.date.localeCompare(a.date)); fuzzy.sort((a, b) => b.date.localeCompare(a.date));
+  return out.concat(fuzzy).slice(0, limit);
   // (brukes også av innsikt med stor grense)
 }
 
@@ -520,6 +555,12 @@ async function poll() {
     const offline = tried.length >= 4 && failed.length / tried.length >= 0.8;
     if (offline) for (const f of failed) { FEEDSTATE[f.url] = before[f.url]; status[f.url] = { ...status[f.url], err: 'uten nett', paused: false }; }
     status.net = offline ? { src: 'Internett', ok: false, err: 'PC-en ser ut til å være uten nett', offline: true, since: (status.net && status.net.since) || new Date().toISOString() } : { src: 'Internett', ok: true, n: tried.length - failed.length, hidden: true };
+    // si fra én gang når en kilde har vært nede i et døgn
+    if (!offline && settings.notifyDown !== false) {
+      const down = list.filter(f => { const st = FEEDSTATE[f.url]; return st && st.since && Date.now() - new Date(st.since) > 24 * 3600e3 && st.downNotified !== st.since && !(settings.disabledFeeds || []).includes(f.url); });
+      for (const f of down) FEEDSTATE[f.url].downNotified = FEEDSTATE[f.url].since;
+      if (down.length) events.emit('feeddown', down.map(f => ({ src: f.src, url: f.url, err: FEEDSTATE[f.url].err || 'feiler', since: FEEDSTATE[f.url].since })));
+    }
     saveFeedState();
     const byId = new Map(news.map(n => [n.id, n]));
     const added = [];
@@ -534,7 +575,7 @@ async function poll() {
       const n = {
         id, title: i.title, text: i.desc, url: i.link, date: i.date, src: i.feed.src, lang,
         cat: categorize(i.title, i.desc, i.feed.cat), top: !!(i.feed.top || i.top) && !i.minor,
-        sev: severity(i), ccs, ...(where || {}), ...(isFinite(i.mag) ? { mag: i.mag, tsunami: !!i.tsunami } : {}),
+        sev: severity(i), ccs, ...(i.img ? { img: i.img } : {}), ...(where || {}), ...(isFinite(i.mag) ? { mag: i.mag, tsunami: !!i.tsunami } : {}),
       };
       byId.set(id, n); added.push(n);
     }
@@ -595,6 +636,25 @@ async function pollAlerts() {
   } catch (e) { status.met = { src: 'MET farevarsler', ok: false, err: e.message }; }
 }
 
+// ---------- kursvarsler ----------
+// Aksjer i porteføljen og på følgelista gir ett varsel per dag og retning når dagens endring passerer grensen.
+let PRICE_SEEN = {}, PRICE_FILE = null, priceTimer = null;
+async function checkPrices() {
+  clearTimeout(priceTimer); priceTimer = setTimeout(checkPrices, 10 * 60e3); if (priceTimer.unref) priceTimer.unref();
+  if (!settings.priceAlerts || !settings.features.market) return;
+  const syms = [...new Set([...(settings.portfolio || []).map(h => h.sym), ...(settings.marketWatch || [])])].slice(0, 40);
+  const lim = settings.priceAlertPct || 5, hits = [];
+  for (const sym of syms) {
+    let q; try { q = await X.quoteCached(sym, 5); } catch { continue; }
+    if (q.pct == null || Math.abs(q.pct) < lim || !q.time || Date.now() - new Date(q.time) > 12 * 3600e3) continue;
+    const key = sym + (q.pct > 0 ? '+' : '-') + q.time.slice(0, 10);
+    if (PRICE_SEEN[key]) continue;
+    PRICE_SEEN[key] = Date.now(); hits.push({ sym, name: q.name, pct: q.pct });
+  }
+  for (const [k, t] of Object.entries(PRICE_SEEN)) if (Date.now() - t > 5 * 864e5) delete PRICE_SEEN[k];
+  if (hits.length) { try { fs.writeFileSync(PRICE_FILE, JSON.stringify(PRICE_SEEN)); } catch {} events.emit('price', hits.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))); }
+}
+
 // ---------- webserver ----------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
 function readBody(req) { return new Promise((res, rej) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { res(JSON.parse(b || '{}')); } catch (e) { rej(e); } }); }); }
@@ -602,6 +662,8 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   DATA_FILE = path.join(dataDir, 'news.json'); SETTINGS_FILE = path.join(dataDir, 'settings.json');
   FEEDSTATE_FILE = path.join(dataDir, 'feedstate.json'); ARCHIVE_DIR = path.join(dataDir, 'arkiv');
   try { FEEDSTATE = JSON.parse(fs.readFileSync(FEEDSTATE_FILE, 'utf8')) || {}; } catch { FEEDSTATE = {}; }
+  PRICE_FILE = path.join(dataDir, 'kursvarsler.json'); try { PRICE_SEEN = JSON.parse(fs.readFileSync(PRICE_FILE, 'utf8')) || {}; } catch { PRICE_SEEN = {}; }
+  priceTimer = setTimeout(checkPrices, 90e3); if (priceTimer.unref) priceTimer.unref();
   loadSettings();
   try { news = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); for (const n of news) if (!n.eid) n.eid = n.id; } catch { news = []; }
   const pub = path.join(__dirname, 'public');
@@ -693,7 +755,12 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
     if (url.pathname === '/api/top') return json(X.topEvents(news, 24, 5, settings.catsOff));
     if (url.pathname === '/api/news') return json({ news, lastPoll, nextPoll, pollMin: settings.pollMin, status });
     if (url.pathname === '/api/alerts') return json(alerts);
-    if (url.pathname === '/api/settings' && req.method === 'GET') return json(publicSettings());
+    if (url.pathname === '/api/settings' && req.method === 'GET') { const ps = publicSettings(); if (lan) delete ps.portfolio; return json(ps); }
+    if (url.pathname === '/api/portfolio') {
+      if (lan) return json({ rows: [], lan: true });
+      if (!settings.portfolio.length) return json({ rows: [], value: 0 });
+      try { return json(await X.getPortfolio(settings.portfolio)); } catch (e) { return json({ error: e.message, rows: [] }, 502); }
+    }
     if (url.pathname === '/api/settings' && req.method === 'POST') {
       try {
         const b = await readBody(req);

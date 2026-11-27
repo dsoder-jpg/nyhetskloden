@@ -26,6 +26,20 @@ $('period').addEventListener('click',e=>{const b=e.target.closest('button');if(!
 $('scope').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.scope=b.dataset.s;store.set('nk-scope',S.scope);refresh();
   if(!map)return;if(S.scope==='no')map.fitBounds(NOR_BOUNDS,{padding:60,duration:reduced?0:1600});else if(map.getZoom()>3)map.flyTo({center:map.getCenter(),zoom:1.9,duration:reduced?0:1400})});
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.tab=b.dataset.t;refresh()});
+// ---------- kildelister ----------
+const SRC_BUILTIN=[{id:'',name:'Alle kilder'},{id:'b:no',name:'Bare norske',f:f=>f.lang==='no'&&f.src!=='USGS'},{id:'b:nordic',name:'Norden',f:f=>['no','sv','da'].includes(f.lang)&&f.src!=='USGS'||f.src==='Yle'},
+  {id:'b:intl',name:'Internasjonale',f:f=>f.lang!=='no'},{id:'b:eco',name:'Økonomi',f:f=>f.cat==='marked'||/^(E24|CNBC|Financial Times|The Economist|Nikkei Asia)$/.test(f.src)},
+  {id:'b:tech',name:'Teknologi og forskning',f:f=>['teknologi','vitenskap'].includes(f.cat)}];
+let SRCSEL=store.get('nk-srclist',''),SRCSET=null;
+function srcListSetup(){const feeds=SET.builtinFeeds||[],mine=SET.srcLists||[];const b=SRC_BUILTIN.find(x=>x.id===SRCSEL);
+  if(!SRCSEL)SRCSET=null;else if(b)SRCSET=new Set(feeds.filter(b.f).map(f=>f.src));else{const l=mine.find(x=>'u:'+x.name===SRCSEL);if(l)SRCSET=new Set(l.srcs);else{SRCSEL='';SRCSET=null}}
+  const sel=$('srcSel');sel.textContent='';const opt=(v,t)=>{const o=document.createElement('option');o.value=v;o.textContent=t;return o};
+  for(const x of SRC_BUILTIN)sel.append(opt(x.id,x.name));
+  if(mine.length){const g=document.createElement('optgroup');g.label='Mine lister';for(const l of mine)g.append(opt('u:'+l.name,l.name));sel.append(g)}
+  sel.append(opt('new','Lag ny liste …'));sel.value=SRCSEL;sel.classList.toggle('on',!!SRCSEL)}
+const inSrcList=e=>!SRCSET||e.items.some(n=>SRCSET.has(n.src));
+$('srcSel').onchange=e=>{const v=e.target.value;if(v==='new'){e.target.value=SRCSEL;openSettings('sources');setTimeout(()=>{const n=$('slName');if(n)n.focus()},120);return}
+  SRCSEL=v;store.set('nk-srclist',v);srcListSetup();refresh()};
 let qT;$('q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value.trim();if(ARCH&&ARCH.q!==S.q)ARCH=null;refresh()},150)});
 $('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&S.q.length>=2&&!view().length)searchArchive()});
 
@@ -113,12 +127,13 @@ const span=()=>+S.period*3600e3;
 function tlSync(){const r=$('tlRange');if(S.tl==null){r.value=1000;$('tlWhen').textContent='';$('tlLive').setAttribute('aria-pressed','true')}
   else{r.value=Math.round(1000*(1-(Date.now()-S.tl)/span()));$('tlWhen').textContent=dfmt.format(new Date(S.tl));$('tlLive').setAttribute('aria-pressed','false')}
   $('tlPlay').textContent=playing?'❚❚':'▶';}
-function setTl(t){S.tl=t==null||t>=Date.now()-30e3?null:t;tlSync();refresh();if(ready)map.getSource('night').setData(nightBands(REF()))}
+function setTl(t){S.tl=t==null||t>=Date.now()-30e3?null:t;tlSync();refresh();if(ready){map.getSource('night').setData(nightBands(REF()));nightImgUpdate()}}
 $('tlRange').addEventListener('input',e=>{stopPlay();const v=+e.target.value;setTl(v>=1000?null:Date.now()-span()*(1-v/1000))});
 $('tlLive').onclick=()=>{stopPlay();setTl(null)};
 function stopPlay(){if(playing){cancelAnimationFrame(playing);playing=null;tlSync()}}
 $('tlPlay').onclick=()=>{if(playing){stopPlay();return}let t=S.tl??Date.now()-span();if(Date.now()-t<60e3)t=Date.now()-span();
-  const dur=25000,rate=span()/dur;let last=performance.now(),acc=0;
+  const dur=25000,rate=span()/dur;let last=performance.now(),acc=0,seen=null;
   const step=now=>{t+=(now-last)*rate;acc+=now-last;last=now;if(t>=Date.now()){playing=null;setTl(null);return}
-    if(acc>120){acc=0;S.tl=t;tlSync();refresh();map.getSource('night').setData(nightBands(t))}playing=requestAnimationFrame(step)};
+    if(acc>120){acc=0;S.tl=t;tlSync();refresh();map.getSource('night').setData(nightBands(t));nightImgUpdate();
+      const ids=view();if(seen)popAdd(ids.filter(e=>!seen.has(e.id)));seen=new Set(ids.map(e=>e.id))}playing=requestAnimationFrame(step)};
   playing=requestAnimationFrame(step);tlSync()};

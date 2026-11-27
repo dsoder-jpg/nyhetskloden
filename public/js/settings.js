@@ -47,6 +47,7 @@ function renderSettings(soft){
   const c=srcCounts(Object.values(STATUS||{}).filter(x=>x.src&&!/^(Nyhetsmotor|Mobilvisning|DeepL)/.test(x.src)));
   $('srcHealth').innerHTML=`<b>${c.ok+c.stale}</b> kilder virker.`+(c.paused?` <b>${c.paused}</b> er satt på pause fordi de feilet flere ganger på rad, og prøves igjen automatisk.`:'')+(c.bad?` <b>${c.bad}</b> feilet sist.`:'')+(c.stale?` <b>${c.stale}</b> har ikke hatt nye saker på 14 dager.`:'');
   $('srcRetry').hidden=!(c.paused||c.bad);
+  slRender();
   const cu=$('srcCustom');cu.textContent='';for(const f of SET.customFeeds||[])cu.append(row(f,true));
   // oversettelse
   $('kStatus').textContent=SET.hasKey?'✓ En nøkkel er lagret.':'Ingen nøkkel lagret ennå.';$('kDel').hidden=!SET.hasKey;
@@ -110,6 +111,21 @@ $('dlg').addEventListener('change',e=>{const el=e.target;
   if(el.id==='sLogin'){window.nk.setLogin(el.checked);savedFlash();return}
   if(el.id==='tNow'){window.nk.toggleTicker();return}});
 $('wForm').onsubmit=e=>{e.preventDefault();const v=$('wIn').value.trim();if(!v)return;$('wIn').value='';postSet({watch:[...(SET.watch||[]),v]},true)};
+// egne kildelister
+let SL_EDIT=null;
+function slRender(){const ch=$('slChips');ch.textContent='';for(const l of SET.srcLists||[]){const sp=document.createElement('span');sp.className='ed';sp.title='Endre lista';sp.append(l.name+' ('+l.srcs.length+')');
+    sp.onclick=ev=>{if(ev.target.tagName==='BUTTON')return;SL_EDIT=l.name;$('slName').value=l.name;slPick(new Set(l.srcs))};
+    const b=document.createElement('button');b.type='button';b.textContent='×';b.setAttribute('aria-label','Slett lista '+l.name);b.onclick=()=>{if(SRCSEL==='u:'+l.name){SRCSEL='';store.set('nk-srclist','')}postSet({srcLists:(SET.srcLists||[]).filter(x=>x.name!==l.name)},true)};sp.append(b);ch.append(sp)}
+  if(!(SET.srcLists||[]).length){const p=document.createElement('p');p.className='meta';p.textContent='Ingen egne lister ennå. Gi lista et navn, kryss av kildene og lagre.';ch.append(p)}
+  if(!$('slPick').children.length)slPick(new Set())}
+function slPick(on){const box=$('slPick');box.textContent='';const names=[...new Set([...(SET.builtinFeeds||[]),...(SET.customFeeds||[])].map(f=>f.src).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nb'));
+  for(const n of names){const l=document.createElement('label');const i=document.createElement('input');i.type='checkbox';i.value=n;i.checked=on.has(n);l.append(i,n);box.append(l)}slFind()}
+function slFind(){const q=$('slFind').value.trim().toLowerCase();for(const l of $('slPick').children)l.hidden=!!q&&!l.textContent.toLowerCase().includes(q)}
+$('slFind').oninput=slFind;
+$('slForm').onsubmit=e=>{e.preventDefault();const name=$('slName').value.trim(),srcs=[...$('slPick').querySelectorAll('input:checked')].map(i=>i.value);
+  if(!name){$('slStatus').textContent='Gi lista et navn.';$('slName').focus();return}if(!srcs.length){$('slStatus').textContent='Kryss av minst én kilde.';return}
+  const rest=(SET.srcLists||[]).filter(x=>x.name!==name&&x.name!==SL_EDIT);if(SL_EDIT&&SL_EDIT!==name&&SRCSEL==='u:'+SL_EDIT){SRCSEL='u:'+name;store.set('nk-srclist',SRCSEL)}
+  postSet({srcLists:[...rest,{name,srcs}]},true);$('slStatus').textContent='Lagret «'+name+'» med '+srcs.length+(srcs.length===1?' kilde.':' kilder.')+' Velg den ved søkefeltet.';SL_EDIT=null;$('slName').value='';slPick(new Set())};
 $('fForm').onsubmit=e=>{e.preventDefault();const url=$('fUrl').value.trim(),src=$('fName').value.trim();
   if(!/^https:\/\/[^\s]+$/.test(url)){$('fUrl').focus();$('sSaved').textContent='Adressen må starte med https://';$('sSaved').classList.add('on');return}
   $('fUrl').value='';$('fName').value='';postSet({customFeeds:[...(SET.customFeeds||[]),{src,url}]},true)};
@@ -162,7 +178,7 @@ if(IS_APP){window.nk.updateState().then(updUI);window.nk.onUpdate(updUI);
   $('tickerBtn').hidden=false;$('tickerBtn').onclick=()=>window.nk.toggleTicker();
   if(window.nk.onOpenSettings)window.nk.onOpenSettings(()=>openSettings());
   if(window.nk.onOpenTab)window.nk.onOpenTab(t=>{S.tab=t;S.cc=null;S.cats=new Set(KEYS);S.tl=null;S.period=t==='top'&&+S.period<24?'24':S.period;tlSync();refresh();if($('dlg').open)$('dlg').close()});
-  window.nk.onOpen(id=>{const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
+  window.nk.onOpen(id=>{if(id==='nk:sources'){openSettings('sources');return}if(id.startsWith('nk:market:')){setSide('market');openDetail(id.slice(10));return}const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
 else{$('updStatus').textContent='Oppdateringer styres av Windows-appen. Du kjører nå nyhetsmotoren i en vanlig nettleser.';$('updCheck').hidden=true;$('uVer').textContent='Nettleserversjon'}
 applyUI();
 tlSync();
