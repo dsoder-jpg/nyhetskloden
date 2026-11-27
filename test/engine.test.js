@@ -97,6 +97,56 @@ test('kildelister og portefølje valideres', () => {
   assert.equal(s.priceAlertPct, 50);
 });
 
+test('lesemodus henter ut selve teksten', () => {
+  const R = require('../reader');
+  const html = '<html><head><title>Tittel | Avis</title><meta property="og:title" content="Stor brann i Bergen"><meta property="og:image" content="https://img.no/a.jpg"></head><body>' +
+    '<nav><p>Meny med mange lenker som ikke skal være med i teksten</p></nav><article><h1>Stor brann i Bergen</h1>' +
+    '<p>Brannvesenet rykket ut til et bolighus i Bergen sentrum natt til lørdag, og flere ble evakuert.</p><p>Les også: noe annet som ikke hører hjemme her i det hele tatt</p>' +
+    '<h2>Ingen skadd</h2><p>Ifølge politiet ble ingen personer skadd i brannen, men huset er totalskadet etter natten.</p><script>var x = "<p>skript skal bort fra teksten her</p>";</script></article><footer><p>Kontakt oss på telefon og e-post i dag</p></footer></body></html>';
+  const a = R.extract(html, 'https://avis.no/1');
+  assert.equal(a.title, 'Stor brann i Bergen');
+  assert.equal(a.img, 'https://img.no/a.jpg');
+  assert.deepEqual(a.blocks.map(b => b.t), ['p', 'h', 'p']);
+  assert.ok(!JSON.stringify(a.blocks).includes('Meny') && !JSON.stringify(a.blocks).includes('skript') && !JSON.stringify(a.blocks).includes('Les også'));
+  const ld = R.extract('<script type="application/ld+json">{"@type":"NewsArticle","headline":"H","articleBody":"' + 'Første avsnitt med tekst. '.repeat(20) + '\\n' + 'Andre avsnitt. '.repeat(30) + '"}</script>', 'https://x.no');
+  assert.equal(ld.title, 'H'); assert.equal(ld.blocks.length, 2);
+});
+
+test('kjøp og salg gir riktig beholdning og gevinst', () => {
+  const X = require('../extras');
+  const h = X.holdings([
+    { sym: 'EQNR.OL', side: 'buy', qty: 10, price: 200, date: '2026-01-05' },
+    { sym: 'EQNR.OL', side: 'buy', qty: 10, price: 300, date: '2026-03-01' },
+    { sym: 'EQNR.OL', side: 'sell', qty: 5, price: 400, date: '2026-06-01' },
+    { sym: 'NVDA', side: 'buy', qty: 2, price: 100, date: null },
+    { sym: 'NVDA', side: 'sell', qty: 2, price: 150, date: '2026-02-01' },
+  ]);
+  const e = h.find(x => x.sym === 'EQNR.OL'), n = h.find(x => x.sym === 'NVDA');
+  assert.equal(e.qty, 15); assert.equal(e.price, 250); assert.equal(e.realized, 750); assert.ok(e.open);
+  assert.equal(n.qty, 0); assert.equal(n.realized, 100); assert.ok(!n.open);
+});
+
+test('kjøp og salg lagres og gir porteføljen', () => {
+  e.applySettings({ trades: [{ sym: 'kog.ol', side: 'buy', qty: 4, price: 300, date: '2026-02-01' }, { sym: 'KOG.OL', side: 'sell', qty: 1, price: 350, date: '2026-04-01' }, { sym: 'X', side: 'buy', qty: 0 }, { sym: 'bad sym', qty: 1 }] });
+  const s = e.getSettings();
+  assert.equal(s.trades.length, 2); assert.equal(s.trades[0].sym, 'KOG.OL');
+  assert.deepEqual(s.portfolio, [{ sym: 'KOG.OL', qty: 3, price: 300 }]);
+});
+
+test('lokalavis velges etter hjemsted', () => {
+  const L = require('../local');
+  assert.equal(L.nearest({ lat: 59.41, lon: 9.07 }).name, 'Telemarksavisa'); // Bø
+  assert.equal(L.nearest({ lat: 60.39, lon: 5.32 }).builtin, true); // Bergen har BT fra før
+  assert.equal(L.nearest({ lat: 48.85, lon: 2.35 }), null); // Paris
+  assert.ok(L.candidates(L.PAPERS[0]).every(u => u.startsWith('https://')));
+});
+
+test('kalenderen er gyldig', () => {
+  const k = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'kalender.json'), 'utf8'));
+  assert.ok(k.events.length > 10);
+  for (const ev of k.events) { assert.match(ev.date, /^\d{4}-\d\d-\d\d$/); assert.ok(ev.title); assert.ok(!ev.url || ev.url.startsWith('https://')); if (ev.time) assert.match(ev.time, /^\d\d:\d\d$/); }
+});
+
 test('http-lenker gjøres om til https', () => {
   const items = e.parseRss('<rss><channel><item><title>Flom</title><link>http://www.gdacs.org/report.aspx?x=1</link></item></channel></rss>');
   assert.equal(items.length, 1);

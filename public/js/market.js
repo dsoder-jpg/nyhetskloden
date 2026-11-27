@@ -40,7 +40,8 @@ function renderMarket(){const box=$('mkt');box.hidden=!F.market;$('sideTabs').hi
   for(const[k,l]of kinds){const a=(D.other||[]).filter(q=>q.kind===k);if(a.length)h+=`<div class="mh">${l}</div><div class="qg">${a.map(q=>qBtn(q)).join('')}</div>`}
   if(F.movers&&(D.up||[]).length)h+=`<div class="mh">Oslo Børs ${MRANGE_TXT[D.range||'1d']}</div><div class="mv"><div><div class="mnote">Best</div>${moverList(D.up)}</div><div><div class="mnote">Dårligst</div>${moverList(D.down)}</div></div>`;
   h+=`<div id="mPower" hidden></div><div class="mnote">Endring ${MRANGE_TXT[D.range||'1d']}. Kurser fra Yahoo Finance, oppdatert ${tfmt.format(new Date(D.at))}. De kan være forsinket. Klikk på en kurs for graf og detaljer.</div>`;
-  $('mBody').innerHTML=h;if(typeof powerUI==='function')powerUI()}
+  h+=fxHtml();
+  $('mBody').innerHTML=h;if(typeof powerUI==='function')powerUI();fxWire();if(PF&&(PF.rows||[]).length)pfHist()}
 $('mBody').addEventListener('keydown',e=>{const r=e.target.closest('tr[data-s]');if(r&&e.key==='Enter')openDetail(r.dataset.s)});
 $('mBody').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(b)openDetail(b.dataset.s);const bk=e.target.closest('#mBack');if(bk){MDET=null;MDETD=null;renderMarket()}});
 // ---------- detaljer med graf ----------
@@ -82,7 +83,7 @@ function renderDetail(){const d=MDETD;if(!d)return;
   const st=[['Kurs',fmtNum(d.price)+' '+esc(d.cur)],['Endring '+MRANGE_TXT[d.range],`<span class="${pcls(d.pct)}">${pctTxt(d.pct)}</span>`],
     d.dayHigh!=null?['I dag',fmtNum(d.dayLow)+' til '+fmtNum(d.dayHigh)]:null,d.high52!=null?['Siste 52 uker',fmtNum(d.low52)+' til '+fmtNum(d.high52)]:null,
     d.vol?['Omsatt i dag',nf0.format(d.vol)]:null,['Børs',esc(d.exch||'–')]].filter(Boolean);
-  const hold=(SET.portfolio||[]).find(h=>h.sym===d.sym),news=coNews(d);
+  const news=coNews(d);
   const quick=[['OSEBX.OL','OSEBX'],['^GSPC','S&P 500'],['^IXIC','Nasdaq'],['GC=F','Gull']].filter(([s])=>s!==d.sym);
   $('mBody').innerHTML=`<button type="button" class="btn mback" id="mBack">‹ Tilbake</button>
     <div class="mdh"><div><h3>${esc(d.name)}</h3><div class="mnote">${esc(d.sym)}${d.type?', '+esc(d.type.toLowerCase()):''}</div></div>
@@ -93,8 +94,7 @@ function renderDetail(){const d=MDETD;if(!d)return;
     <div class="mcmp"><span class="mnote">Sammenlign med</span>${quick.map(([s,l])=>`<button type="button" class="btn" data-cmp="${esc(s)}" aria-pressed="${MCMP===s}">${esc(l)}</button>`).join('')}
       <div class="msearch"><input type="search" id="mCq" placeholder="Annen aksje eller indeks" aria-label="Sammenlign med" autocomplete="off"><ul id="mCres" hidden></ul></div></div>
     <dl class="mstats">${st.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
-    <form class="mhold" id="mHold"><b>Min beholdning</b><label>Antall<input type="number" id="mhQty" min="0" step="any" value="${hold?hold.qty:''}" inputmode="decimal"></label><label>Kjøpskurs (${esc(d.cur||'')})<input type="number" id="mhPx" min="0" step="any" value="${hold&&hold.price?hold.price:''}" inputmode="decimal"></label>
-      <button class="btn primary" type="submit">${hold?'Oppdater':'Legg i porteføljen'}</button>${hold?'<button class="btn" type="button" id="mhDel">Fjern</button>':''}</form>
+${tradeHtml(d)}
     ${news.length?`<div class="mh">I nyhetene</div><ul class="mnews">${news.map(e=>`<li><button type="button" data-ev="${esc(e.id)}"><span>${esc(e.title)}</span><small>${esc(e.srcs.slice(0,3).join(', '))}, ${esc(when(e))}</small></button></li>`).join('')}</ul>`:''}
     <div class="mact"><button type="button" class="btn ${following?'':'primary'}" id="mFollow">${following?'Slutt å følge':'Følg'}</button>${/^\^|=X$|-USD$|=F$/.test(d.sym)?'':`<button type="button" class="btn" id="mArch">Søk i arkivet</button>`}<a class="btn" href="https://finance.yahoo.com/quote/${encodeURIComponent(d.sym)}" target="_blank" rel="noopener">Se hos Yahoo Finance</a></div>
     <div class="mnote">Kurser fra Yahoo Finance${d.time?', sist oppdatert '+dfmt.format(new Date(d.time)):''}. De kan være forsinket og er ikke investeringsråd.</div>`;
@@ -104,10 +104,7 @@ function renderDetail(){const d=MDETD;if(!d)return;
   if($('mCmpX'))$('mCmpX').onclick=()=>setCompare(null);
   for(const b of $('mBody').querySelectorAll('[data-ev]'))b.onclick=()=>{setSide('news');S.period='168';S.cc=null;S.tab='all';S.cats=new Set(KEYS);refresh();select(b.dataset.ev,true)};
   mSearchBox($('mCq'),$('mCres'),sym=>setCompare(sym));
-  $('mHold').onsubmit=e=>{e.preventDefault();const qty=+String($('mhQty').value).replace(',','.'),px=+String($('mhPx').value).replace(',','.');
-    const rest=(SET.portfolio||[]).filter(h=>h.sym!==d.sym);if(!(qty>0)){$('mhQty').focus();return}
-    postSet({portfolio:[...rest,{sym:d.sym,qty,price:px>0?px:0}]},true);setTimeout(()=>{renderDetail();loadPortfolio()},400)};
-  if($('mhDel'))$('mhDel').onclick=()=>{postSet({portfolio:(SET.portfolio||[]).filter(h=>h.sym!==d.sym)},true);setTimeout(()=>{renderDetail();loadPortfolio()},400)};
+  tradeWire(d);
   const sv=$('mBody').querySelector('.mchart');if(sv&&MDETD._geo){const g=MDETD._geo;
     const near=(a,t)=>{let best=a[0];for(const p of a)if(Math.abs(p[0]-t)<Math.abs(best[0]-t))best=p;return best};
     sv.addEventListener('mousemove',e=>{const r=sv.getBoundingClientRect(),t=g.x0+((e.clientX-r.left)/r.width*g.W-g.P.l)/(g.W-g.P.l-g.P.r)*(g.x1-g.x0);
@@ -125,15 +122,51 @@ function mSearchBox(inp,ul,pick){let t=null;
   ul.addEventListener('click',e=>{const b=e.target.closest('button[data-s]');if(!b)return;e.stopPropagation();inp.value='';ul.hidden=true;pick(b.dataset.s)})}
 // ---------- portefølje ----------
 let PF=null;
-async function loadPortfolio(){clearTimeout(loadPortfolio.t);if(!F.market||!(SET.portfolio||[]).length||IS_LAN){PF=null;if(!MDET)renderMarket();return}
+async function loadPortfolio(){clearTimeout(loadPortfolio.t);if(!F.market||!(SET.trades||[]).length||IS_LAN){PF=null;if(!MDET)renderMarket();return}
   try{PF=await (await fetch('/api/portfolio')).json()}catch(e){PF={error:true,rows:[]}}if(!MDET)renderMarket();loadPortfolio.t=setTimeout(loadPortfolio,5*60e3)}
 const kr0=v=>v==null?'–':nf0.format(Math.round(v))+' kr';
 const krS=v=>v==null?'–':(v>0?'+':v<0?'−':'')+nf0.format(Math.abs(Math.round(v)))+' kr';
 function pfHtml(){if(!PF||!(PF.rows||[]).length)return'';
-  return`<div class="mh">Min portefølje</div><div class="pf"><div class="pfh"><div><small>Verdi</small><b>${kr0(PF.value)}</b></div><div><small>I dag</small><b class="${pcls(PF.day)}">${krS(PF.day)}</b><span class="${pcls(PF.dayPct)}">${pctTxt(PF.dayPct)}</span></div>${PF.gain!=null?`<div><small>Siden kjøp</small><b class="${pcls(PF.gain)}">${krS(PF.gain)}</b><span class="${pcls(PF.gainPct)}">${pctTxt(PF.gainPct)}</span></div>`:''}</div>
+  return`<div class="mh">Min portefølje</div><div class="pf"><div class="pfh"><div><small>Verdi</small><b>${kr0(PF.value)}</b></div><div><small>I dag</small><b class="${pcls(PF.day)}">${krS(PF.day)}</b><span class="${pcls(PF.dayPct)}">${pctTxt(PF.dayPct)}</span></div>${PF.realized?`<div><small>Realisert</small><b class="${pcls(PF.realized)}">${krS(PF.realized)}</b></div>`:''}${PF.gain!=null?`<div><small>Siden kjøp</small><b class="${pcls(PF.gain)}">${krS(PF.gain)}</b><span class="${pcls(PF.gainPct)}">${pctTxt(PF.gainPct)}</span></div>`:''}</div>
     <table class="pft"><thead><tr><th>Aksje</th><th>Antall</th><th>Verdi</th><th>I dag</th><th>Siden kjøp</th></tr></thead><tbody>${PF.rows.map(r=>r.error?`<tr><td>${esc(r.sym)}</td><td colspan="4" class="mnote">Fant ikke kursen</td></tr>`:
       `<tr data-s="${esc(r.sym)}" tabindex="0"><td title="${esc(r.name)}">${esc(r.name)}</td><td>${nf2.format(r.qty).replace(/,00$/,'')}</td><td>${kr0(r.value)}</td><td class="${pcls(r.pct)}">${pctTxt(r.pct)}</td><td class="${pcls(r.gainPct)}">${r.gainPct==null?'–':pctTxt(r.gainPct)}</td></tr>`).join('')}</tbody></table>
-    <div class="mnote">Regnet om til kroner med dagens valutakurs. Endre beholdningen i detaljvisningen til hver aksje.</div></div>`}
+    <div class="pfg"><div class="seg" role="group" aria-label="Periode for porteføljen">${PFR.map(([k,l])=>`<button type="button" data-pr="${k}" aria-pressed="${k===PFRANGE}">${l}</button>`).join('')}</div><div id="pfChart" class="pfc"><div class="mnote">Regner ut historikken …</div></div></div>
+    <div class="mnote">Regnet om til kroner med valutakursen hver dag. Legg inn kjøp og salg i detaljvisningen til hver aksje.</div></div>`}
+// porteføljens verdi over tid, med det du har betalt som stiplet linje
+const PFR=[['1mo','1 mnd'],['6mo','6 mnd'],['ytd','I år'],['1y','1 år'],['5y','5 år']];
+let PFRANGE=store.get('nk-pfr','6mo'),PFH={};
+async function pfHist(){const box=$('pfChart');if(!box)return;const k=PFRANGE,hit=PFH[k];
+  if(!hit||Date.now()-hit.at>30*60e3){try{PFH[k]={at:Date.now(),d:await (await fetch('/api/portfolio/history?range='+k)).json()}}catch(e){PFH[k]={at:Date.now(),d:{error:'ingen kontakt',points:[]}}}}
+  if(!$('pfChart')||k!==PFRANGE)return;pfDraw($('pfChart'),PFH[k].d)}
+function pfDraw(box,d){const pts=(d.points||[]).filter(p=>p[1]>0);if(pts.length<2){box.innerHTML='<div class="mnote">'+(d.error?'Fikk ikke hentet historikken.':'For lite historikk i perioden.')+'</div>';return}
+  const W=600,H=150,P={l:6,r:62,t:8,b:20},xs=pts.map(p=>p[0]),ys=pts.flatMap(p=>[p[1],p[2]].filter(v=>v>0)),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),yr=(y1-y0)||1;
+  const X=t=>P.l+(t-x0)/((x1-x0)||1)*(W-P.l-P.r),Y=v=>P.t+(1-(v-y0)/yr)*(H-P.t-P.b),path=i=>pts.filter(p=>p[i]>0).map((p,j)=>(j?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[i]).toFixed(1)).join('');
+  const first=pts[0][1],last=pts[pts.length-1][1],ch=last-first,col=ch>0?'#3ddc84':ch<0?'#ff6b6b':'#9fb0c4',df=new Intl.DateTimeFormat('nb-NO',{day:'numeric',month:'short',year:'2-digit'});
+  const lab=v=>nf0.format(Math.round(v/1000))+'k';
+  box.innerHTML=`<div class="pfch"><b class="${pcls(ch)}">${krS(ch)}</b> <span class="${pcls(ch)}">${pctTxt(first?ch/first*100:null)}</span> <small>i perioden</small></div>
+    <svg class="mchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Porteføljens verdi fra ${esc(df.format(new Date(x0)))} til ${esc(df.format(new Date(x1)))}">
+    <g class="grid">${[y1,(y0+y1)/2,y0].map(v=>`<text x="${W-P.r+6}" y="${Y(v)+4}">${lab(v)}</text><line x1="${P.l}" x2="${W-P.r}" y1="${Y(v)}" y2="${Y(v)}"/>`).join('')}</g>
+    <path d="${path(2)}" fill="none" stroke="#9fb0c4" stroke-width="1.3" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/><path d="${path(1)}" fill="none" stroke="${col}" stroke-width="1.8" vector-effect="non-scaling-stroke"/>
+    <text class="xl" x="${P.l}" y="${H-5}">${esc(df.format(new Date(x0)))}</text><text class="xl" x="${W-P.r}" y="${H-5}" text-anchor="end">${esc(df.format(new Date(x1)))}</text></svg>
+    <div class="mleg"><span><i style="background:${col}"></i>Verdi</span><span><i style="background:#9fb0c4"></i>Det du har betalt</span></div>`}
+$('mBody').addEventListener('click',e=>{const b=e.target.closest('[data-pr]');if(!b)return;PFRANGE=b.dataset.pr;store.set('nk-pfr',PFRANGE);for(const x of $('mBody').querySelectorAll('[data-pr]'))x.setAttribute('aria-pressed',String(x===b));pfHist()});
+// kjøp og salg for én aksje
+const isoDay=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function tradeHtml(d){const tr=(SET.trades||[]).filter(t=>t.sym===d.sym).sort((a,b)=>(a.date||'').localeCompare(b.date||'')),hold=(SET.portfolio||[]).find(h=>h.sym===d.sym);
+  const num=v=>nf2.format(v).replace(/,00$/,''),df=new Intl.DateTimeFormat('nb-NO',{day:'numeric',month:'short',year:'numeric'});
+  return`<div class="mhold"><b>Mine kjøp og salg</b>
+    ${tr.length?`<table class="pft trt"><thead><tr><th>Dato</th><th></th><th>Antall</th><th>Kurs</th><th></th></tr></thead><tbody>${tr.map(t=>`<tr><td>${t.date?esc(df.format(new Date(t.date+'T12:00:00'))):'Uten dato'}</td><td>${t.side==='sell'?'Salg':'Kjøp'}</td><td>${num(t.qty)}</td><td>${t.price?num(t.price):'–'}</td><td><button type="button" class="tdel" data-tid="${esc(t.id)}" aria-label="Slett denne">×</button></td></tr>`).join('')}</tbody></table>
+      <div class="mnote">${hold?`Du eier ${num(hold.qty)} til en snittkurs på ${num(hold.price)} ${esc(d.cur||'')}.`:'Du eier ingen nå.'}</div>`:''}
+    <form class="trf" id="mTr"><select id="mtSide" aria-label="Kjøp eller salg"><option value="buy">Kjøp</option><option value="sell"${hold?'':' disabled'}>Salg</option></select>
+      <label>Antall<input type="text" id="mtQty" inputmode="decimal" autocomplete="off"></label><label>Kurs (${esc(d.cur||'')})<input type="text" id="mtPx" inputmode="decimal" value="${d.price!=null?esc(String(+d.price.toFixed(4)).replace('.',',')):''}" autocomplete="off"></label>
+      <label>Dato<input type="date" id="mtDate" value="${isoDay(new Date())}" max="${isoDay(new Date())}"></label><button class="btn primary" type="submit">Legg til</button></form><div class="mnote" id="mtMsg"></div></div>`}
+function tradeWire(d){const f=$('mTr');if(!f)return;const n=v=>+String(v).replace(/\s/g,'').replace(',','.');
+  f.onsubmit=e=>{e.preventDefault();const side=$('mtSide').value,qty=n($('mtQty').value),px=n($('mtPx').value),date=$('mtDate').value||null;
+    if(!(qty>0)){$('mtMsg').textContent='Skriv inn antall.';$('mtQty').focus();return}
+    const hold=(SET.portfolio||[]).find(h=>h.sym===d.sym);if(side==='sell'&&(!hold||qty>hold.qty+1e-9)){$('mtMsg').textContent='Du kan ikke selge flere enn du eier.';return}
+    const t={id:'t'+Date.now().toString(36),sym:d.sym,side,qty,price:px>0?px:0,date};
+    postSet({trades:[...(SET.trades||[]),t]},true);PFH={};setTimeout(()=>{renderDetail();loadPortfolio()},400)};
+  for(const b of $('mBody').querySelectorAll('[data-tid]'))b.onclick=()=>{postSet({trades:(SET.trades||[]).filter(t=>t.id!==b.dataset.tid)},true);PFH={};setTimeout(()=>{renderDetail();loadPortfolio()},400)}}
 // ---------- søk ----------
 mSearchBox($('mQ'),$('mRes'),sym=>openDetail(sym));
 $('mkt').addEventListener('toggle',()=>store.set('nk-mkt-open',$('mkt').open));$('mkt').open=store.get('nk-mkt-open',true);

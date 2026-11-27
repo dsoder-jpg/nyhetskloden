@@ -160,7 +160,7 @@ async function getFlights(lat, lon) {
   const r = await fetch(`https://api.adsb.lol/v2/lat/${lat.toFixed(3)}/lon/${lon.toFixed(3)}/dist/250`, { headers: { 'User-Agent': UA } });
   if (!r.ok) throw new Error('adsb.lol HTTP ' + r.status);
   const ac = ((await r.json()).ac || []).filter(a => isFinite(a.lat) && isFinite(a.lon) && a.alt_baro !== 'ground').slice(0, 800)
-    .map(a => ({ lat: a.lat, lon: a.lon, track: a.track ?? a.true_heading ?? 0, cs: (a.flight || '').trim(), alt: typeof a.alt_baro === 'number' ? a.alt_baro : null, type: a.t || '', reg: a.r || '' }));
+    .map(a => ({ lat: a.lat, lon: a.lon, track: a.track ?? a.true_heading ?? 0, cs: (a.flight || '').trim(), alt: typeof a.alt_baro === 'number' ? a.alt_baro : null, type: a.t || '', reg: a.r || '', cat: a.category || '', mil: !!(a.dbFlags & 1), sq: a.squawk || '' }));
   const data = { at: new Date().toISOString(), ac };
   flightCache.set(key, { at: Date.now(), data }); if (flightCache.size > 30) flightCache.delete(flightCache.keys().next().value);
   return data;
@@ -398,13 +398,66 @@ async function getPortfolio(holdings) {
     const q = await quoteCached(h.sym); const fx = await fxNok(q.cur);
     const unit = q.cur; // innkjøpskurs tastes i samme enhet som kursen vises i
     const value = q.price != null && fx ? h.qty * q.price * fx : null, cost = h.price && fx ? h.qty * h.price * fx : null;
-    return { sym: h.sym, name: q.name, cur: unit, qty: h.qty, buy: h.price || null, price: q.price, pct: q.pct, fx,
+    return { sym: h.sym, name: q.name, cur: unit, qty: h.qty, buy: h.price || null, price: q.price, pct: q.pct, fx, realized: h.realized && fx ? h.realized * fx : 0,
       value, cost, gain: value != null && cost != null ? value - cost : null, gainPct: value != null && cost ? (value / cost - 1) * 100 : null,
       day: q.price != null && q.prev && fx ? h.qty * (q.price - q.prev) * fx : null, time: q.time };
   }, 4);
   const ok = rows.filter(Boolean), sum = k => ok.reduce((a, r) => a + (r[k] || 0), 0);
+  // gevinst fra aksjer som er solgt helt
+  const closed = await many((holdings.closed || []), async h => { const q = await quoteCached(h.sym); const fx = await fxNok(q.cur); return fx ? h.realized * fx : 0; }, 4);
+  const realized = sum('realized') + closed.reduce((a, v) => a + (v || 0), 0);
   const value = sum('value'), cost = ok.filter(r => r.cost != null).reduce((a, r) => a + r.cost, 0), costVal = ok.filter(r => r.cost != null).reduce((a, r) => a + (r.value || 0), 0);
   return { rows: holdings.map((h, i) => rows[i] || { sym: h.sym, qty: h.qty, buy: h.price || null, error: true }), value, day: sum('day'),
-    gain: cost ? costVal - cost : null, gainPct: cost ? (costVal / cost - 1) * 100 : null, dayPct: value ? sum('day') / (value - sum('day')) * 100 : null, at: new Date().toISOString() };
+    gain: cost ? costVal - cost : null, gainPct: cost ? (costVal / cost - 1) * 100 : null, realized, dayPct: value ? sum('day') / (value - sum('day')) * 100 : null, at: new Date().toISOString() };
 }
-module.exports = { getPortfolio, quoteCached, getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+// Kjøp og salg → beholdning per aksje (snittkost-metoden). Salg gir realisert gevinst.
+function holdings(trades) {
+  const by = new Map();
+  const sorted = [...(trades || [])].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  for (const t of sorted) {
+    const h = by.get(t.sym) || { sym: t.sym, qty: 0, cost: 0, realized: 0, trades: 0 }; h.trades++;
+    if (t.side === 'sell') { const q = Math.min(t.qty, h.qty), avg = h.qty ? h.cost / h.qty : 0; h.cost -= avg * q; h.qty -= q; if (t.price) h.realized += (t.price - avg) * q; }
+    else { h.qty += t.qty; h.cost += t.qty * (t.price || 0); }
+    by.set(t.sym, h);
+  }
+  return [...by.values()].map(h => ({ sym: h.sym, qty: +h.qty.toFixed(8), price: h.qty > 1e-9 ? h.cost / h.qty : 0, realized: h.realized, open: h.qty > 1e-9 }));
+}
+// valutakurs mellom to valutaer (for kalkulatoren)
+async function fxRate(from, to) {
+  from = String(from).toUpperCase(); to = String(to).toUpperCase();
+  if (from === to) return { from, to, rate: 1 };
+  const q = await quoteCached(from + to + '=X', 10);
+  if (q.price == null) throw new Error('fant ikke kursen');
+  return { from, to, rate: q.price, time: q.time, pct: q.pct };
+}
+// porteføljens verdi bakover i tid: antall du eide den dagen × kurs × valutakurs
+async function getPortfolioHistory(trades, range) {
+  range = ['1mo', '6mo', 'ytd', '1y', '5y', 'max'].includes(range) ? range : '6mo';
+  const syms = [...new Set((trades || []).map(t => t.sym))];
+  if (!syms.length) return { range, points: [] };
+  const det = await many(syms, s => getDetail(s, range), 4);
+  const curs = [...new Set(det.filter(Boolean).map(d => d.cur).filter(c => c && c !== 'NOK'))];
+  const base = c => c === 'GBp' || c === 'GBX' ? 'GBP' : c === 'ZAc' ? 'ZAR' : c === 'ILA' ? 'ILS' : c;
+  const div = c => c === 'GBp' || c === 'GBX' || c === 'ZAc' || c === 'ILA' ? 100 : 1;
+  const fxd = await many(curs, c => getDetail(base(c) + 'NOK=X', range), 4), fxBy = {};
+  curs.forEach((c, i) => { fxBy[c] = fxd[i] && fxd[i].points || []; });
+  const day = t => new Date(t).toISOString().slice(0, 10);
+  const times = [...new Set(det.flatMap(d => d ? d.points.map(p => day(p[0])) : []))].sort();
+  // siste kjente verdi på eller før en dag
+  const at = (pts, d) => { let v = null; for (const p of pts) { if (day(p[0]) <= d) v = p[1]; else break; } return v ?? (pts[0] ? pts[0][1] : null); };
+  const points = [];
+  for (const d of times) {
+    let value = 0, cost = 0, ok = true;
+    const h = holdings((trades || []).filter(t => !t.date || t.date <= d));
+    for (const x of h) {
+      if (!x.open) continue;
+      const i = syms.indexOf(x.sym), dd = det[i]; if (!dd) { ok = false; continue; }
+      const px = at(dd.points, d), fx = dd.cur === 'NOK' || !dd.cur ? 1 : at(fxBy[dd.cur] || [], d) / div(dd.cur);
+      if (px == null || !fx) { ok = false; continue; }
+      value += x.qty * px * fx; cost += x.qty * x.price * fx;
+    }
+    if (ok || value) points.push([Date.parse(d + 'T12:00:00Z'), Math.round(value), Math.round(cost)]);
+  }
+  return { range, points, at: new Date().toISOString() };
+}
+module.exports = { holdings, fxRate, getPortfolioHistory, getPortfolio, quoteCached, getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

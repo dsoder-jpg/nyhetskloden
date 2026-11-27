@@ -102,17 +102,19 @@ async function loadFlights(){clearTimeout(loadFlights.t);if(!ready)return;const 
   if(map.getZoom()<3.8){src.setData(EMPTY);trafMsg.f='Zoom inn for å se fly';showTraf();loadFlights.t=setTimeout(loadFlights,30e3);return}
   const c=map.getCenter();
   try{const d=await (await fetch(`/api/flights?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`)).json();if(d.error)throw new Error(d.error);
-    src.setData({type:'FeatureCollection',features:(d.ac||[]).map(a=>({type:'Feature',geometry:{type:'Point',coordinates:[a.lon,a.lat]},
-      properties:{r:a.track||0,t:a.cs||a.reg||'Ukjent fly',d:[a.type,a.alt!=null?Math.round(a.alt*0.3048).toLocaleString('nb-NO')+' moh.':'',a.reg&&a.cs?a.reg:''].filter(Boolean).join(', ')}}))});
-    trafMsg.f=(d.ac||[]).length+' fly i området'}
+    const ac=(d.ac||[]).filter(flOk);
+    src.setData({type:'FeatureCollection',features:ac.map(a=>({type:'Feature',geometry:{type:'Point',coordinates:[a.lon,a.lat]},
+      properties:{r:a.track||0,t:(a.cs||a.reg||'Ukjent fly')+(/^(7500|7600|7700)$/.test(a.sq)?' (nødsignal '+a.sq+')':''),d:[a.mil?'Militært':null,a.type,a.alt!=null?Math.round(a.alt*0.3048).toLocaleString('nb-NO')+' moh.':'',a.reg&&a.cs?a.reg:''].filter(Boolean).join(', ')}}))});
+    trafMsg.f=ac.length+($('flF').value?' av '+(d.ac||[]).length:'')+' fly i området'}
   catch(e){trafMsg.f='Fly: fikk ikke kontakt'}
   showTraf();loadFlights.t=setTimeout(loadFlights,30e3)}
 const SHIPT=t=>t>=60&&t<70?'Passasjerskip':t>=70&&t<80?'Lasteskip':t>=80&&t<90?'Tankskip':t===30?'Fiskefartøy':t===52||t===31||t===32?'Slepebåt':t===36?'Seilbåt':t===37?'Fritidsbåt':'Fartøy';
 async function setShipLayer(){clearTimeout(setShipLayer.t);if(!ready)return;const src=map.getSource('ships');
   if(!F.ships){src.setData(EMPTY);trafMsg.s='';showTraf();return}
   try{const d=await (await fetch('/api/ships')).json();if(d.error)throw new Error(d.error);
-    src.setData({type:'FeatureCollection',features:(d.ships||[]).map(v=>({type:'Feature',geometry:{type:'Point',coordinates:[v.lon,v.lat]},
+    const sh=(d.ships||[]).filter(shOk);
+    src.setData({type:'FeatureCollection',features:sh.map(v=>({type:'Feature',geometry:{type:'Point',coordinates:[v.lon,v.lat]},
       properties:{r:v.cog||0,t:v.name||'MMSI '+v.mmsi,d:[SHIPT(v.type),v.sog!=null?nf0.format(v.sog)+' knop':''].filter(Boolean).join(', ')}}))});
-    trafMsg.s=(d.ships||[]).length+' skip'}
+    trafMsg.s=sh.length+($('shF').value?' av '+(d.ships||[]).length:'')+' skip'}
   catch(e){trafMsg.s=/mangler/.test(e.message)?'Skip: legg inn BarentsWatch-klient i Innstillinger':'Skip: '+e.message}
   showTraf();setShipLayer.t=setTimeout(setShipLayer,90e3)}

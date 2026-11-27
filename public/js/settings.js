@@ -111,6 +111,10 @@ $('dlg').addEventListener('change',e=>{const el=e.target;
   if(el.id==='sLogin'){window.nk.setLogin(el.checked);savedFlash();return}
   if(el.id==='tNow'){window.nk.toggleTicker();return}});
 $('wForm').onsubmit=e=>{e.preventDefault();const v=$('wIn').value.trim();if(!v)return;$('wIn').value='';postSet({watch:[...(SET.watch||[]),v]},true)};
+// lokalavis: hvilken avis som er valgt for hjemstedet
+async function localStatus(){const el=$('localSt');if(!el)return;if(!SET.home){el.textContent='Legger til lokalavisa nærmest hjemstedet. Velg hjemsted først.';return}
+  let r;try{r=await (await fetch('/api/local')).json()}catch(e){return}const p=r.paper,n=r.near;
+  el.textContent=!n?'Fant ingen lokalavis innen 150 km fra hjemstedet.':n.builtin?n.name+' er nærmest, og den er allerede med blant kildene.':p&&p.name===n.name?(p.url?p.name+' er lagt til som kilde ('+p.km+' km unna).':p.name+' er nærmest, men RSS-strømmen virket ikke. Appen prøver igjen i morgen.'):n.name+' legges til ved neste henting.'}
 // egne kildelister
 let SL_EDIT=null;
 function slRender(){const ch=$('slChips');ch.textContent='';for(const l of SET.srcLists||[]){const sp=document.createElement('span');sp.className='ed';sp.title='Endre lista';sp.append(l.name+' ('+l.srcs.length+')');
@@ -178,7 +182,7 @@ if(IS_APP){window.nk.updateState().then(updUI);window.nk.onUpdate(updUI);
   $('tickerBtn').hidden=false;$('tickerBtn').onclick=()=>window.nk.toggleTicker();
   if(window.nk.onOpenSettings)window.nk.onOpenSettings(()=>openSettings());
   if(window.nk.onOpenTab)window.nk.onOpenTab(t=>{S.tab=t;S.cc=null;S.cats=new Set(KEYS);S.tl=null;S.period=t==='top'&&+S.period<24?'24':S.period;tlSync();refresh();if($('dlg').open)$('dlg').close()});
-  window.nk.onOpen(id=>{if(id==='nk:sources'){openSettings('sources');return}if(id.startsWith('nk:market:')){setSide('market');openDetail(id.slice(10));return}const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
+  window.nk.onOpen(id=>{if(id==='nk:sources'){openSettings('sources');return}if(id==='nk:week'){setSide('news');SINCE=null;DIGW=true;store.set('nk-digw',true);$('digest').open=true;digest();return}if(id==='nk:cal'){setSide('news');loadCal();$('cal').open=true;$('cal').scrollIntoView({block:'nearest'});return}if(id.startsWith('nk:market:')){setSide('market');openDetail(id.slice(10));return}const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
 else{$('updStatus').textContent='Oppdateringer styres av Windows-appen. Du kjører nå nyhetsmotoren i en vanlig nettleser.';$('updCheck').hidden=true;$('uVer').textContent='Nettleserversjon'}
 applyUI();
 tlSync();

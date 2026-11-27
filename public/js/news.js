@@ -31,17 +31,21 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){if(!HIST)s
   const s0=store.get('nk-seen',0);if(s0&&Date.now()-s0>4*3600e3){SINCE=s0;$('digest').open=true;digest()}markSeen()});
 $('digestX').onclick=()=>{SINCE=null;digest()};
 function digest(){const box=$('digestList');if(!box)return;
-  const since=SINCE&&S.tl==null&&!HIST?SINCE:null,cut=since||REF()-864e5;
+  const since=SINCE&&S.tl==null&&!HIST?SINCE:null,week=!since&&DIGW,cut=since||REF()-(week?7:1)*864e5;
   const pool=EVENTS.filter(e=>catOn(e.cat)&&inScope(e)&&inSrcList(e)&&(since?ms(e.date)>=since:ms(e.last)>=cut));
   if(since&&!EVENTS.length){$('digest').hidden=true;return}
   if(since&&!pool.length){SINCE=null;return digest()}
-  const top=[...pool].sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,since?6:5);
+  const top=[...pool].sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,since||week?7:5);DIGTOP=top;
   $('digest').hidden=!top.length;$('digest').classList.toggle('since',!!since);box.textContent='';
-  $('digestT').textContent=since?'Siden sist du var her, '+dfmt.format(new Date(since)):'Døgnet oppsummert';
+  $('digestT').textContent=since?'Siden sist du var her, '+dfmt.format(new Date(since)):week?'Uka oppsummert':'Døgnet oppsummert';
+  $('digestTabs').hidden=!!since;for(const b of $('digestTabs').querySelectorAll('[data-dw]'))b.setAttribute('aria-pressed',String(b.dataset.dw==='1'===DIGW));
   $('digestM').hidden=!since;if(since){const big=pool.filter(e=>e.score>=3.5).length;$('digestN').textContent=pool.length+(pool.length===1?' ny hendelse':' nye hendelser')+(big?', '+big+(big===1?' stor sak':' store saker'):'')}
   for(const e of top){const li=document.createElement('li'),b=document.createElement('button');b.type='button';
     const t=document.createElement('span');t.textContent=e.title;const m=document.createElement('small');const n=coverage(e).outs.length;
     m.textContent=[e.place,n>1?n+' medier':e.src].filter(Boolean).join(', ');b.append(t,m);b.onclick=()=>{S.tab='all';S.cats=new Set(KEYS);refresh();select(e.id,true)};li.append(b);box.append(li)}}
+let DIGW=store.get('nk-digw',false),DIGTOP=[];
+for(const b of $('digestTabs').querySelectorAll('[data-dw]'))b.onclick=()=>{DIGW=b.dataset.dw==='1';store.set('nk-digw',DIGW);digest()};
+$('digestSay').onclick=()=>say(DIGTOP.length?[$('digestT').textContent+'.',...DIGTOP.map((e,i)=>`${i+1}. ${e.title}.${e.text&&i<3?' '+e.text.slice(0,240):''}`)]:[],$('digestSay'));
 $('digest').open=store.get('nk-digest-open',true);$('digest').addEventListener('toggle',()=>store.set('nk-digest-open',$('digest').open));
 
 // ---------- tråder: saker som henger sammen over flere dager ----------

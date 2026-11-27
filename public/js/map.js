@@ -46,6 +46,7 @@ class Tools{onAdd(){const d=document.createElement('div');d.className='maplibreg
   mk('bWorld','Hele kloden','<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>').onclick=()=>map.flyTo({center:map.getCenter(),zoom:1.9,duration:reduced?0:1400});
   mk('bNor','Norge','<b style="font-size:11px">NO</b>').onclick=()=>map.fitBounds(NOR_BOUNDS,{padding:60,duration:reduced?0:1600});
   const sp=mk('bSpin','Snurr kloden','<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4.5h-4.5"/></svg>');
+  const ar=mk('bArea','Vis bare et område','<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-dasharray="3 2.4"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>');ar.setAttribute('aria-pressed','false');ar.onclick=()=>areaStart();
   sp.setAttribute('aria-pressed','false');sp.onclick=()=>{spin=!spin;sp.setAttribute('aria-pressed',spin);if(spin)spinStep()};
   return d}onRemove(){}}
 let spin=false;
@@ -120,12 +121,12 @@ function onLoad(){
   map.on('mouseleave','pts',()=>{map.getCanvas().style.cursor='';pop.remove()});
   map.on('mouseenter','clusters',()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave','clusters',()=>map.getCanvas().style.cursor='');
   map.on('click','clusters',async e=>{const f=e.features[0];const z=await map.getSource('news').getClusterExpansionZoom(f.properties.cluster_id);map.easeTo({center:f.geometry.coordinates,zoom:z+.3,duration:reduced?0:700})});
-  map.on('click',e=>{const hit=map.queryRenderedFeatures(e.point,{layers:['pts','clusters']});if(hit.length){if(hit[0].layer.id==='pts')select(hit[0].properties.id,false);return}
+  map.on('click',e=>{if(areaPick){areaSet(e.lngLat);return}const hit=map.queryRenderedFeatures(e.point,{layers:['pts','clusters']});if(hit.length){if(hit[0].layer.id==='pts')select(hit[0].properties.id,false);return}
     const al=S.layers.alerts&&map.queryRenderedFeatures(e.point,{layers:['alerts']})[0];if(al){showAlert(al.properties);return}
     const a2=countryAt(e.lngLat.lng,e.lngLat.lat);setCountry(a2&&a2!==S.cc?a2:null)});
   let hov=null;map.on('mousemove',e=>{if(!COUNTRIES)return;const a2=countryAt(e.lngLat.lng,e.lngLat.lat);if(a2===hov)return;
     if(hov)map.setFeatureState({source:'countries',id:hov},{hover:false});hov=a2;if(a2)map.setFeatureState({source:'countries',id:a2},{hover:true})});
-  ready=true;applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();
+  ready=true;applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();areaDraw();
 }
 let DETAIL=[];
 function applyBase(){if(!map||!map.getLayer('sat'))return;const sat=S.base==='sat';

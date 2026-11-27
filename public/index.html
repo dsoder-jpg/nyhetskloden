@@ -41,8 +41,12 @@
       <h2>Mest omtalt</h2>
       <div class="ramp"></div><div class="rl"><span>få hendelser</span><span>mange</span></div>
       <ul class="hot" id="hot"></ul>
+      <div class="uplist" id="upList" hidden></div>
       <div class="ln"><span></span>Skygge = natt akkurat nå</div>
     </div>
+    <div class="areabar" id="areaBar" hidden><span id="areaHint">Klikk på kartet der området skal ha midten. Esc avbryter.</span>
+      <span id="areaCtl" hidden>Område: <select id="areaKm" aria-label="Radius"><option value="50">50 km</option><option value="100">100 km</option><option value="250">250 km</option><option value="500">500 km</option><option value="1000">1000 km</option><option value="2500">2500 km</option></select> <span class="meta" id="areaN"></span>
+      <button type="button" class="btn" id="areaMove">Flytt</button><button type="button" class="btn" id="areaX">Fjern</button></span></div>
     <div class="tl" id="tl">
       <button id="tlPlay" title="Spill av perioden" aria-label="Spill av">▶</button>
       <input type="range" id="tlRange" min="0" max="1000" value="1000" aria-label="Tidslinje">
@@ -59,8 +63,8 @@
       <label><input type="checkbox" data-l="alerts" checked>Farevarsler (MET)</label>
       <div class="lpair"><label><input type="checkbox" data-l="night" checked>Natt</label><label class="sub" id="lightsLbl" title="Krever at natt er på"><input type="checkbox" data-f="lights">Bylys</label></div>
       <label><input type="checkbox" data-f="marketGlobe">Børser</label>
-      <label><input type="checkbox" data-f="flights">Fly</label>
-      <label><input type="checkbox" data-f="ships">Skip</label>
+      <div class="lpair"><label><input type="checkbox" data-f="flights">Fly</label><select class="lsel" id="flF" aria-label="Hvilke fly"><option value="">Alle</option><option value="pax">Passasjerfly</option><option value="small">Småfly</option><option value="heli">Helikopter</option><option value="mil">Militære</option><option value="sos">Nødsignal</option></select></div>
+      <div class="lpair"><label><input type="checkbox" data-f="ships">Skip</label><select class="lsel" id="shF" aria-label="Hvilke skip"><option value="">Alle</option><option value="pax">Passasjer</option><option value="fast">Hurtigbåt</option><option value="cargo">Last</option><option value="tank">Tank</option><option value="fish">Fiske</option><option value="sar">Redning og slep</option><option value="leis">Fritid</option></select></div>
       <label><input type="checkbox" data-f="wxmap">Vær i byer</label>
       <label><input type="checkbox" data-f="quakes">Jordskjelv</label>
       <label><input type="checkbox" data-f="storms">Stormer</label>
@@ -80,10 +84,11 @@
       <div class="meta" id="cMeta"></div>
       <p id="cText"></p>
       <p class="cov" id="cCov" hidden></p>
+      <p class="cdis" id="cDis" hidden></p>
       <p class="flow" id="cFlow" hidden></p>
       <ul class="srcs" id="cSrcs"></ul>
       <div class="tk" id="cTk" hidden></div>
-      <div class="acts" id="cActs"><a class="src" id="cSrc" target="_blank" rel="noopener"></a><span class="sp"></span><button class="btn" id="cQueue" aria-pressed="false" hidden>Les senere</button><button class="btn" id="cLess" title="Skjul lignende saker">Mindre av dette</button><button class="btn" id="cShare" title="Del saken">Del</button><button class="star" id="cStar" aria-pressed="false" title="Lagre saken" aria-label="Lagre saken">☆</button></div>
+      <div class="acts" id="cActs"><a class="src" id="cSrc" target="_blank" rel="noopener"></a><span class="sp"></span><button class="btn" id="cRead" hidden title="Les hele saken i appen">Les her</button><button class="btn" id="cQueue" aria-pressed="false" hidden>Les senere</button><button class="btn" id="cLess" title="Skjul lignende saker">Mindre av dette</button><button class="btn" id="cShare" title="Del saken">Del</button><button class="star" id="cStar" aria-pressed="false" title="Lagre saken" aria-label="Lagre saken">☆</button></div>
       <div class="less" id="cLessBox" hidden></div>
       <div class="share" id="cShareBox" hidden><div class="qr" id="cQr"></div><div><span>Skann med mobilen for å åpne saken.</span><button class="btn" id="cCopy">Kopier lenke</button></div></div>
     </div>
@@ -91,7 +96,10 @@
   <aside class="side" id="side">
     <div class="sidetabs" id="sideTabs" role="tablist" hidden><button role="tab" data-v="news" aria-selected="true">Nyheter</button><button role="tab" data-v="market" aria-selected="false">Marked <span id="sideMkt"></span></button></div>
     <p class="sumline newsonly" id="sumline">Henter nyheter …</p>
-    <details class="digest newsonly" id="digest" hidden><summary id="digestT">Døgnet oppsummert</summary><div class="dgm" id="digestM" hidden><span id="digestN"></span><button class="btn" type="button" id="digestX">Ferdig</button></div><ol id="digestList"></ol></details>
+    <details class="digest newsonly" id="digest" hidden><summary id="digestT">Døgnet oppsummert</summary><div class="dgm" id="digestM" hidden><span id="digestN"></span><button class="btn" type="button" id="digestX">Ferdig</button></div>
+     <div class="dgt" id="digestTabs"><div class="seg" role="group" aria-label="Periode for oppsummeringen"><button type="button" data-dw="0" aria-pressed="true">Døgnet</button><button type="button" data-dw="1" aria-pressed="false">Uka</button></div><span class="sp"></span><button class="btn say" type="button" id="digestSay" aria-pressed="false">Les opp</button></div>
+     <ol id="digestList"></ol></details>
+    <details class="digest cal newsonly" id="cal" hidden><summary id="calT">Kommer</summary><ol class="calist" id="calList"></ol><p class="meta calnote">Fra Norges Bank, Fed, ESB og valgmyndigheter. Du får varsel dagen før.</p></details>
     <details class="mkt" id="mkt" hidden><summary><h2>Marked</h2><span class="sum" id="mSum"></span></summary>
       <div class="mtools"><div class="msearch"><input type="search" id="mQ" placeholder="Søk etter aksje, indeks, valuta eller krypto" aria-label="Søk i markedet" autocomplete="off"><ul id="mRes" hidden></ul></div>
       <div class="mrange" id="mRange" role="group" aria-label="Periode"></div></div>
@@ -118,6 +126,11 @@
 <dialog id="ins" class="insight" aria-labelledby="iTitle">
  <header class="ihead"><h2 id="iTitle">Innsikt</h2><div class="seg" id="iPer" role="group" aria-label="Periode"><button data-d="7" aria-pressed="true">Siste 7 dager</button><button data-d="30" aria-pressed="false">Siste 30 dager</button></div><span class="sp"></span><button class="x" id="iX" aria-label="Lukk">×</button></header>
  <div class="ibody" id="iBody"><p class="meta">Regner ut …</p></div>
+</dialog>
+
+<dialog id="reader" class="reader" aria-labelledby="rTitle">
+ <header class="rhead"><span class="rsrc" id="rSrc"></span><span class="sp"></span><button class="btn say" type="button" id="rSay" aria-pressed="false">Les opp</button><a class="btn" id="rOpen" target="_blank" rel="noopener">Åpne hos kilden</a><button class="x" id="rX" aria-label="Lukk">×</button></header>
+ <article class="rbody" id="rBody"></article>
 </dialog>
 
 <dialog id="keys" aria-labelledby="kTitle">
@@ -245,6 +258,7 @@
       <datalist id="hList"></datalist><div class="meta" id="hStatus"></div></div>
      <div class="opt"><div><b>Vær i toppstripa</b><p>Temperatur og symbol fra Yr. Klikk for neste 12 timer.</p></div><label class="tg"><input type="checkbox" data-f="weather"><i></i></label></div>
      <div class="opt"><div><b>Fanen «Nær meg»</b><p>Saker som skjer i nærheten av hjemstedet.</p></div><label class="tg"><input type="checkbox" data-f="near"><i></i></label></div>
+     <div class="opt"><div><b>Lokalavis</b><p id="localSt">Legger til lokalavisa nærmest hjemstedet som kilde.</p></div><label class="tg"><input type="checkbox" data-f="localNews"><i></i></label></div>
      <div class="opt"><div><b>Hva er «nær»</b></div><select data-k="nearKm" data-num><option value="20">20 km</option><option value="50">50 km</option><option value="100">100 km</option><option value="200">200 km</option></select></div>
      <p class="meta">Vær fra Yr, levert av Meteorologisk institutt og NRK.</p>
     </section>
@@ -274,6 +288,8 @@
      <div class="opt nk-only"><div><b>Samle varsler</b><p>Flere store saker innen ett minutt blir ett varsel.</p></div><label class="tg"><input type="checkbox" data-k="notifyGroup"><i></i></label></div>
      <div class="opt nk-only"><div><b>Ny utvikling i lagrede saker</b><p>Varsel når en sak du har lagret med ☆ får nye kilder eller oppdateringer.</p></div><label class="tg"><input type="checkbox" data-k="notifyFollow"><i></i></label></div>
      <div class="opt nk-only"><div><b>Saker som nevner ord jeg følger</b><p>Gir alltid varsel, uansett hvor viktig saken er.</p></div><label class="tg"><input type="checkbox" data-k="notifyWatch"><i></i></label></div>
+     <div class="opt nk-only"><div><b>Uka oppsummert</b><p>Søndag kl. 18 med ukas viktigste saker.</p></div><label class="tg"><input type="checkbox" data-k="notifyWeekly"><i></i></label></div>
+     <div class="opt nk-only"><div><b>Kalender</b><p>Dagen før rentemøter, valg og andre hendelser i kalenderen, kl. 18.</p></div><label class="tg"><input type="checkbox" data-k="notifyCal"><i></i></label></div>
      <div class="opt nk-only"><div><b>Kilder som er nede</b><p>Ett varsel når en kilde har feilet i over et døgn.</p></div><label class="tg"><input type="checkbox" data-k="notifyDown"><i></i></label></div>
      <div class="opt nk-only"><div><b>Lyd</b><p>Spill av Windows-lyden ved varsel.</p></div><label class="tg"><input type="checkbox" data-k="sound"><i></i></label></div>
      <div class="opt nk-only"><div><b>Stille timer</b><p>Ingen varsler i dette tidsrommet.</p><div class="inl"><select id="qFrom"></select><span>til</span><select id="qTo"></select></div></div><label class="tg"><input type="checkbox" id="qOn"><i></i></label></div>
@@ -295,6 +311,7 @@
      <div class="opt"><div><b>Natt</b><p>Skygge over den delen av jorda der det er natt.</p></div><label class="tg"><input type="checkbox" data-layer="night"><i></i></label></div>
      <div class="opt"><div><b>Nattbilder fra NASA</b><p>Når du zoomer inn på et område der det er natt, vises ekte satellittbilder av bylysene.</p></div><label class="tg"><input type="checkbox" data-f="nightImg"><i></i></label></div>
      <div class="opt"><div><b>Kloden snurrer sakte</b><p>Når du ikke har rørt kartet på et minutt, og hele kloden vises.</p></div><label class="tg"><input type="checkbox" data-f="spin"><i></i></label></div>
+     <div class="opt"><div><b>Kalender over kommende hendelser</b><p>Rentemøter, valg og annet som kommer, under oppsummeringen i nyhetene.</p></div><label class="tg"><input type="checkbox" data-f="calendar"><i></i></label></div>
      <div class="opt"><div><b>Bilder i sakene</b><p>Viser bildet fra kilden øverst i saken, når kilden har et.</p></div><label class="tg"><input type="checkbox" data-f="images"><i></i></label></div>
      <div class="opt"><div><b>Animasjoner</b><p>Pulserende nye saker og bevegelse i buene.</p></div><label class="tg"><input type="checkbox" data-ui="anim"><i></i></label></div>
      <div class="opt"><div><b>Panelet «Mest omtalt»</b></div><label class="tg"><input type="checkbox" data-ui="legend"><i></i></label></div>
@@ -387,5 +404,6 @@
 <script src="/js/explore.js"></script>
 <script src="/js/features.js"></script>
 <script src="/js/settings.js"></script>
+<script src="/js/tools.js"></script>
 </body>
 </html>

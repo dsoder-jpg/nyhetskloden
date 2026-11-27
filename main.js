@@ -331,6 +331,25 @@ setInterval(() => {
   n.on('click', () => { show(); setTimeout(() => win && win.webContents.send('open-tab', 'top'), 500); });
   n.show();
 }, 30e3);
+// ---------- ukesoppsummering (søndag kl. 18) og kalender (dagen før kl. 18) ----------
+let weekDay = '', calSeen = new Set();
+setInterval(async () => {
+  const s = S(); if (!s.notify || !Notification.isSupported()) return;
+  const now = new Date(), day = now.toDateString();
+  if (now.getHours() !== 18 || now.getMinutes() > 5) return;
+  if (s.notifyWeekly !== false && now.getDay() === 0 && weekDay !== day) {
+    weekDay = day;
+    const top = engine.topEvents(168, 5);
+    if (top.length) { const n = new Notification({ title: 'Uka oppsummert', body: top.map((e, i) => `${i + 1}. ${e.title}`).join('\n'), icon: ICON, silent: !s.sound }); n.on('click', () => openItem('nk:week')); n.show(); }
+  }
+  if (s.notifyCal !== false) {
+    const tomorrow = new Date(now.getTime() + 864e5); const d = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    let cal = []; try { cal = await engine.getCalendar(); } catch {}
+    const due = cal.filter(e => e.date === d && !calSeen.has(e.date + e.title));
+    for (const e of due) calSeen.add(e.date + e.title);
+    if (due.length) { const n = new Notification({ title: due.length > 1 ? `I morgen: ${due.length} hendelser` : 'I morgen', body: due.map(e => (e.time ? `kl. ${e.time}: ` : '') + e.title).join('\n'), icon: ICON, silent: !s.sound }); n.on('click', () => openItem('nk:cal')); n.show(); }
+  }
+}, 60e3);
 ipcMain.on('zoom', (e, f) => { const z = Math.max(0.8, Math.min(1.6, +f || 1)); for (const w of BrowserWindow.getAllWindows()) if (w !== ticker) w.webContents.setZoomFactor(z); });
 ipcMain.handle('update-state', () => ({ ...upd, current: app.getVersion() }));
 ipcMain.on('update-check', () => checkUpdates('ui'));

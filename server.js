@@ -11,6 +11,8 @@ const { EventEmitter } = require('events');
 const os = require('os');
 const crypto = require('crypto');
 const X = require('./extras');
+const READER = require('./reader');
+const LOCAL = require('./local');
 
 const events = new EventEmitter();
 const POLL_MIN = +process.env.POLL_MIN || 5;
@@ -140,13 +142,14 @@ const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], da
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
   closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false, widget: false, widgetOnTop: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true, localNews: true, calendar: true },
   datex: { user: '', pass: '' },
   muteWords: [], hiddenSrc: [], notifyCats: null, notifyFollow: true, notifyGroup: true, followEids: [],
-  srcLists: [], portfolio: [], priceAlerts: true, priceAlertPct: 5, notifyDown: true,
+  srcLists: [], portfolio: [], trades: [], localPaper: null, notifyWeekly: true, notifyCal: true, priceAlerts: true, priceAlertPct: 5, notifyDown: true,
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
 function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) }, datex: { ...DEFAULTS.datex, ...(s.datex || {}) } }; } catch {} }
+const derivePortfolio = () => X.holdings(settings.trades).filter(h => h.open).map(h => ({ sym: h.sym, qty: h.qty, price: +h.price.toFixed(6) }));
 function saveSettings() { try { fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true }); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2)); } catch (e) { console.warn('Kunne ikke lagre innstillinger:', e.message); } }
 const publicSettings = () => {
   const { deeplKey, usage, ships, lanToken, datex, ...rest } = settings;
@@ -157,7 +160,7 @@ const publicSettings = () => {
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown', 'notifyWeekly', 'notifyCal']) if (typeof b[k] === 'boolean') settings[k] = b[k];
   if (b.datex && typeof b.datex === 'object') {
     if (typeof b.datex.user === 'string') settings.datex.user = b.datex.user.trim().slice(0, 100);
     if (typeof b.datex.pass === 'string' && b.datex.pass) settings.datex.pass = b.datex.pass.slice(0, 200);
@@ -182,8 +185,16 @@ function applySettings(b) {
   if (Array.isArray(b.followEids)) settings.followEids = [...new Set(b.followEids.map(String).filter(x => /^https?:\/\//.test(x)))].slice(-100);
   if (Array.isArray(b.srcLists)) settings.srcLists = b.srcLists.filter(l => l && typeof l.name === 'string' && l.name.trim() && Array.isArray(l.srcs)).slice(0, 20)
     .map(l => ({ name: l.name.trim().slice(0, 40), srcs: [...new Set(l.srcs.map(String))].slice(0, 200).map(x => x.slice(0, 60)) })).filter((l, i, a) => a.findIndex(x => x.name === l.name) === i);
-  if (Array.isArray(b.portfolio)) settings.portfolio = b.portfolio.filter(h => h && /^[A-Z0-9^.=\-]{1,15}$/.test(String(h.sym || '').toUpperCase()) && +h.qty > 0).slice(0, 50)
-    .map(h => ({ sym: String(h.sym).toUpperCase(), qty: clampNum(h.qty, 0, 1e9, 0), price: clampNum(h.price, 0, 1e9, 0) }));
+  const okSym = x => /^[A-Z0-9^.=\-]{1,15}$/.test(String(x || '').toUpperCase());
+  // gammel form: hele beholdningen per aksje (blir ett kjøp uten dato)
+  if (Array.isArray(b.portfolio)) {
+    const list = b.portfolio.filter(h => h && okSym(h.sym) && +h.qty > 0).slice(0, 50).map(h => ({ sym: String(h.sym).toUpperCase(), qty: clampNum(h.qty, 0, 1e9, 0), price: clampNum(h.price, 0, 1e9, 0) }));
+    settings.trades = list.map((h, i) => ({ id: 'p' + Date.now().toString(36) + i, sym: h.sym, side: 'buy', qty: h.qty, price: h.price, date: null }));
+  }
+  if (Array.isArray(b.trades)) settings.trades = b.trades.filter(t => t && okSym(t.sym) && +t.qty > 0).slice(0, 500).map((t, i) => ({
+    id: String(t.id || 't' + Date.now().toString(36) + i).slice(0, 24), sym: String(t.sym).toUpperCase(), side: t.side === 'sell' ? 'sell' : 'buy',
+    qty: clampNum(t.qty, 0, 1e9, 0), price: clampNum(t.price, 0, 1e9, 0), date: /^\d{4}-\d\d-\d\d$/.test(t.date || '') ? t.date : null }));
+  if (Array.isArray(b.portfolio) || Array.isArray(b.trades)) settings.portfolio = derivePortfolio();
   if (b.priceAlertPct != null) settings.priceAlertPct = clampNum(b.priceAlertPct, 1, 50, 5);
   if (b.home === null) settings.home = null;
   else if (b.home && isFinite(b.home.lat) && isFinite(b.home.lon)) settings.home = { name: String(b.home.name || '').slice(0, 60), lat: +b.home.lat, lon: +b.home.lon };
@@ -210,7 +221,8 @@ function setLan() {
   } else if (!settings.lan && lanServer) { lanServer.close(); lanServer = null; delete status.lan; }
 }
 const today = () => new Date().toISOString().slice(0, 10);
-const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includes(f.url)), ...settings.customFeeds.filter(f => !settings.disabledFeeds.includes(f.url)).filter(f => /^https:\/\//.test(f.url)).map(f => ({ src: f.src || new URL(f.url).hostname, url: f.url, custom: true }))];
+const localFeed = () => { const lp = settings.localPaper; return settings.features.localNews !== false && lp && lp.url && !settings.disabledFeeds.includes(lp.url) ? [{ src: lp.name, url: lp.url, lang: 'no', local: true }] : []; };
+const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includes(f.url)), ...localFeed(), ...settings.customFeeds.filter(f => !settings.disabledFeeds.includes(f.url)).filter(f => /^https:\/\//.test(f.url)).map(f => ({ src: f.src || new URL(f.url).hostname, url: f.url, custom: true }))];
 
 // ---------- steder ----------
 // [navn, lat, lon, type, landkode]  type: c = by/sted, r = region/land, d = adjektiv/person (russisk, Putin …)
@@ -539,11 +551,43 @@ function searchArchive(q, days = 90, limit = 200) {
   // (brukes også av innsikt med stor grense)
 }
 
+// ---------- lokalavis ----------
+// Finner avisa nærmest hjemstedet og prøver adressene til RSS-strømmen til én virker.
+async function resolveLocal() {
+  const want = settings.features.localNews !== false ? LOCAL.nearest(settings.home) : null;
+  const lp = settings.localPaper;
+  if (!want || want.builtin) { if (lp) { settings.localPaper = null; saveSettings(); } return; }
+  if (lp && lp.name === want.name && (lp.url || Date.now() - (lp.triedAt || 0) < 24 * 3600e3)) return;
+  let url = null;
+  for (const u of LOCAL.candidates(want)) {
+    const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 12000);
+    try { const r = await fetch(u, { signal: ctrl.signal, headers: { 'User-Agent': UA } }); if (r.ok && parseRss(await r.text()).length) { url = u; break; } } catch {} finally { clearTimeout(t); }
+  }
+  settings.localPaper = { name: want.name, url, km: want.km, triedAt: Date.now() }; saveSettings();
+}
+
+// ---------- kalender ----------
+// Kommende hendelser. Lista hentes fra GitHub, så den kan oppdateres uten ny versjon.
+const CAL_URL = 'https://raw.githubusercontent.com/dsoder-jpg/nyhetskloden/main/kalender.json';
+let CAL = { at: 0, events: [] };
+function calBundled() { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'kalender.json'), 'utf8')).events || []; } catch { return []; } }
+const calOk = e => e && /^\d{4}-\d\d-\d\d$/.test(e.date) && typeof e.title === 'string' && e.title.length < 200;
+async function getCalendar() {
+  if (Date.now() - CAL.at > 12 * 3600e3) {
+    let ev = null;
+    try { const r = await fetch(CAL_URL, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j.events)) ev = j.events; } } catch {}
+    CAL = { at: ev ? Date.now() : Date.now() - 11 * 3600e3, events: (ev || calBundled()).filter(calOk).map(e => ({ date: e.date, time: /^\d\d:\d\d$/.test(e.time || '') ? e.time : null, kind: String(e.kind || 'annet').slice(0, 20), title: e.title, cc: String(e.cc || '').slice(0, 2).toUpperCase() || null, url: /^https:\/\//.test(e.url || '') ? e.url : null })) };
+  }
+  const today = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  return CAL.events.filter(e => e.date >= today).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+}
+
 let pollTimer = null;
 function schedule() { clearTimeout(pollTimer); const ms = settings.pollMin * 60e3; nextPoll = new Date(Date.now() + ms); pollTimer = setTimeout(poll, ms); }
 async function poll() {
   if (polling) return; polling = true;
   try {
+    await resolveLocal();
     const list = feeds();
     for (const k of Object.keys(status)) if (!['deepl', 'met', 'lan', 'net'].includes(k) && !list.some(f => f.url === k)) delete status[k];
     const force = poll.force; poll.force = false;
@@ -665,6 +709,7 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   PRICE_FILE = path.join(dataDir, 'kursvarsler.json'); try { PRICE_SEEN = JSON.parse(fs.readFileSync(PRICE_FILE, 'utf8')) || {}; } catch { PRICE_SEEN = {}; }
   priceTimer = setTimeout(checkPrices, 90e3); if (priceTimer.unref) priceTimer.unref();
   loadSettings();
+  if (!(settings.trades || []).length && (settings.portfolio || []).length) settings.trades = settings.portfolio.map((h, i) => ({ id: 'm' + i, sym: h.sym, side: 'buy', qty: h.qty, price: h.price || 0, date: null }));
   try { news = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); for (const n of news) if (!n.eid) n.eid = n.id; } catch { news = []; }
   const pub = path.join(__dirname, 'public');
   mainHandler = async (req, res, lan) => {
@@ -755,11 +800,29 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
     if (url.pathname === '/api/top') return json(X.topEvents(news, 24, 5, settings.catsOff));
     if (url.pathname === '/api/news') return json({ news, lastPoll, nextPoll, pollMin: settings.pollMin, status });
     if (url.pathname === '/api/alerts') return json(alerts);
-    if (url.pathname === '/api/settings' && req.method === 'GET') { const ps = publicSettings(); if (lan) delete ps.portfolio; return json(ps); }
+    if (url.pathname === '/api/settings' && req.method === 'GET') { const ps = publicSettings(); if (lan) { delete ps.portfolio; delete ps.trades; } return json(ps); }
+    if (url.pathname === '/api/read') {
+      const u = url.searchParams.get('url') || '';
+      // bare lenker til saker appen selv har hentet
+      if (!/^https:\/\//.test(u) || !news.some(n => n.url === u)) return json({ error: 'ukjent lenke' }, 400);
+      try { return json(await READER.read(u, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' + UA)); } catch (e) { return json({ error: e.name === 'AbortError' ? 'siden svarer ikke' : e.message }, 502); }
+    }
+    if (url.pathname === '/api/calendar') return json(await getCalendar());
+    if (url.pathname === '/api/local') return json({ paper: settings.localPaper, near: LOCAL.nearest(settings.home) });
+    if (url.pathname === '/api/fx') {
+      const f = (url.searchParams.get('from') || '').toUpperCase(), t = (url.searchParams.get('to') || '').toUpperCase();
+      if (!/^[A-Z]{3}$/.test(f) || !/^[A-Z]{3}$/.test(t)) return json({ error: 'ugyldig valuta' }, 400);
+      try { return json(await X.fxRate(f, t)); } catch (e) { return json({ error: e.message }, 502); }
+    }
+    if (url.pathname === '/api/portfolio/history') {
+      if (lan) return json({ points: [] });
+      try { return json(await X.getPortfolioHistory(settings.trades, url.searchParams.get('range'))); } catch (e) { return json({ error: e.message, points: [] }, 502); }
+    }
     if (url.pathname === '/api/portfolio') {
       if (lan) return json({ rows: [], lan: true });
-      if (!settings.portfolio.length) return json({ rows: [], value: 0 });
-      try { return json(await X.getPortfolio(settings.portfolio)); } catch (e) { return json({ error: e.message, rows: [] }, 502); }
+      const hs = X.holdings(settings.trades), open = hs.filter(h => h.open); open.closed = hs.filter(h => !h.open && h.realized);
+      if (!open.length && !open.closed.length) return json({ rows: [], value: 0 });
+      try { return json(await X.getPortfolio(open)); } catch (e) { return json({ error: e.message, rows: [] }, 502); }
     }
     if (url.pathname === '/api/settings' && req.method === 'POST') {
       try {
@@ -805,5 +868,5 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   });
 }
 
-module.exports = { start, poll, getSettings: () => settings, applySettings, topEvents: () => X.topEvents(news, 24, 5, settings.catsOff), events, parseRss, parseUsgs, findPlace, findPlaces, categorize, severity, tokens, sameEvent };
+module.exports = { start, poll, getSettings: () => settings, applySettings, topEvents: (h = 24, n = 5) => X.topEvents(news, h, n, settings.catsOff), getCalendar, events, parseRss, parseUsgs, findPlace, findPlaces, categorize, severity, tokens, sameEvent };
 if (require.main === module) start();

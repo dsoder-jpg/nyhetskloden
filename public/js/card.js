@@ -3,7 +3,7 @@
 let cardEv=null;
 function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star,img}){
   const c=$('card');c.hidden=false;cardImg(img);c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
-  $('cCov').hidden=true;$('cQueue').hidden=true;
+  $('cCov').hidden=true;$('cQueue').hidden=true;$('cRead').hidden=true;$('cDis').hidden=true;
   $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;const mm=$('cMeta');mm.textContent='';for(const x of (Array.isArray(meta)?meta:[meta]).filter(Boolean)){const sp=document.createElement('span');sp.textContent=x;mm.append(sp)}$('cText').textContent=text||'';$('cText').hidden=!text;
   const ul=$('cSrcs');ul.textContent='';const many=srcs&&srcs.length>1;ul.hidden=!many;$('cFlow').hidden=!many;
   if(many){const so=[...srcs].sort((a,b)=>a.date.localeCompare(b.date)),t0=new Date(so[0].date),t1=new Date(so[so.length-1].date),hrs=(t1-t0)/36e5;
@@ -53,6 +53,7 @@ function select(id,go){
     text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden'),star:true,img:(e.items.find(n=>n.img&&n.url===e.url)||e.items.find(n=>n.img)||{}).img});
   $('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';cardTickers(e);
   $('cCov').textContent=coverageText(e);$('cCov').hidden=false;queueBtn();
+  $('cRead').hidden=!(e.url&&e.url.startsWith('https://'));const dis=disagree(e);$('cDis').textContent=dis;$('cDis').hidden=!dis;
   if(go&&e.lat!=null&&map){const no=ccOf(e)==='NO';map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),no?5.2:e.exact?4.5:4),duration:reduced?0:1800,essential:true})}
   list();updateMap();
 }

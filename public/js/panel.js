@@ -96,7 +96,8 @@ function kpis(){const b=base(),h=heatMap(),n1=EVENTS.filter(e=>{const a=age(e);r
   if(!top.length){const l=document.createElement('li');l.className='meta';l.textContent='Ingen hendelser med sted ennå';ul.append(l)}
   for(const[a2,v]of top){const l=document.createElement('li'),b=document.createElement('button');b.onclick=()=>setCountry(a2);
     const n=document.createElement('span');n.textContent=cname(a2);const r=document.createElement('span');r.className='bars';const i=document.createElement('i');i.style.width=Math.max(6,60*v/max)+'px';
-    r.append(i,String(base().filter(e=>catOn(e.cat)&&ccOf(e)===a2).length));b.append(n,r);l.append(b);ul.append(l)}}
+    r.append(i,String(base().filter(e=>catOn(e.cat)&&ccOf(e)===a2).length));b.append(n,r);l.append(b);ul.append(l)}
+  trendUI();if(AREA&&ready)$('areaN').textContent=base().length+' hendelser'}
 let brIdx=0,brList=[];
 function breaking(){brList=EVENTS.filter(e=>e.score>=6&&(Date.now()-ms(e.date))/6e4<=90).sort((a,b)=>b.score-a.score).slice(0,5);
   const on=brList.length>0;$('breaking').hidden=!on;document.body.classList.toggle('has-breaking',on);if(on)showBr()}
