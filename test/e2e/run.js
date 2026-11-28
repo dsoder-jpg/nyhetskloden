@@ -29,12 +29,23 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FEIL ') + what); if (
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', e => errors.push(String(e.message || e)));
+  const logs = [];
+  page.on('console', m => { if (m.type() === 'error') logs.push(m.text().slice(0, 200)); });
   await page.route('https://img.test/**', r => r.fulfill({ status: 404, body: '' }));
   const shot = name => page.screenshot({ path: path.join(OUT, name + '.png') });
 
   await page.goto(URL); await page.waitForTimeout(9000);
   check(await page.evaluate(() => EVENTS.length > 5), 'sakene lastes');
-  check(await page.evaluate(() => typeof ready !== 'undefined' && ready === true), 'kartet lastes');
+  // Kartet må hente stil og fliser fra nettet, og det kan ta tid på GitHub sine maskiner.
+  const mapOk = await page.waitForFunction(() => typeof ready !== 'undefined' && ready === true, null, { timeout: 60000 }).then(() => true, () => false);
+  if (!mapOk) {
+    const why = await page.evaluate(() => {
+      const c = document.createElement('canvas');
+      return { webgl2: !!c.getContext('webgl2'), webgl: !!c.getContext('webgl'), style: typeof map !== 'undefined' && map.isStyleLoaded && map.isStyleLoaded() };
+    });
+    console.log('     kartet:', JSON.stringify(why), errors.concat(logs).slice(-6).join(' | '));
+  }
+  check(mapOk, 'kartet lastes');
   await shot('1-start');
 
   const ev = await page.evaluate(() => (EVENTS.find(e => /Kharkiv/.test(e.title)) || EVENTS[0]).id);
