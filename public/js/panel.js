@@ -85,6 +85,7 @@ function list(){
     if(!sv.length){const l=document.createElement('li');l.className='empty';l.textContent='Ingen lagrede saker. Åpne en sak og trykk på stjerna for å lagre den.';ul.append(l)}
     for(const e of sv)ul.append(li(e,true));return}
   const ev=view();$('count2').textContent=ev.length+(ev.length===1?' hendelse':' hendelser');
+  if(S.tab==='foryou'&&typeof forYouNote==='function'&&forYouNote()){const l=document.createElement('li');l.className='empty';l.textContent=forYouNote();ul.append(l)}
   if(!ev.length&&!(S.q.length>=2)){const l=document.createElement('li');l.className='empty';l.textContent=!EVENTS.length?'Henter nyheter …':S.tab==='watch'?'Ingen saker nevner ordene du følger ennå. Legg til ord under Innstillinger.':S.tab==='near'?'Ingen saker innenfor '+(SET.nearKm||50)+' km fra '+(HOME?HOME.name:'hjemstedet')+' i denne perioden.':'Ingen hendelser med disse filtrene.';ul.append(l);return}
   for(const e of ev.slice(0,300))ul.append(li(e));
   if(S.q.length>=2){const l=document.createElement('li');l.className='empty';const b=document.createElement('button');b.className='btn';b.type='button';b.textContent='Søk etter «'+S.q+'» i arkivet (90 dager)';b.onclick=searchArchive;l.append(b);ul.append(l)}

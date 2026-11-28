@@ -59,6 +59,20 @@ jobs:
         if: steps.v.outputs.skip != 'true'
         run: npm test
 
+      - name: Skjermtest
+        if: steps.v.outputs.skip != 'true'
+        run: |
+          npx playwright install chromium
+          npm run e2e
+
+      - name: Lagre skjermbilder
+        if: always() && steps.v.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: skjermbilder-${{ steps.v.outputs.version }}
+          path: test/e2e/bilder/
+          if-no-files-found: ignore
+
       - name: Bygg
         if: steps.v.outputs.skip != 'true'
         run: node scripts/dist.js

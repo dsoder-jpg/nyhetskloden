@@ -152,9 +152,12 @@ function buildTray() {
 }
 
 function quietNow() { const q = S().quiet; if (!q || !q.on) return false; const h = new Date().getHours(); return q.from <= q.to ? h >= q.from && h < q.to : h >= q.from || h < q.to; }
-function notify(title, body, id) {
+function notify(title, body, id, big) {
   if (!S().notify || quietNow() || !Notification.isSupported()) return;
-  const n = new Notification({ title, body, icon: ICON, silent: !S().sound });
+  // store saker kan få en egen lyd, så de høres annerledes ut enn vanlige varsler
+  const own = big && S().sound && ['chime', 'alarm'].includes(S().bigSound || 'chime');
+  if (own && win && !win.isDestroyed()) win.webContents.send('chime', S().bigSound || 'chime');
+  const n = new Notification({ title, body, icon: ICON, silent: !S().sound || own || (big && S().bigSound === 'off') });
   n.on('click', () => openItem(id));
   n.show();
 }
@@ -168,8 +171,8 @@ function flushTop() {
   topQueue = [];
   if (!items.length) return;
   const first = items[0];
-  if (items.length > 1) notify(`${items.length} store saker`, items.slice(0, 3).map(i => '• ' + label(i)).join('\n') + (items.length > 3 ? `\nog ${items.length - 3} til` : ''), first.eid || first.id);
-  else notify(`${first.sev >= 5 ? 'Stor sak' : 'Toppsak'}, ${first.src}`, label(first), first.eid || first.id);
+  if (items.length > 1) notify(`${items.length} store saker`, items.slice(0, 3).map(i => '• ' + label(i)).join('\n') + (items.length > 3 ? `\nog ${items.length - 3} til` : ''), first.eid || first.id, first.sev >= 5);
+  else notify(`${first.sev >= 5 ? 'Stor sak' : 'Toppsak'}, ${first.src}`, label(first), first.eid || first.id, first.sev >= 5);
 }
 engine.events.on('top', all => {
   const mode = S().notifyMode;
@@ -197,6 +200,8 @@ function setHotkey() {
 }
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
 engine.events.on('settings', () => { setHotkey(); buildTrayMenu(); if (!!S().widget !== !!widget) setTimeout(() => { if (!!S().widget !== !!widget) toggleWidget(); }, 50); if (widget) widget.setAlwaysOnTop(!!S().widgetOnTop); });
+// ny børsmelding for en aksje du eier
+engine.events.on('newsweb', m => notify(`Børsmelding fra ${m.name || m.sym}`, m.list.map(x => '• ' + x.title).join('\n'), 'nk:market:' + m.sym));
 // strømpris i morgen
 engine.events.on('powerprice', p => {
   const t = x => new Date(x).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' }), kr = v => v.toFixed(2).replace('.', ',') + ' kr';

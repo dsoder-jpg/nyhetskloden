@@ -96,6 +96,7 @@ function renderDetail(){const d=MDETD;if(!d)return;
     <dl class="mstats">${st.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
 ${tradeHtml(d)}
     ${news.length?`<div class="mh">I nyhetene</div><ul class="mnews">${news.map(e=>`<li><button type="button" data-ev="${esc(e.id)}"><span>${esc(e.title)}</span><small>${esc(e.srcs.slice(0,3).join(', '))}, ${esc(when(e))}</small></button></li>`).join('')}</ul>`:''}
+    <div id="mNw"></div>
     <div class="mact"><button type="button" class="btn ${following?'':'primary'}" id="mFollow">${following?'Slutt å følge':'Følg'}</button>${/^\^|=X$|-USD$|=F$/.test(d.sym)?'':`<button type="button" class="btn" id="mArch">Søk i arkivet</button>`}<a class="btn" href="https://finance.yahoo.com/quote/${encodeURIComponent(d.sym)}" target="_blank" rel="noopener">Se hos Yahoo Finance</a></div>
     <div class="mnote">Kurser fra Yahoo Finance${d.time?', sist oppdatert '+dfmt.format(new Date(d.time)):''}. De kan være forsinket og er ikke investeringsråd.</div>`;
   $('mFollow').onclick=()=>{const w=SET.marketWatch||[];postSet({marketWatch:following?w.filter(x=>x!==d.sym):[...w,d.sym].slice(-30)},true);setTimeout(()=>{renderDetail();loadMarket()},400)};
@@ -103,6 +104,7 @@ ${tradeHtml(d)}
   for(const b of $('mBody').querySelectorAll('[data-cmp]'))b.onclick=()=>setCompare(MCMP===b.dataset.cmp?null:b.dataset.cmp);
   if($('mCmpX'))$('mCmpX').onclick=()=>setCompare(null);
   for(const b of $('mBody').querySelectorAll('[data-ev]'))b.onclick=()=>{setSide('news');S.period='168';S.cc=null;S.tab='all';S.cats=new Set(KEYS);refresh();select(b.dataset.ev,true)};
+  if(typeof nwLoad==='function')nwLoad(d);
   mSearchBox($('mCq'),$('mCres'),sym=>setCompare(sym));
   tradeWire(d);
   const sv=$('mBody').querySelector('.mchart');if(sv&&MDETD._geo){const g=MDETD._geo;

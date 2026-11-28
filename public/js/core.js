@@ -49,7 +49,8 @@ const saveRead=()=>store.set('nk-read',[...READ].slice(-3000));
 // lagrede saker sendes også til motoren, så den kan varsle om ny utvikling
 const saveSaved=()=>{store.set('nk-saved',[...SAVED.values()]);if(!IS_LAN)try{postSet({followEids:[...SAVED.keys()].slice(-100)},true)}catch(e){}};
 const SHORT={PS:'Palestina',US:'USA',GB:'Storbritannia',RU:'Russland',KR:'Sør-Korea',KP:'Nord-Korea',CD:'DR Kongo',CG:'Kongo',IR:'Iran',SY:'Syria',VE:'Venezuela',BO:'Bolivia',TZ:'Tanzania',MD:'Moldova',VN:'Vietnam',LA:'Laos',TW:'Taiwan',CZ:'Tsjekkia'};
-const cname=a2=>SHORT[a2]||(CMETA[A2ID[a2]]||{}).nb||a2;
+const REGION_EN=LANG==='en'&&Intl.DisplayNames?new Intl.DisplayNames(['en'],{type:'region'}):null;
+const cname=a2=>{if(REGION_EN)try{return REGION_EN.of(a2)}catch(e){}return SHORT[a2]||(CMETA[A2ID[a2]]||{}).nb||a2};
 const REF=()=>S.tl??Date.now();
 const age=e=>(REF()-ms(e.date))/6e4;            // minutter siden hendelsen startet
 const fresh=e=>S.tl==null?(Date.now()-ms(e.last))/6e4<=60:(age(e)>=0&&age(e)<=60);
@@ -94,7 +95,7 @@ function base(){const q=S.q.toLowerCase(),P=+S.period*60;
 const qHay=n=>n._hay||(n._hay=(n.title+' '+(n.titleNo||'')+' '+(n.text||'')+' '+(n.place||'')+' '+(n.src||'')).toLowerCase());
 const qHit=(n,q)=>qHay(n).includes(q)||FUZZY.match(q,n._fz||(n._fz=FUZZY.prep(qHay(n))));
 const shown=()=>base().filter(e=>catOn(e.cat)&&(!S.cc||ccOf(e)===S.cc||e.ccs.includes(S.cc)));
-const view=()=>{const ev=shown();return S.tab==='top'?[...ev].sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,25):ev};
+const view=()=>{const ev=shown();if(S.tab==='foryou')return forYou(ev);return S.tab==='top'?[...ev].sort((a,b)=>b.score-a.score||ms(b.last)-ms(a.last)).slice(0,25):ev};
 const size=e=>e.score>=7?'x':(e.score>=3.5||e.top)?'t':'n';
 
 // ---------- dag/natt ----------

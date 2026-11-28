@@ -140,4 +140,122 @@ async function getDivs(sym) {
   });
 }
 
-module.exports = { setUA, getShakemap, getFires, getAurora, getPolicyRate, getPowerDay, powerSummary, zoneFor, POWER_ZONES, getDivs };
+// ---------- luftkvalitet (MET, varsel per time) ----------
+const AQ_CITIES = [['Oslo', 59.913, 10.739], ['Bergen', 60.392, 5.324], ['Trondheim', 63.43, 10.395], ['Stavanger', 58.97, 5.733], ['Drammen', 59.744, 10.204], ['Fredrikstad', 59.218, 10.929],
+  ['Kristiansand', 58.146, 7.996], ['Tromsø', 69.649, 18.955], ['Skien', 59.209, 9.609], ['Bodø', 67.28, 14.405], ['Ålesund', 62.472, 6.149], ['Lillehammer', 61.115, 10.466], ['Hamar', 60.795, 11.068], ['Mo i Rana', 66.313, 14.143], ['Narvik', 68.438, 17.427], ['Tønsberg', 59.267, 10.408], ['Sarpsborg', 59.284, 11.11], ['Gjøvik', 60.795, 10.692]];
+async function getAirQuality(home) {
+  const list = [...AQ_CITIES]; if (home && isFinite(home.lat) && !list.some(c => Math.abs(c[1] - home.lat) < .05 && Math.abs(c[2] - home.lon) < .05)) list.push([home.name || 'Hjemme', home.lat, home.lon]);
+  return cached('aq:' + list.length + (home ? home.lat : ''), 60, async () => {
+    const out = [];
+    for (const [name, lat, lon] of list) {
+      try {
+        const d = await get(`https://api.met.no/weatherapi/airqualityforecast/0.1/?lat=${lat}&lon=${lon}`);
+        const now = Date.now(), ts = (d.data && d.data.time) || [];
+        const cur = ts.find(t => Date.parse(t.from) <= now && now < Date.parse(t.to) + 3600e3) || ts[0]; if (!cur) continue;
+        const v = cur.variables || {}, num = k => v[k] && isFinite(v[k].value) ? +v[k].value : null;
+        const worst = ['AQI_no2', 'AQI_pm10', 'AQI_pm25', 'AQI_o3'].map(k => [k.slice(4), num(k)]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1])[0];
+        out.push({ name, lat, lon, aqi: num('AQI'), main: worst ? worst[0] : null, no2: num('no2_concentration'), pm10: num('pm10_concentration'), pm25: num('pm25_concentration'), time: cur.from });
+      } catch {}
+    }
+    return { at: new Date().toISOString(), cities: out };
+  });
+}
+
+// ---------- fly fra norske flyplasser (Avinor) ----------
+const AIRPORTS = [['OSL', 'Oslo lufthavn', 60.194, 11.1], ['BGO', 'Bergen', 60.293, 5.218], ['TRD', 'Trondheim', 63.458, 10.924], ['SVG', 'Stavanger', 58.877, 5.638], ['TOS', 'Tromsø', 69.683, 18.919],
+  ['BOO', 'Bodø', 67.269, 14.365], ['AES', 'Ålesund', 62.562, 6.12], ['KRS', 'Kristiansand', 58.204, 8.085], ['EVE', 'Harstad/Narvik', 68.491, 16.678], ['HAU', 'Haugesund', 59.345, 5.208],
+  ['MOL', 'Molde', 62.745, 7.263], ['KSU', 'Kristiansund', 63.112, 7.825], ['ALF', 'Alta', 69.976, 23.372], ['LYR', 'Longyearbyen', 78.246, 15.466], ['KKN', 'Kirkenes', 69.726, 29.891]];
+const xtag = (x, n) => (x.match(new RegExp(`<${n}>([^<]*)</${n}>`)) || [])[1] || '';
+async function getAirports() {
+  return cached('avinor', 5, async () => {
+    const out = [];
+    for (const [code, name, lat, lon] of AIRPORTS) {
+      try {
+        const x = await get(`https://asrv.avinor.no/XmlFeed/v1.0?TimeFrom=1&TimeTo=4&airport=${code}&direction=D`, 'text');
+        const fl = x.split('<flight ').slice(1); let late = 0, canc = 0, total = 0; const worst = [];
+        for (const f of fl) {
+          const sched = Date.parse(xtag(f, 'schedule_time')), st = (f.match(/<status code="(\w)"(?: time="([^"]+)")?/) || []), code2 = st[1] || '', t = st[2] ? Date.parse(st[2]) : null;
+          total++;
+          if (code2 === 'C') { canc++; worst.push({ id: xtag(f, 'flight_id'), to: xtag(f, 'airport'), kind: 'innstilt' }); continue; }
+          const delay = t && sched ? (t - sched) / 60e3 : 0;
+          if (delay >= 15 || (/<delayed>Y<\/delayed>/.test(f) && delay >= 15)) { late++; if (delay >= 45) worst.push({ id: xtag(f, 'flight_id'), to: xtag(f, 'airport'), kind: Math.round(delay) + ' min forsinket' }); }
+        }
+        out.push({ code, name, lat, lon, total, late, canc, worst: worst.slice(0, 5) });
+      } catch {}
+    }
+    return { at: new Date().toISOString(), airports: out };
+  });
+}
+
+// ---------- snøskred, flom og jordskred (Varsom, NVE) ----------
+const AVA_REGIONS = { 3003: [78.15, 16.0], 3006: [70.6, 25.5], 3007: [70.25, 22.6], 3009: [69.8, 21.2], 3010: [69.6, 20.2], 3011: [69.6, 18.8], 3012: [68.85, 17.6], 3013: [68.85, 19.4],
+  3014: [68.4, 14.6], 3015: [68.35, 17.3], 3016: [67.15, 15.4], 3017: [66.7, 14.0], 3018: [65.95, 13.6], 3022: [62.8, 9.2], 3023: [62.45, 7.75], 3024: [62.2, 6.6], 3027: [61.65, 6.9],
+  3028: [61.55, 8.4], 3029: [61.2, 7.4], 3031: [60.7, 6.4], 3032: [60.6, 8.6], 3034: [60.15, 6.9], 3035: [59.75, 8.0], 3037: [59.2, 7.1] };
+const dayStr = d => d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
+async function getVarsom(placeLookup) {
+  return cached('varsom', 60, async () => {
+    const a = dayStr(new Date()), b = dayStr(new Date(Date.now() + 864e5)), items = [];
+    const getJ = async u => { const r = await fetch(u, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(20000) }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+    try {
+      const av = await getJ(`https://api01.nve.no/hydrology/forecast/avalanche/v6.3.0/api/RegionSummary/Simple/1/${a}/${b}`);
+      for (const r of av) { const pos = AVA_REGIONS[r.Id]; if (!pos) continue;
+        for (const w of r.AvalancheWarningList || []) { const lvl = +w.DangerLevel; if (lvl >= 2) items.push({ kind: 'snøskred', level: lvl, name: r.Name, lat: pos[0], lon: pos[1], text: w.MainText || '', from: w.ValidFrom, url: 'https://www.varsom.no/snoskredvarsling/' }); } }
+    } catch {}
+    for (const [kind, api] of [['flom', 'flood'], ['jordskred', 'landslide']]) {
+      try {
+        const ws = await getJ(`https://api01.nve.no/hydrology/forecast/${api}/v1.0.10/api/Warning/All/1/${a}/${b}`);
+        for (const w of ws) { const lvl = +w.ActivityLevel; if (!(lvl >= 2)) continue;
+          for (const m of w.MunicipalityList || []) { const p = placeLookup(m.Name); if (!p) continue;
+            items.push({ kind, level: lvl, name: m.Name, lat: p.lat, lon: p.lon, text: w.MainText || '', from: w.ValidFrom, url: `https://www.varsom.no/${kind === 'flom' ? 'flom-og-jordskred' : 'flom-og-jordskred'}/varsling/` }); } }
+      } catch {}
+    }
+    // ett punkt per sted og type, med høyeste nivå og første dag
+    const by = new Map(); for (const i of items) { const k = i.kind + i.name; const o = by.get(k); if (!o || i.level > o.level) by.set(k, i); }
+    return { at: new Date().toISOString(), items: [...by.values()] };
+  });
+}
+
+// ---------- børsmeldinger (Newsweb, Oslo Børs) ----------
+async function getNewsweb(issuer) {
+  issuer = String(issuer).replace(/\.OL$/i, '').toUpperCase();
+  if (!/^[A-Z0-9-]{1,10}$/.test(issuer)) throw new Error('ukjent selskap');
+  return cached('nw:' + issuer, 15, async () => {
+    const r = await fetch(`https://api3.oslo.oslobors.no/v1/newsreader/list?issuer=${issuer}`, { method: 'POST', headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json(), msgs = ((j.data || {}).messages || []).filter(m => !m.test);
+    // samme melding kommer ofte på norsk og engelsk: behold den norske
+    const no = s => /[æøå]|\b(og|av|for|på|meldepliktig|utbytte|aksjer)\b/i.test(s);
+    const out = [];
+    for (const m of msgs.slice(0, 80)) {
+      const t = Date.parse(m.publishedTime), twin = out.find(o => Math.abs(Date.parse(o.time) - t) < 3000);
+      const item = { id: m.messageId, title: (m.title || '').trim(), time: m.publishedTime, cat: ((m.category || [])[0] || {}).category_no || '', issuer: m.issuerSign, name: m.issuerName, url: `https://newsweb.oslobors.no/message/${m.messageId}` };
+      if (twin) { if (no(item.title) && !no(twin.title)) Object.assign(twin, item); continue; }
+      out.push(item);
+    }
+    return out.slice(0, 30);
+  });
+}
+
+// ---------- datoer for kvartalsrapport og utbytte (Yahoo Finance) ----------
+let yCrumb = null, yCookie = '', yAt = 0;
+async function yahooCrumb() {
+  if (yCrumb && Date.now() - yAt < 6 * 3600e3) return;
+  const r = await fetch('https://fc.yahoo.com/', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36' }, redirect: 'manual', signal: AbortSignal.timeout(10000) }).catch(() => null);
+  const sc = r ? (r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie')]).filter(Boolean) : [];
+  yCookie = sc.map(c => c.split(';')[0]).join('; ');
+  const c = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36', Cookie: yCookie }, signal: AbortSignal.timeout(10000) });
+  const t = await c.text(); if (!c.ok || !t || t.length > 40 || /</.test(t)) throw new Error('fikk ikke tilgang');
+  yCrumb = t; yAt = Date.now();
+}
+async function getEarnings(sym) {
+  return cached('earn:' + sym, 12 * 60, async () => {
+    await yahooCrumb();
+    const r = await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=calendarEvents,price&crumb=${encodeURIComponent(yCrumb)}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36', Cookie: yCookie }, signal: AbortSignal.timeout(15000) });
+    if (r.status === 401) { yCrumb = null; throw new Error('fikk ikke tilgang'); }
+    const j = await r.json(), res = (((j || {}).quoteSummary || {}).result || [])[0] || {}, ce = res.calendarEvents || {}, name = (res.price || {}).shortName || sym;
+    const d = x => x && x.raw ? new Date(x.raw * 1000).toISOString().slice(0, 10) : null;
+    return { sym, name, earnings: ((ce.earnings || {}).earningsDate || []).map(d).filter(Boolean), estimate: !!(ce.earnings || {}).isEarningsDateEstimate, exDiv: d(ce.exDividendDate), divDate: d(ce.dividendDate) };
+  });
+}
+
+module.exports = { getAirQuality, getAirports, getVarsom, getNewsweb, getEarnings, AIRPORTS, setUA, getShakemap, getFires, getAurora, getPolicyRate, getPowerDay, powerSummary, zoneFor, POWER_ZONES, getDivs };

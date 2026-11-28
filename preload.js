@@ -24,4 +24,5 @@ contextBridge.exposeInMainWorld('nk', {
   saveText: (text, name, kind) => ipcRenderer.invoke('save-text', String(text), String(name || ''), String(kind || '')),
   copyText: text => ipcRenderer.invoke('copy-text', String(text)),
   diag: () => ipcRenderer.invoke('diag'),
+  onChime: cb => ipcRenderer.on('chime', (_e, kind) => cb(String(kind))),
 });

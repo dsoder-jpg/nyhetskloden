@@ -4,10 +4,14 @@ const LOCAL_STYLE={version:8,projection:{type:'globe'},glyphs:'https://tiles.ope
   layers:[{id:'background',type:'background',paint:{'background-color':'#0d2238'}}]};
 
 let FONT=['Noto Sans Regular'],FONT_B=['Noto Sans Bold'],usingLocal=false,fontFound=false;
+// kartstilen lagres, så kartet kan tegnes med en gang neste gang (og uten nett); en ny kopi hentes i bakgrunnen
+async function fetchStyle(ms){const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),ms);
+  const st=await (await fetch('https://tiles.openfreemap.org/styles/dark',{signal:ctrl.signal})).json();clearTimeout(t);if(!st.layers)throw 0;
+  try{localStorage.setItem('nk-style',JSON.stringify(st))}catch(e){}return st}
 async function loadStyle(){
-  try{const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),7000);
-    const st=await (await fetch('https://tiles.openfreemap.org/styles/dark',{signal:ctrl.signal})).json();clearTimeout(t);
-    if(!st.layers)throw 0;tuneStyle(st);return st}
+  let saved=null;try{saved=JSON.parse(localStorage.getItem('nk-style')||'null')}catch(e){}
+  if(saved&&saved.layers){fetchStyle(15000).catch(()=>{});tuneStyle(saved);return saved}
+  try{const st=await fetchStyle(7000);tuneStyle(st);return st}
   catch(e){usingLocal=true;return LOCAL_STYLE}}
 // fargepaletter for kartet: mørk og lys (følger temaet i appen)
 const MAPPAL={
@@ -143,7 +147,7 @@ function onLoad(){
     const a2=countryAt(e.lngLat.lng,e.lngLat.lat);setCountry(a2&&a2!==S.cc?a2:null)});
   let hov=null;map.on('mousemove',e=>{if(!COUNTRIES)return;const a2=countryAt(e.lngLat.lng,e.lngLat.lat);if(a2===hov)return;
     if(hov)map.setFeatureState({source:'countries',id:hov},{hover:false});hov=a2;if(a2)map.setFeatureState({source:'countries',id:a2},{hover:true})});
-  ready=true;mapTheme();applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();areaDraw();worldLayers();
+  ready=true;mapTheme();applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();areaDraw();worldLayers();plusLayers();map.getCanvas().setAttribute('aria-label','Kart over saker. Piltastene flytter kartet, pluss og minus zoomer, N og P går til neste og forrige sak.');
 }
 let DETAIL=[];
 function applyBase(){if(!map||!map.getLayer('sat'))return;const sat=S.base==='sat';

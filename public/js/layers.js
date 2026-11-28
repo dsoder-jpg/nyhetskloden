@@ -96,7 +96,7 @@ function extraEvents(){const pop=new maplibregl.Popup({closeButton:false,closeOn
     map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';pop.remove()})}
   map.on('moveend',()=>{clearTimeout(loadFlights.d);loadFlights.d=setTimeout(loadFlights,600)})}
 const trafNote=t=>{$('trafNote').textContent=t||'';$('trafNote').hidden=!t};
-let trafMsg={};const showTraf=()=>trafNote([trafMsg.f,trafMsg.s,trafMsg.r,F.fires?trafMsg.fi:null].filter(Boolean).join('. '));
+let trafMsg={};const showTraf=()=>trafNote([trafMsg.f,trafMsg.s,trafMsg.r,F.fires?trafMsg.fi:null,F.varsom?trafMsg.va:null,F.airports?trafMsg.ap:null].filter(Boolean).join('. '));
 async function loadFlights(){clearTimeout(loadFlights.t);if(!ready)return;const src=map.getSource('planes');
   if(!F.flights){src.setData(EMPTY);trafMsg.f='';showTraf();return}
   if(map.getZoom()<3.8){src.setData(EMPTY);trafMsg.f='Zoom inn for å se fly';showTraf();loadFlights.t=setTimeout(loadFlights,30e3);return}

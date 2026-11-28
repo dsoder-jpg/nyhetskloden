@@ -31,10 +31,13 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Klikk på et land for fakta: hovedstad, folketall, klokka og været der.
 - Tidsreise: se hvordan kloden så ut en tidligere dag fra arkivet.
 - Strømpris i de fem norske prisområdene, og veitrafikk fra Statens vegvesen (krever gratis DATEX-tilgang).
+- Snøskred- og flomvarsler fra Varsom, luftkvalitet i norske byer fra MET, og forsinkelser og innstillinger på norske flyplasser fra Avinor.
+- Kartet lagres på PC-en, så kloden virker også uten nett.
+- Kan brukes med tastatur: N og P hopper mellom sakene, og skjermlesere får opplest hva som er valgt.
 
 **Nyheter**
 - Kategorier: krim og ulykker, krig og sikkerhet, politikk, natur og vær, samferdsel, marked, teknologi, helse, vitenskap, energi, kultur, kongehus og sport.
-- Faner for alle saker, de viktigste siste døgn, saker nær deg, saker du følger og saker du har lagret.
+- Faner for alle saker, de viktigste siste døgn, «Til deg» (lærer av hvilke saker du åpner, bare lokalt på PC-en), saker nær deg, saker du følger og saker du har lagret.
 - Følg ord eller steder og få varsel når de dukker opp.
 - Bilde fra kilden i saken, når kilden har et.
 - Lesemodus: les hele saken i appen uten reklame, og få den lest høyt.
@@ -46,6 +49,9 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Norske titler på utenlandske saker med en gratis DeepL-nøkkel (valgfritt).
 - Se hvordan en sak har utviklet seg: hvem meldte først, og hvem fulgte opp.
 - Se om en sak er bekreftet av flere uavhengige medier, og hvor i verden de er fra.
+- Faktasjekker fra Faktisk.no vises i saken når de handler om det samme.
+- Norske og utenlandske vinklinger på samme sak side om side, og «Om kilden»: hvem som eier den og hvor den er fra.
+- Pressemeldinger fra Regjeringen og saker fra Stortinget.
 - Døgnet eller uka oppsummert (kan leses høyt), tråder for saker som varer i flere dager, og en lesekø for saker du vil lese senere.
 - Lytt til NRK- og BBC-radio og nyhetspodkaster rett i appen.
 - Søk som tåler skrivefeil, bøyninger og ulike stavemåter (Kharkov finner Kharkiv), også i arkivet over saker fra de siste 90 dagene.
@@ -65,19 +71,21 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Dagens største vinnere og tapere på Oslo Børs.
 - Egen liste over aksjer du vil følge, og en portefølje med kjøp og salg som viser verdi, gevinst, utbytte og utvikling over tid i kroner.
 - Varsel når en aksje du eier eller følger går mye opp eller ned i løpet av en dag.
+- Børsmeldinger fra Newsweb for aksjer du eier, med varsel når det kommer nye.
 
 **Vær og varsler**
 - Værvarsel fra Yr for hjemstedet ditt: nå, time for time og neste dager, med farevarsler fra MET.
-- Varsel på skrivebordet ved store saker, valgt per kategori, med stille timer. Flere saker samles i ett varsel.
+- Varsel på skrivebordet ved store saker, valgt per kategori, med stille timer og egen lyd for de største sakene. Flere saker samles i ett varsel.
 - Varsel når en sak du har lagret får en ny utvikling, og når en kilde har vært nede i et døgn.
 - Daglig oppsummering om morgenen med døgnets viktigste saker, og ukesoppsummering søndag kveld.
-- Kalender over kommende rentemøter og valg, med varsel dagen før.
+- Kalender over kommende rentemøter, valg, kvartalsrapporter og utbyttedatoer for aksjene dine, med varsel dagen før.
 
 **Annet**
-- Ticker-stripe som ligger øverst eller nederst på skjermen, og en liten widget på skrivebordet.
+- Ticker-stripe som ligger øverst eller nederst på skjermen, og en widget på skrivebordet der du velger hva den viser (vær, strøm, portefølje, børs, kalender, toppsaker).
 - Lagre et bilde av kloden eller dagens saker som PDF.
 - Flytrafikk på kloden, og skipstrafikk langs norskekysten (krever gratis BarentsWatch-konto). Velg om du vil se for eksempel bare helikoptre eller bare passasjerskip.
 - Mobilvisning: åpne kloden på mobilen når den er på samme nettverk som PC-en.
+- Norsk eller engelsk språk i appen.
 - Mørkt, lyst og høykontrast tema som kan følge Windows, større tekst og hurtigtaster (trykk ? i appen).
 - Global hurtigtast (Ctrl+Shift+N) som viser appen fra hvor som helst.
 - Strømsparing som skrur ned bruken av skjermkortet, også automatisk på batteri.
@@ -94,7 +102,7 @@ Appen har ingen konto og sender ingen data om deg noe sted. Den henter bare nyhe
 
 - Nyheter: rundt 100 RSS-strømmer fra hele verden, blant annet NRK, VG, Aftenposten, Bergens Tidende, BBC, Financial Times, The Guardian, Al Jazeera, Washington Post, CBC, Le Monde, Euronews, SVT, DR, Yle, Times of India, South China Morning Post og ABC Australia.
 - Jordskjelv: [USGS](https://earthquake.usgs.gov/). Naturkatastrofer: [GDACS](https://www.gdacs.org/).
-- Vær og farevarsler: [MET Norge / Yr](https://api.met.no/).
+- Vær, farevarsler og luftkvalitet: [MET Norge / Yr](https://api.met.no/). Snøskred og flom: [Varsom](https://www.varsom.no/). Flyplasser: [Avinor](https://avinor.no/). Faktasjekk: [Faktisk.no](https://www.faktisk.no/). Børsmeldinger: [Newsweb](https://newsweb.oslobors.no/).
 - Kurser: Yahoo Finance. Fly: [adsb.lol](https://adsb.lol/). Skip: [BarentsWatch](https://www.barentswatch.no/).
 - Kart: [OpenFreeMap](https://openfreemap.org/) og OpenStreetMap. Satellitt: Esri World Imagery. Nattbilder: NASA Black Marble via [GIBS](https://earthdata.nasa.gov/gibs).
 
@@ -109,17 +117,19 @@ npm install
 npm start          # start appen
 npm run server     # bare nyhetsmotoren, åpne http://localhost:3000 i nettleseren
 npm test           # kjør testene
+npm run e2e        # skjermtest i Chromium, bilder i test/e2e/bilder
 npm run lint       # kodesjekk
 npm run dist:win   # lag installasjonsfil i dist/installer/
 ```
 
-Nye utgivelser lages automatisk av GitHub Actions når versjonsnummeret i `package.json` endres på `main`. Testene (`npm test`) må gå gjennom først. Versjoner som `3.4.0-beta.1` blir betaversjoner.
+Nye utgivelser lages automatisk av GitHub Actions når versjonsnummeret i `package.json` endres på `main`. Testene (`npm test`) og skjermtesten (`npm run e2e`) må gå gjennom først, og skjermbildene lagres sammen med byggingen. Versjoner som `3.4.0-beta.1` blir betaversjoner.
 
 | Fil | Innhold |
 |---|---|
 | `main.js` | Electron: vinduer, ticker, varsler, oppdateringer |
 | `server.js` | Nyhetsmotoren: henter og grupperer saker, finner steder, sanntid |
 | `extras.js` | Marked, vær, fly og skip |
+| `more.js` | Strøm, rente, skogbranner, nordlys, Varsom, luftkvalitet, Avinor, Newsweb |
 | `public/index.html` | Oppsettet for kloden og sidepanelet |
 | `public/js/` | Koden for siden, delt i moduler (kart, panel, marked, vær …) |
 | `public/css/app.css` | Utseendet |

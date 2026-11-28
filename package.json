@@ -1,7 +1,7 @@
 {
   "name": "nyhetskloden",
   "productName": "Nyhetskloden",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "description": "3D-klode som viser nyheter fra hele verden i sanntid",
   "main": "main.js",
   "author": "Daniel",
@@ -12,14 +12,16 @@
     "dist:win": "node scripts/dist.js",
     "release": "node scripts/dist.js --release",
     "test": "node --test test/engine.test.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "e2e": "node test/e2e/run.js"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",
     "acorn": "^8.19.0",
     "electron": "45.5.0",
     "eslint": "^9.39.5",
-    "globals": "^15.15.0"
+    "globals": "^15.15.0",
+    "playwright": "^1.49.1"
   },
   "nyhetskloden": {
     "updateRepo": "dsoder-jpg/nyhetskloden"

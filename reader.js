@@ -51,7 +51,8 @@ function extract(html, url) {
   // fjern dobbelt tekst og tittelen gjentatt
   const seen = new Set(); blocks = blocks.filter(b => { const k = b.text.slice(0, 80); if (seen.has(k) || b.text === title) return false; seen.add(k); return true; }).slice(0, 160);
   const words = blocks.reduce((a, b) => a + b.text.split(' ').length, 0);
-  const paywall = PAY.test(html.slice(0, 400000)) && words < 400 || words < 60;
+  const locked = ld && String(ld.isAccessibleForFree).toLowerCase() === 'false';
+  const paywall = (locked || PAY.test(html.slice(0, 400000))) && words < 400;
   return { url, title, desc, byline: author || '', date, img, blocks, words, paywall };
 }
 

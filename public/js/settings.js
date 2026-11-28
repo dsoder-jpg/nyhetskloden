@@ -53,7 +53,7 @@ function renderSettings(soft){
   $('kStatus').textContent=SET.hasKey?'✓ En nøkkel er lagret.':'Ingen nøkkel lagret ennå.';$('kDel').hidden=!SET.hasKey;
   $('kUsed').textContent=SET.hasKey?`Brukt i dag: ${(SET.usedToday||0).toLocaleString('nb-NO')} tegn.`:'Bremser bruken så du holder deg innenfor gratiskvoten.';
   // utseende
-  $('lTheme').value=LOOK.theme;$('lZoom').value=String(LOOK.zoom);$('lZoom').disabled=!(window.nk&&window.nk.setZoom);
+  $('lTheme').value=LOOK.theme;$('lLang').value=LOOK.lang||'nb';$('lZoom').value=String(LOOK.zoom);$('lZoom').disabled=!(window.nk&&window.nk.setZoom);
   if($('lZoom').disabled)$('lZoom').title='I nettleseren: bruk Ctrl + og Ctrl −';
   // funksjoner
   for(const i of document.querySelectorAll('#dlg [data-f]'))i.checked=!!(SET.features||{})[i.dataset.f];
@@ -102,6 +102,7 @@ function renderSettings(soft){
 let PLACES=[];
 $('dlg').addEventListener('change',e=>{const el=e.target;
   if(el.dataset.f){setFeature(el.dataset.f,el.checked);return}
+  if(el.id==='lLang'){LOOK.lang=el.value;store.set('nk-look',LOOK);setTimeout(()=>location.reload(),150);return}
   if(el.id==='lTheme'||el.id==='lZoom'){LOOK.theme=$('lTheme').value;LOOK.zoom=+$('lZoom').value;store.set('nk-look',LOOK);applyLook();savedFlash();return}
   if(el.dataset.k){let v=el.type==='checkbox'?el.checked:el.value;if(el.dataset.num!=null)v=+v;if(el.dataset.null!=null&&v==='')v=null;postSet({[el.dataset.k]:v});if(el.dataset.restart!=null&&IS_APP)setTimeout(()=>window.nk.restartTicker(),700);return}
   if(el.dataset.layer){S.layers[el.dataset.layer]=el.checked;store.set('nk-layers',S.layers);applyLayers();updateMap();savedFlash();return}
@@ -220,3 +221,6 @@ async function bugReport(){let srv={},app={};try{srv=await (await fetch('/api/di
   return L.join('\n')}
 $('dgCopy').onclick=async()=>{const t=await bugReport();try{if(IS_APP&&window.nk.copyText)await window.nk.copyText(t);else await navigator.clipboard.writeText(t);$('dgMsg').textContent='Kopiert. Lim den inn der du vil sende den.'}catch(e){$('dgMsg').textContent='Fikk ikke kopiert.'}};
 $('dgSave').onclick=async()=>{const t=await bugReport();const r=await window.nk.saveText(t,'nyhetskloden-feilrapport.txt','txt');$('dgMsg').textContent=r&&r.ok?'Lagret i '+r.path:''};
+// widgeten: hva den viser
+function wShowUI(){const on=new Set(Array.isArray(SET.widgetShow)?SET.widgetShow:['weather','top']);for(const i of $('wShow').querySelectorAll('input'))i.checked=on.has(i.value)}
+$('wShow').addEventListener('change',e=>{e.stopPropagation();postSet({widgetShow:[...$('wShow').querySelectorAll('input:checked')].map(i=>i.value)})});

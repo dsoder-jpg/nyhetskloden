@@ -43,6 +43,9 @@ const BUILTIN_FEEDS = [
   { src: 'VG', url: 'https://www.vg.no/rss/feed', lang: 'no' },
   { src: 'Aftenposten', url: 'https://www.aftenposten.no/rss', lang: 'no' },
   { src: 'Dagbladet', url: 'https://www.dagbladet.no/?lab_viewport=rss', lang: 'no' },
+  { src: 'Faktisk.no', url: 'https://www.faktisk.no/?lab_viewport=rss', lang: 'no' },
+  { src: 'Regjeringen', url: 'https://www.regjeringen.no/no/rss/Rss/2581966/?documentType=aktuelt/nyheter', lang: 'no', cat: 'politikk' },
+  { src: 'Stortinget', url: 'https://www.stortinget.no/no/Stottemeny/RSS/Stortingsvedtak/', lang: 'no', cat: 'politikk' },
   { src: 'E24', url: 'https://e24.no/rss2/', lang: 'no', cat: 'marked' },
   { src: 'NRK Kultur', url: 'https://www.nrk.no/kultur/toppsaker.rss', lang: 'no', cat: 'kultur' },
   // Verden
@@ -143,10 +146,10 @@ const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], da
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
   closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false, widget: false, widgetOnTop: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true, localNews: true, calendar: true, powerSave: false, powerAuto: true, heatArchive: false, fires: false, aurora: false, shakemap: true },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true, localNews: true, calendar: true, powerSave: false, powerAuto: true, heatArchive: false, fires: false, aurora: false, shakemap: true, airQuality: false, airports: false, varsom: true },
   datex: { user: '', pass: '' },
   muteWords: [], hiddenSrc: [], notifyCats: null, notifyFollow: true, notifyGroup: true, followEids: [],
-  srcLists: [], portfolio: [], trades: [], mapHideCats: [], powerAlerts: true, powerZone: null, powerCheap: 0.3, powerDear: 2.5, auroraAlerts: true, hotkey: 'CommandOrControl+Shift+N', localPaper: null, notifyWeekly: true, notifyCal: true, priceAlerts: true, priceAlertPct: 5, notifyDown: true,
+  srcLists: [], portfolio: [], trades: [], mapHideCats: [], powerAlerts: true, powerZone: null, powerCheap: 0.3, powerDear: 2.5, auroraAlerts: true, notifyNewsweb: true, bigSound: 'chime', widgetShow: ['weather', 'top'], hotkey: 'CommandOrControl+Shift+N', localPaper: null, notifyWeekly: true, notifyCal: true, priceAlerts: true, priceAlertPct: 5, notifyDown: true,
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
 function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) }, datex: { ...DEFAULTS.datex, ...(s.datex || {}) } }; } catch {} }
@@ -161,7 +164,7 @@ const publicSettings = () => {
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown', 'notifyWeekly', 'notifyCal', 'powerAlerts', 'auroraAlerts']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown', 'notifyWeekly', 'notifyCal', 'powerAlerts', 'auroraAlerts', 'notifyNewsweb']) if (typeof b[k] === 'boolean') settings[k] = b[k];
   if (b.datex && typeof b.datex === 'object') {
     if (typeof b.datex.user === 'string') settings.datex.user = b.datex.user.trim().slice(0, 100);
     if (typeof b.datex.pass === 'string' && b.datex.pass) settings.datex.pass = b.datex.pass.slice(0, 200);
@@ -201,6 +204,8 @@ function applySettings(b) {
   if (b.powerCheap != null) settings.powerCheap = clampNum(b.powerCheap, 0, 10, 0.3);
   if (b.powerDear != null) settings.powerDear = clampNum(b.powerDear, 0, 20, 2.5);
   if (typeof b.hotkey === 'string' && (b.hotkey === '' || /^(CommandOrControl|Ctrl|Alt|Shift|Super)(\+(CommandOrControl|Ctrl|Alt|Shift|Super))*\+[A-Z0-9]$/.test(b.hotkey))) settings.hotkey = b.hotkey;
+  if (Array.isArray(b.widgetShow)) settings.widgetShow = b.widgetShow.filter(k => ['weather', 'top', 'power', 'portfolio', 'market', 'calendar'].includes(k));
+  if (['off', 'chime', 'alarm', 'system'].includes(b.bigSound)) settings.bigSound = b.bigSound;
   if (b.priceAlertPct != null) settings.priceAlertPct = clampNum(b.priceAlertPct, 1, 50, 5);
   if (b.home === null) settings.home = null;
   else if (b.home && isFinite(b.home.lat) && isFinite(b.home.lon)) settings.home = { name: String(b.home.name || '').slice(0, 60), lat: +b.home.lat, lon: +b.home.lon };
@@ -233,7 +238,9 @@ const feeds = () => [...BUILTIN_FEEDS.filter(f => !settings.disabledFeeds.includ
 // ---------- steder ----------
 // [navn, lat, lon, type, landkode]  type: c = by/sted, r = region/land, d = adjektiv/person (russisk, Putin …)
 const PLACES = JSON.parse(fs.readFileSync(path.join(__dirname, 'places.json'), 'utf8'));
-const BASE_PLACES = 1873; // de første oppføringene er verdens byer, resten er norske tettsteder (lagt til i 3.3)
+const BASE_PLACES = 1873;
+// kommune-/stedsnavn i Norge → koordinater (for varsler fra NVE)
+const placeNO = name => { const n = String(name || '').split(/[,(]/)[0].trim().toLowerCase(); const p = PLACES.find(x => x[4] === 'NO' && x[0].toLowerCase() === n); return p ? { lat: p[1], lon: p[2] } : null; }; // de første oppføringene er verdens byer, resten er norske tettsteder (lagt til i 3.3)
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RANK = { c: 0, r: 1, d: 2 };
 const PLACE_RE = PLACES.map(p => ({ p, rank: RANK[p[3]], first: p[0].split(/[\s\-/]/)[0], re: new RegExp(`(?<![\\p{L}\\-])${esc(p[0])}(?:s|'s|’s)?(?![\\p{L}])`, p[3] === 'd' ? 'iu' : 'u') }));
@@ -611,7 +618,7 @@ async function wiki(q) {
 
 // ---------- strømvarsel og nordlysvarsel ----------
 const powerZone = () => settings.powerZone || MORE.zoneFor(settings.home);
-let powerSeen = '', auroraSeen = '', alertTimer = null;
+let powerSeen = '', auroraSeen = '', alertTimer = null, NEWSWEB_SEEN = {}, NEWSWEB_FILE = null;
 async function checkAlerts() {
   clearTimeout(alertTimer); alertTimer = setTimeout(checkAlerts, 30 * 60e3); if (alertTimer.unref) alertTimer.unref();
   const now = new Date(), oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
@@ -628,6 +635,20 @@ async function checkAlerts() {
         if (out.length) events.emit('powerprice', { zone, name: MORE.POWER_ZONES[zone], day: tm, avg: sum.avg, list: out });
       } catch {}
     }
+  }
+  // nye børsmeldinger for aksjer du eier på Oslo Børs
+  if (settings.notifyNewsweb) {
+    const own = (settings.portfolio || []).map(h => h.sym).filter(x => /\.OL$/.test(x));
+    for (const sym of own) {
+      try {
+        const list = await MORE.getNewsweb(sym), seen = NEWSWEB_SEEN[sym];
+        NEWSWEB_SEEN[sym] = list.map(m => m.id);
+        if (!seen) continue; // første gang: ikke varsle om gamle meldinger
+        const fresh = list.filter(m => !seen.includes(m.id) && Date.now() - Date.parse(m.time) < 2 * 864e5);
+        if (fresh.length) events.emit('newsweb', { sym, name: fresh[0].name, list: fresh.slice(0, 3) });
+      } catch {}
+    }
+    try { fs.writeFileSync(NEWSWEB_FILE, JSON.stringify(NEWSWEB_SEEN)); } catch {}
   }
   // nordlys: bare når det er mørkt der du bor
   if (settings.auroraAlerts && settings.features.aurora && settings.home && (oslo.getHours() >= 17 || oslo.getHours() < 3)) {
@@ -666,7 +687,16 @@ async function getCalendar() {
     CAL = { at: ev ? Date.now() : Date.now() - 11 * 3600e3, events: (ev || calBundled()).filter(calOk).map(e => ({ date: e.date, time: /^\d\d:\d\d$/.test(e.time || '') ? e.time : null, kind: String(e.kind || 'annet').slice(0, 20), title: e.title, cc: String(e.cc || '').slice(0, 2).toUpperCase() || null, url: /^https:\/\//.test(e.url || '') ? e.url : null })) };
   }
   const today = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-  return CAL.events.filter(e => e.date >= today).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+  // rapporter og utbytte for aksjer du eier eller følger
+  const syms = [...new Set([...(settings.portfolio || []).map(h => h.sym), ...(settings.marketWatch || [])])].filter(x => !/^\^|=X$|-USD$|=F$/.test(x)).slice(0, 25);
+  const extra = [];
+  for (const sym of syms) {
+    try { const e = await MORE.getEarnings(sym);
+      for (const d of e.earnings.slice(0, 1)) extra.push({ date: d, time: null, kind: 'rapport', title: `Kvartalsrapport fra ${e.name}${e.estimate ? ' (anslått dato)' : ''}`, cc: null, url: `https://finance.yahoo.com/quote/${encodeURIComponent(sym)}`, sym });
+      if (e.exDiv && e.exDiv >= today) extra.push({ date: e.exDiv, time: null, kind: 'utbytte', title: `${e.name} går eks. utbytte (kjøper du fra denne dagen, får du ikke utbyttet)`, cc: null, url: null, sym });
+    } catch {}
+  }
+  return [...CAL.events, ...extra.filter(calOk)].filter(e => e.date >= today).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
 }
 
 let pollTimer = null;
@@ -795,6 +825,7 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   try { FEEDSTATE = JSON.parse(fs.readFileSync(FEEDSTATE_FILE, 'utf8')) || {}; } catch { FEEDSTATE = {}; }
   PRICE_FILE = path.join(dataDir, 'kursvarsler.json'); try { PRICE_SEEN = JSON.parse(fs.readFileSync(PRICE_FILE, 'utf8')) || {}; } catch { PRICE_SEEN = {}; }
   priceTimer = setTimeout(checkPrices, 90e3);
+  NEWSWEB_FILE = path.join(dataDir, 'borsmeldinger.json'); try { NEWSWEB_SEEN = JSON.parse(fs.readFileSync(NEWSWEB_FILE, 'utf8')) || {}; } catch { NEWSWEB_SEEN = {}; }
   MORE.setUA(UA); alertTimer = setTimeout(checkAlerts, 120e3); if (alertTimer.unref) alertTimer.unref(); if (priceTimer.unref) priceTimer.unref();
   loadSettings();
   if (!(settings.trades || []).length && (settings.portfolio || []).length) settings.trades = settings.portfolio.map((h, i) => ({ id: 'm' + i, sym: h.sym, side: 'buy', qty: h.qty, price: h.price || 0, date: null }));
@@ -918,6 +949,10 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       try { const h = await MORE.getPowerDay(zone, day); return json({ zone, name: MORE.POWER_ZONES[zone], day, hours: h, sum: MORE.powerSummary(h) }); } catch (e) { return json({ zone, day, error: e.message.includes('404') ? 'ikke publisert ennå' : e.message }, 502); }
     }
     if (url.pathname === '/api/dividends') { if (lan) return json({ rows: [] }); try { return json(await X.getDividends(settings.trades)); } catch (e) { return json({ error: e.message, rows: [] }, 502); } }
+    if (url.pathname === '/api/aq') { try { return json(await MORE.getAirQuality(settings.home)); } catch (e) { return json({ error: e.message, cities: [] }, 502); } }
+    if (url.pathname === '/api/airports') { try { return json(await MORE.getAirports()); } catch (e) { return json({ error: e.message, airports: [] }, 502); } }
+    if (url.pathname === '/api/varsom') { try { return json(await MORE.getVarsom(placeNO)); } catch (e) { return json({ error: e.message, items: [] }, 502); } }
+    if (url.pathname === '/api/newsweb') { try { return json(await MORE.getNewsweb(url.searchParams.get('s') || '')); } catch (e) { return json({ error: e.message }, 502); } }
     if (url.pathname === '/api/calendar') return json(await getCalendar());
     if (url.pathname === '/api/local') return json({ paper: settings.localPaper, near: LOCAL.nearest(settings.home) });
     if (url.pathname === '/api/fx') {

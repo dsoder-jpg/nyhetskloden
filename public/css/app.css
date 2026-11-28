@@ -677,3 +677,31 @@ ol.story a:hover{text-decoration:underline}
 .mpt[hidden]{display:none}
 html[data-theme=light] .card .cwiki a{color:#1d4ed8}
 html[data-theme=light] .card .cshake{background:#fff1e3}
+
+/* 3.10: til deg, faktasjekk, vinkling, kilder, tilgjengelighet */
+.skip{position:absolute;left:8px;top:-60px;z-index:100;padding:8px 14px;border-radius:8px;background:var(--panel);color:var(--ink);border:2px solid var(--focus,#5fb3ff)}
+.skip:focus{top:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.card .cfact{margin:6px 0 0;font-size:12.5px;padding:6px 10px;border-left:3px solid #5fb3ff;background:rgba(95,179,255,.08);border-radius:0 6px 6px 0}
+.card .cfact[hidden],.card .cmore[hidden]{display:none}
+.card .cfact a{color:#9fd3ff}
+.card .cmore{margin:8px 0 0;font-size:12.5px}
+.card .cmore summary{cursor:pointer;color:var(--muted);font-weight:600}
+.cang{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.cang h4{margin:0 0 4px;font-size:11.5px;color:var(--muted);font-weight:600}
+.cang ul,.cwho{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.cang li,.cwho li{line-height:1.4}
+.cang b,.cwho b{font-weight:600;margin-right:4px}
+.cwho{margin-top:6px}
+.wshow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px}
+.wshow label{display:flex;gap:7px;align-items:center;font-size:13px}
+.mnews a{display:grid;gap:2px;padding:6px 8px;border-radius:7px;color:var(--ink);text-decoration:none;font-size:12.5px;line-height:1.35}
+.mnews a:hover{background:var(--panel2)}
+.mnews a small{color:var(--muted);font-size:11.5px}
+.maplibregl-popup-content{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;font-size:12.5px;line-height:1.45;max-width:280px}
+.maplibregl-popup-content p{margin:4px 0}
+.maplibregl-popup-content ul{margin:4px 0;padding-left:16px}
+.maplibregl-popup-content a{color:#7cc0ff}
+.maplibregl-popup-tip{border-top-color:var(--panel)!important;border-bottom-color:var(--panel)!important}
+html[data-theme=light] .card .cfact{background:#e8f2ff}
+html[data-theme=light] .card .cfact a,html[data-theme=light] .maplibregl-popup-content a{color:#1d4ed8}

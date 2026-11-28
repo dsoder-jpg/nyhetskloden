@@ -3,7 +3,7 @@
 let lastF='';
 function applyFeatures(){OFF=new Set(SET.catsOff||[]);HOME=SET.home||null;const prev=F;F=SET.features||{};
   const ms0=JSON.stringify([SET.muteWords,SET.hiddenSrc]);if(ms0!==applyFeatures.m){applyFeatures.m=ms0;muteSetup();if(NEWS.length)buildEvents()}
-  srcListSetup();if(typeof renderCal==='function')renderCal();applySaver();if(typeof worldLayers==='function')worldLayers();localStatus();$('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
+  srcListSetup();if(typeof renderCal==='function')renderCal();applySaver();if(typeof worldLayers==='function')worldLayers();if(typeof plusLayers==='function')plusLayers();wShowUI();localStatus();$('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
   for(const i of $('layers').querySelectorAll('[data-f]'))i.checked=!!F[i.dataset.f];
   const sig=JSON.stringify([F,SET.marketWatch,SET.portfolio,HOME,SET.nearKm,SET.shipsClient]);if(sig===lastF){refresh();return}lastF=sig;
   tkCache.clear();renderMarket();loadMarket();loadPortfolio();nightImgUpdate();loadWeather();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();refresh()}

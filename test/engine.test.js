@@ -159,6 +159,28 @@ test('prisområde for strøm og billigste timer', () => {
   assert.equal(s.cheap.from, h[2].t); assert.ok(Math.abs(s.cheap.avg - 0.3) < 1e-9); assert.equal(s.dear.kr, 2.8);
 });
 
+test('børsmeldinger, flyplasser og luftkvalitet tolkes riktig', async () => {
+  const M = require('../more'), real = global.fetch, now = Date.now();
+  global.fetch = async url => {
+    url = String(url);
+    if (url.includes('newsreader')) return { ok: true, json: async () => ({ data: { messages: [
+      { messageId: 1, title: 'Equinor ASA: Notifiable trading', category: [{ category_no: 'MELDEPLIKTIG HANDEL' }], issuerSign: 'EQNR', issuerName: 'Equinor ASA', publishedTime: new Date(now).toISOString() },
+      { messageId: 2, title: 'Equinor ASA: Meldepliktig handel', category: [{ category_no: 'MELDEPLIKTIG HANDEL' }], issuerSign: 'EQNR', issuerName: 'Equinor ASA', publishedTime: new Date(now + 400).toISOString() },
+      { messageId: 3, title: 'Equinor ASA: Kvartalsrapport', category: [{ category_no: 'FINANSIELL RAPPORTERING' }], issuerSign: 'EQNR', issuerName: 'Equinor ASA', publishedTime: new Date(now - 864e5).toISOString() }] } }) };
+    if (url.includes('avinor')) return { ok: true, text: async () => '<flights>' + [['C', 0], ['E', 50], ['D', 5], [null, 0]].map(([c, d], i) => `<flight uniqueID="${i}"><flight_id>SK${i}</flight_id><schedule_time>${new Date(now).toISOString()}</schedule_time><airport>BGO</airport>${c ? `<status code="${c}" time="${new Date(now + d * 6e4).toISOString()}"/>` : ''}</flight>`).join('') + '</flights>' };
+    if (url.includes('airquality')) return { ok: true, json: async () => ({ data: { time: [{ from: new Date(now - 6e5).toISOString(), to: new Date(now + 6e5).toISOString(), variables: { AQI: { value: 2.4 }, AQI_no2: { value: 2.4 }, AQI_pm10: { value: 1.2 } } }] } }) };
+    return { ok: false, status: 404 };
+  };
+  try {
+    const nw = await M.getNewsweb('EQNR.OL');
+    assert.equal(nw.length, 2); assert.equal(nw[0].title, 'Equinor ASA: Meldepliktig handel'); assert.match(nw[0].url, /newsweb\.oslobors\.no\/message\/2$/);
+    const ap = (await M.getAirports()).airports[0];
+    assert.equal(ap.total, 4); assert.equal(ap.canc, 1); assert.equal(ap.late, 1);
+    const aq = (await M.getAirQuality(null)).cities[0];
+    assert.equal(aq.main, 'no2'); assert.ok(Math.abs(aq.aqi - 2.4) < 1e-9);
+  } finally { global.fetch = real; }
+});
+
 test('http-lenker gjøres om til https', () => {
   const items = e.parseRss('<rss><channel><item><title>Flom</title><link>http://www.gdacs.org/report.aspx?x=1</link></item></channel></rss>');
   assert.equal(items.length, 1);

@@ -3,7 +3,7 @@
 let cardEv=null;
 function showCard({color,tag,title,orig,meta,text,srcs,url,urlText,star,img}){
   const c=$('card');c.hidden=false;cardImg(img);c.style.setProperty('--cc',color);$('cTag').textContent=tag;$('cTitle').textContent=title;
-  $('cCov').hidden=true;$('cQueue').hidden=true;$('cRead').hidden=true;$('cDis').hidden=true;$('cStory').hidden=true;$('cWiki').hidden=true;$('cShake').hidden=true;if(typeof shakeClear==='function')shakeClear();
+  $('cCov').hidden=true;$('cQueue').hidden=true;$('cRead').hidden=true;$('cDis').hidden=true;$('cStory').hidden=true;$('cWiki').hidden=true;$('cShake').hidden=true;$('cFact').hidden=true;$('cAng').hidden=true;$('cWho').hidden=true;if(typeof shakeClear==='function')shakeClear();
   $('cOrig').textContent=orig?'Original: '+orig:'';$('cOrig').hidden=!orig;const mm=$('cMeta');mm.textContent='';for(const x of (Array.isArray(meta)?meta:[meta]).filter(Boolean)){const sp=document.createElement('span');sp.textContent=x;mm.append(sp)}$('cText').textContent=text||'';$('cText').hidden=!text;
   const ul=$('cSrcs');ul.textContent='';const many=srcs&&srcs.length>1;ul.hidden=!many;$('cFlow').hidden=!many;
   if(many){const so=[...srcs].sort((a,b)=>a.date.localeCompare(b.date)),t0=new Date(so[0].date),t1=new Date(so[so.length-1].date),hrs=(t1-t0)/36e5;
@@ -46,14 +46,14 @@ function cardTickers(e){const box=$('cTk');box.textContent='';const t=tickersFor
 function select(id,go){
   const e=EVENTS.find(x=>x.id===id);S.sel=e?e.id:null;
   if(!e){$('card').hidden=true;cardEv=null;list();updateMap();return}
-  cardEv=e;READ.add(e.id);saveRead();
+  cardEv=e;READ.add(e.id);saveRead();if(typeof tasteLearn==='function')tasteLearn(e);
   const c=CATS[e.cat];
   showCard({color:c.c,tag:c.n+(e.score>=7?', stor sak':''),title:e.title,orig:e.orig,
     meta:[e.place||(e.lat==null?'Uten sted':null),when(e),e.watch.length?'Følger «'+e.watch.join('», «')+'»':null,(e.srcs.length>1?'Kilder: ':'Kilde: ')+e.srcs.join(', ')],
     text:e.text,srcs:e.items,url:e.url,urlText:'Les saken hos '+(e.src||'kilden'),star:true,img:(e.items.find(n=>n.img&&n.url===e.url)||e.items.find(n=>n.img)||{}).img});
   $('cStar').setAttribute('aria-pressed',SAVED.has(e.id));$('cStar').textContent=SAVED.has(e.id)?'★':'☆';cardTickers(e);
   $('cCov').textContent=coverageText(e);$('cCov').hidden=false;queueBtn();
-  $('cRead').hidden=!(e.url&&e.url.startsWith('https://'));const dis=disagree(e);$('cDis').textContent=dis;$('cDis').hidden=!dis;$('cStory').hidden=false;wikiSetup(e);shakeLoad(e);
+  $('cRead').hidden=!(e.url&&e.url.startsWith('https://'));const dis=disagree(e);$('cDis').textContent=dis;$('cDis').hidden=!dis;$('cStory').hidden=false;wikiSetup(e);shakeLoad(e);cardExtras(e);
   if(go&&e.lat!=null&&map){const no=ccOf(e)==='NO';map.flyTo({center:[e.lon,e.lat],zoom:Math.max(map.getZoom(),no?5.2:e.exact?4.5:4),duration:reduced?0:1800,essential:true})}
   list();updateMap();
 }
