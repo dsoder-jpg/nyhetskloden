@@ -21,4 +21,7 @@ contextBridge.exposeInMainWorld('nk', {
   widgetTop: on => ipcRenderer.send('widget-top', !!on),
   savePng: (dataUrl, name) => ipcRenderer.invoke('save-png', String(dataUrl), String(name || '')),
   savePdf: (html, name) => ipcRenderer.invoke('save-pdf', String(html), String(name || '')),
+  saveText: (text, name, kind) => ipcRenderer.invoke('save-text', String(text), String(name || ''), String(kind || '')),
+  copyText: text => ipcRenderer.invoke('copy-text', String(text)),
+  diag: () => ipcRenderer.invoke('diag'),
 });

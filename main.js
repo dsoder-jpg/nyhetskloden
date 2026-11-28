@@ -3,7 +3,7 @@
 // har en ticker-stripe som alltid ligger øverst, varsler om store saker og overvåkede ord,
 // og oppdaterer seg selv fra GitHub Releases (se LES-MEG).
 
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, shell, nativeImage, screen, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, shell, nativeImage, screen, dialog, globalShortcut, clipboard } = require('electron');
 const path = require('path');
 const engine = require('./server');
 
@@ -86,6 +86,17 @@ ipcMain.handle('save-png', async (_e, dataUrl, name) => {
   shell.showItemInFolder(r.filePath);
   return { ok: true, file: r.filePath };
 });
+// sikkerhetskopi og feilrapport: lagre tekst til en fil brukeren velger
+ipcMain.handle('save-text', async (_e, text, name, kind) => {
+  if (typeof text !== 'string' || text.length > 20e6) return { ok: false };
+  const json = kind === 'json';
+  const r = await dialog.showSaveDialog(win, { title: json ? 'Lagre sikkerhetskopi' : 'Lagre feilrapport', defaultPath: path.join(app.getPath('documents'), String(name || 'nyhetskloden.txt').replace(/[^\w.æøåÆØÅ -]/g, '')), filters: [json ? { name: 'Sikkerhetskopi', extensions: ['json'] } : { name: 'Tekst', extensions: ['txt'] }] });
+  if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+  fs.writeFileSync(r.filePath, text, 'utf8');
+  return { ok: true, path: r.filePath };
+});
+ipcMain.handle('copy-text', (_e, text) => { if (typeof text === 'string' && text.length < 2e6) clipboard.writeText(text); return true; });
+ipcMain.handle('diag', () => ({ app: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, os: `${process.platform} ${require('os').release()} ${process.arch}`, gpu: app.getGPUFeatureStatus ? app.getGPUFeatureStatus() : null, mem: Math.round(process.memoryUsage().rss / 1e6) + ' MB' }));
 ipcMain.handle('save-pdf', async (_e, html, name) => {
   if (typeof html !== 'string' || html.length > 2e6) return { ok: false };
   const r = await dialog.showSaveDialog(win, { title: 'Lagre dagens saker som PDF', defaultPath: path.join(app.getPath('documents'), String(name || 'nyhetskloden.pdf').replace(/[^\w.æøåÆØÅ -]/g, '')), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
@@ -174,7 +185,26 @@ engine.events.on('followup', items => {
   const first = items[0];
   notify(`Ny utvikling: ${(first.eventTitle || label(first)).slice(0, 80)}`, items.slice(0, 3).map(i => `${i.src}: ${label(i)}`).join('\n'), first.eid || first.id);
 });
-engine.events.on('settings', () => { buildTrayMenu(); if (!!S().widget !== !!widget) setTimeout(() => { if (!!S().widget !== !!widget) toggleWidget(); }, 50); if (widget) widget.setAlwaysOnTop(!!S().widgetOnTop); });
+// global hurtigtast som viser eller skjuler appen
+let hotkeyNow = null;
+function setHotkey() {
+  const k = S().hotkey || '';
+  if (k === hotkeyNow) return;
+  if (hotkeyNow) { try { globalShortcut.unregister(hotkeyNow); } catch {} }
+  hotkeyNow = null;
+  if (!k) return;
+  try { if (globalShortcut.register(k, () => { if (win && win.isVisible() && win.isFocused()) win.hide(); else show(); })) hotkeyNow = k; } catch {}
+}
+app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
+engine.events.on('settings', () => { setHotkey(); buildTrayMenu(); if (!!S().widget !== !!widget) setTimeout(() => { if (!!S().widget !== !!widget) toggleWidget(); }, 50); if (widget) widget.setAlwaysOnTop(!!S().widgetOnTop); });
+// strømpris i morgen
+engine.events.on('powerprice', p => {
+  const t = x => new Date(x).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' }), kr = v => v.toFixed(2).replace('.', ',') + ' kr';
+  const lines = p.list.map(x => x.kind === 'cheap' ? `Billigst kl. ${t(x.from)}–${t(new Date(x.from).getTime() + 3 * 3600e3)}: ${kr(x.kr)} per kWh` : `Dyrest kl. ${t(x.from)}: ${kr(x.kr)} per kWh`);
+  notify(p.list.some(x => x.kind === 'dear') && !p.list.some(x => x.kind === 'cheap') ? `Dyr strøm i morgen (${p.name})` : `Strømprisen i morgen (${p.name})`, lines.join('\n') + `\nSnitt ${kr(p.avg)}.`, 'nk:power');
+});
+// nordlys
+engine.events.on('aurora', a => notify(`Sjanse for nordlys i kveld: ${a.level}`, `Nordlysovalen ligger nær der du bor${a.kpMax != null ? ` (Kp opp mot ${a.kpMax.toFixed(1).replace('.', ',')})` : ''}. Se nordover når det er mørkt og klart.`, 'nk:aurora'));
 // en kilde har vært nede i et døgn
 engine.events.on('feeddown', list => {
   notify(list.length > 1 ? `${list.length} kilder har vært nede i et døgn` : `${list[0].src} har vært nede i et døgn`,
@@ -361,6 +391,7 @@ app.on('before-quit', () => { quitting = true; if (pendingUpdate && !applying &&
 app.on('window-all-closed', e => e.preventDefault?.());
 
 app.whenReady().then(async () => {
+  setTimeout(setHotkey, 1500);
   const dataDir = app.getPath('userData');
   try { port = await engine.start({ port: PREFERRED_PORT, dataDir }); }
   catch { port = await engine.start({ port: 0, dataDir }); }

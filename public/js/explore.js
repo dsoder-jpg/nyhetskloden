@@ -4,7 +4,7 @@
 let LIGHT_PL=null;
 function sunAlt(t,lat,lon){const s=sun(t),r=Math.PI/180;return Math.asin(Math.sin(lat*r)*Math.sin(s.dec)+Math.cos(lat*r)*Math.cos(s.dec)*Math.cos((lon-s.lon)*r))/r}
 async function loadLights(){clearTimeout(loadLights.t);if(!ready||!map.getSource('lights'))return;
-  const on=F.lights&&S.layers.night;$('lightsLbl').classList.toggle('off',!S.layers.night);
+  const on=F.lights&&S.layers.night&&!SAVER();$('lightsLbl').classList.toggle('off',!S.layers.night);
   if(!on){map.getSource('lights').setData(EMPTY);return}
   if(!LIGHT_PL)try{LIGHT_PL=await (await fetch('/api/places')).json()}catch(e){LIGHT_PL=[]}
   const t=REF(),f=[];
@@ -105,7 +105,17 @@ $('layers').open=store.get('nk-layers-open',false);$('layers').addEventListener(
 // Vises når natt er på, du har zoomet inn, og det er natt (sola under horisonten) midt i bildet.
 const LIGHTS_OP=['interpolate',['linear'],['zoom'],1,.85,7,.7,10,.4],LIGHTS_OP_BM=['interpolate',['linear'],['zoom'],1,.85,3.4,.6,4.6,0];
 function nightImgUpdate(){if(!ready||!map.getLayer('bm'))return;const c=map.getCenter();
-  const on=F.nightImg!==false&&!!S.layers.night&&map.getZoom()>=3.2&&sunAlt(REF(),c.lat,c.lng)<-3;
+  const on=!SAVER()&&F.nightImg!==false&&!!S.layers.night&&map.getZoom()>=3.2&&sunAlt(REF(),c.lat,c.lng)<-3;
   if(on===nightImgUpdate.on)return;nightImgUpdate.on=on;map.setLayoutProperty('bm','visibility',on?'visible':'none');
   if(map.getLayer('lights'))map.setPaintProperty('lights','heatmap-opacity',on?LIGHTS_OP_BM:LIGHTS_OP)}
 setInterval(nightImgUpdate,60e3);
+// ---------- strømsparing ----------
+// Spar strøm: lavere oppløsning på kartet, ingen animasjoner og ingen tunge lag. Kan slå seg på av seg selv på batteri.
+let onBattery=false;
+const SAVER=()=>!!F.powerSave||(F.powerAuto!==false&&onBattery);
+function applySaver(){if(!ready)return;const on=SAVER();
+  try{map.setPixelRatio(on?1:Math.min(devicePixelRatio||1,2))}catch(e){}
+  loadLights();
+  if(on&&map.getLayer('bm')){map.setLayoutProperty('bm','visibility','none');nightImgUpdate.on=false}else nightImgUpdate();
+  document.documentElement.classList.toggle('saver',on);animate()}
+if(navigator.getBattery)navigator.getBattery().then(b=>{const upd=()=>{const was=onBattery;onBattery=!b.charging;if(was!==onBattery)applySaver()};upd();b.addEventListener('chargingchange',upd)}).catch(()=>{});

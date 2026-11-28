@@ -66,6 +66,9 @@
       <div class="lpair"><label><input type="checkbox" data-f="flights">Fly</label><select class="lsel" id="flF" aria-label="Hvilke fly"><option value="">Alle</option><option value="pax">Passasjerfly</option><option value="small">Småfly</option><option value="heli">Helikopter</option><option value="mil">Militære</option><option value="sos">Nødsignal</option></select></div>
       <div class="lpair"><label><input type="checkbox" data-f="ships">Skip</label><select class="lsel" id="shF" aria-label="Hvilke skip"><option value="">Alle</option><option value="pax">Passasjer</option><option value="fast">Hurtigbåt</option><option value="cargo">Last</option><option value="tank">Tank</option><option value="fish">Fiske</option><option value="sar">Redning og slep</option><option value="leis">Fritid</option></select></div>
       <label><input type="checkbox" data-f="wxmap">Vær i byer</label>
+      <label><input type="checkbox" data-f="fires">Skogbranner</label>
+      <label><input type="checkbox" data-f="aurora">Nordlys</label>
+      <div class="lpair"><label><input type="checkbox" data-f="heatArchive">Mest skjedd</label><select class="lsel" id="ahDays" aria-label="Periode for varmekartet"><option value="7">7 dager</option><option value="30">30 dager</option><option value="90">90 dager</option></select></div>
       <label><input type="checkbox" data-f="quakes">Jordskjelv</label>
       <label><input type="checkbox" data-f="storms">Stormer</label>
       <label><input type="checkbox" data-f="power">Strømpris</label>
@@ -73,6 +76,8 @@
       <label><input type="checkbox" data-f="radar">Nedbørsradar</label>
       </div>
       <small id="trafNote" hidden></small>
+      <div class="lcats"><b>Vis på kartet</b><p>Skjulte kategorier blir fortsatt i lista.</p><div class="lg" id="mapCats"></div></div>
+      <p class="lstat" id="auroraSt" hidden></p>
     </details>
     <div class="wxpop" id="wxPop" hidden></div>
     <div class="card" id="card" hidden>
@@ -85,10 +90,12 @@
       <p id="cText"></p>
       <p class="cov" id="cCov" hidden></p>
       <p class="cdis" id="cDis" hidden></p>
+      <p class="cshake" id="cShake" hidden></p>
+      <details class="cwiki" id="cWiki" hidden><summary id="cWikiT">Bakgrunn</summary><div id="cWikiB"></div></details>
       <p class="flow" id="cFlow" hidden></p>
       <ul class="srcs" id="cSrcs"></ul>
       <div class="tk" id="cTk" hidden></div>
-      <div class="acts" id="cActs"><a class="src" id="cSrc" target="_blank" rel="noopener"></a><span class="sp"></span><button class="btn" id="cRead" hidden title="Les hele saken i appen">Les her</button><button class="btn" id="cQueue" aria-pressed="false" hidden>Les senere</button><button class="btn" id="cLess" title="Skjul lignende saker">Mindre av dette</button><button class="btn" id="cShare" title="Del saken">Del</button><button class="star" id="cStar" aria-pressed="false" title="Lagre saken" aria-label="Lagre saken">☆</button></div>
+      <div class="acts" id="cActs"><a class="src" id="cSrc" target="_blank" rel="noopener"></a><span class="sp"></span><button class="btn" id="cRead" hidden title="Les hele saken i appen">Les her</button><button class="btn" id="cStory" hidden title="Alt om saken de siste ukene, i rekkefølge">Tidslinje</button><button class="btn" id="cQueue" aria-pressed="false" hidden>Les senere</button><button class="btn" id="cLess" title="Skjul lignende saker">Mindre av dette</button><button class="btn" id="cShare" title="Del saken">Del</button><button class="star" id="cStar" aria-pressed="false" title="Lagre saken" aria-label="Lagre saken">☆</button></div>
       <div class="less" id="cLessBox" hidden></div>
       <div class="share" id="cShareBox" hidden><div class="qr" id="cQr"></div><div><span>Skann med mobilen for å åpne saken.</span><button class="btn" id="cCopy">Kopier lenke</button></div></div>
     </div>
@@ -126,6 +133,11 @@
 <dialog id="ins" class="insight" aria-labelledby="iTitle">
  <header class="ihead"><h2 id="iTitle">Innsikt</h2><div class="seg" id="iPer" role="group" aria-label="Periode"><button data-d="7" aria-pressed="true">Siste 7 dager</button><button data-d="30" aria-pressed="false">Siste 30 dager</button></div><span class="sp"></span><button class="x" id="iX" aria-label="Lukk">×</button></header>
  <div class="ibody" id="iBody"><p class="meta">Regner ut …</p></div>
+</dialog>
+
+<dialog id="story" class="reader" aria-labelledby="stTitle">
+ <header class="rhead"><span class="rsrc">Tidslinje for saken</span><span class="sp"></span><select id="stDays" aria-label="Hvor langt tilbake"><option value="7">Siste uke</option><option value="21" selected>Siste tre uker</option><option value="90">Siste tre måneder</option></select><button class="x" id="stX" aria-label="Lukk">×</button></header>
+ <div class="rbody" id="stBody"></div>
 </dialog>
 
 <dialog id="reader" class="reader" aria-labelledby="rTitle">
@@ -209,6 +221,7 @@
      <div class="opt nk-only"><div><b>Start med Windows</b><p>Appen starter skjult ved klokka når du logger inn, og henter nyheter i bakgrunnen.</p></div><label class="tg"><input type="checkbox" id="sLogin"><i></i></label></div>
      <div class="opt nk-only"><div><b>Lukk til systemstatusfeltet</b><p>Når du lukker vinduet, fortsetter appen ved klokka. Slå av for å avslutte helt.</p></div><label class="tg"><input type="checkbox" data-k="closeToTray"><i></i></label></div>
      <div class="opt"><div><b>Hent nyheter hvert</b><p>Hvor ofte alle kildene sjekkes.</p></div><select data-k="pollMin" data-num><option value="2">2. minutt</option><option value="5">5. minutt</option><option value="10">10. minutt</option><option value="15">15. minutt</option><option value="30">30. minutt</option></select></div>
+     <div class="opt nk-only"><div><b>Hurtigtast</b><p>Viser eller skjuler appen fra hvor som helst i Windows.</p></div><select data-k="hotkey"><option value="">Av</option><option value="CommandOrControl+Shift+N">Ctrl+Shift+N</option><option value="CommandOrControl+Alt+N">Ctrl+Alt+N</option><option value="CommandOrControl+Shift+K">Ctrl+Shift+K</option><option value="Alt+Shift+N">Alt+Shift+N</option></select></div>
      <div class="opt"><div><b>Behold saker i</b><p>Eldre saker slettes. Lengre tid gir lengre tidslinje.</p></div><select data-k="keepHours" data-num><option value="24">1 døgn</option><option value="72">3 døgn</option><option value="168">7 døgn</option><option value="336">14 døgn</option></select></div>
     </section>
 
@@ -290,6 +303,11 @@
      <div class="opt nk-only"><div><b>Saker som nevner ord jeg følger</b><p>Gir alltid varsel, uansett hvor viktig saken er.</p></div><label class="tg"><input type="checkbox" data-k="notifyWatch"><i></i></label></div>
      <div class="opt nk-only"><div><b>Uka oppsummert</b><p>Søndag kl. 18 med ukas viktigste saker.</p></div><label class="tg"><input type="checkbox" data-k="notifyWeekly"><i></i></label></div>
      <div class="opt nk-only"><div><b>Kalender</b><p>Dagen før rentemøter, valg og andre hendelser i kalenderen, kl. 18.</p></div><label class="tg"><input type="checkbox" data-k="notifyCal"><i></i></label></div>
+     <div class="opt nk-only"><div><b>Strømpris i morgen</b><p>Varsel ettermiddagen før når strømmen blir billig eller dyr der du bor.</p></div><label class="tg"><input type="checkbox" data-k="powerAlerts"><i></i></label></div>
+     <div class="opt nk-only"><div><b>Prisområde</b><p id="pzNote">Velges ut fra hjemstedet hvis du ikke velger selv.</p></div><select data-k="powerZone" data-null><option value="">Fra hjemstedet</option><option value="NO1">Øst (NO1)</option><option value="NO2">Sør (NO2)</option><option value="NO3">Midt (NO3)</option><option value="NO4">Nord (NO4)</option><option value="NO5">Vest (NO5)</option></select></div>
+     <div class="opt nk-only"><div><b>Billig strøm er under</b><p>Snitt for de tre billigste timene på rad, per kWh uten nettleie.</p></div><select data-k="powerCheap" data-num><option value="0.1">0,10 kr</option><option value="0.2">0,20 kr</option><option value="0.3">0,30 kr</option><option value="0.5">0,50 kr</option><option value="0.75">0,75 kr</option><option value="1">1,00 kr</option></select></div>
+     <div class="opt nk-only"><div><b>Dyr strøm er over</b><p>Dyreste time i morgen, per kWh uten nettleie.</p></div><select data-k="powerDear" data-num><option value="1">1,00 kr</option><option value="1.5">1,50 kr</option><option value="2">2,00 kr</option><option value="2.5">2,50 kr</option><option value="3">3,00 kr</option><option value="5">5,00 kr</option></select></div>
+     <div class="opt nk-only"><div><b>Nordlys</b><p>Varsel om kvelden når det er god sjanse for nordlys der du bor. Krever at nordlys er slått på under Kartlag.</p></div><label class="tg"><input type="checkbox" data-k="auroraAlerts"><i></i></label></div>
      <div class="opt nk-only"><div><b>Kilder som er nede</b><p>Ett varsel når en kilde har feilet i over et døgn.</p></div><label class="tg"><input type="checkbox" data-k="notifyDown"><i></i></label></div>
      <div class="opt nk-only"><div><b>Lyd</b><p>Spill av Windows-lyden ved varsel.</p></div><label class="tg"><input type="checkbox" data-k="sound"><i></i></label></div>
      <div class="opt nk-only"><div><b>Stille timer</b><p>Ingen varsler i dette tidsrommet.</p><div class="inl"><select id="qFrom"></select><span>til</span><select id="qTo"></select></div></div><label class="tg"><input type="checkbox" id="qOn"><i></i></label></div>
@@ -310,6 +328,8 @@
      <div class="opt"><div><b>Farevarsler fra MET</b><p>Gule, oransje og røde varselområder i Norge.</p></div><label class="tg"><input type="checkbox" data-layer="alerts"><i></i></label></div>
      <div class="opt"><div><b>Natt</b><p>Skygge over den delen av jorda der det er natt.</p></div><label class="tg"><input type="checkbox" data-layer="night"><i></i></label></div>
      <div class="opt"><div><b>Nattbilder fra NASA</b><p>Når du zoomer inn på et område der det er natt, vises ekte satellittbilder av bylysene.</p></div><label class="tg"><input type="checkbox" data-f="nightImg"><i></i></label></div>
+     <div class="opt"><div><b>Spar strøm</b><p>Lavere oppløsning på kartet, ingen animasjoner og ingen bylys. Bruker mye mindre av skjermkortet.</p></div><label class="tg"><input type="checkbox" data-f="powerSave"><i></i></label></div>
+     <div class="opt"><div><b>Spar strøm på batteri</b><p>Slår på strømsparing av seg selv når PC-en ikke er koblet til strøm.</p></div><label class="tg"><input type="checkbox" data-f="powerAuto"><i></i></label></div>
      <div class="opt"><div><b>Kloden snurrer sakte</b><p>Når du ikke har rørt kartet på et minutt, og hele kloden vises.</p></div><label class="tg"><input type="checkbox" data-f="spin"><i></i></label></div>
      <div class="opt"><div><b>Kalender over kommende hendelser</b><p>Rentemøter, valg og annet som kommer, under oppsummeringen i nyhetene.</p></div><label class="tg"><input type="checkbox" data-f="calendar"><i></i></label></div>
      <div class="opt"><div><b>Bilder i sakene</b><p>Viser bildet fra kilden øverst i saken, når kilden har et.</p></div><label class="tg"><input type="checkbox" data-f="images"><i></i></label></div>
@@ -363,6 +383,8 @@
      <div class="opt"><div><b>Lagrede saker</b><p id="dSaved"></p></div><div class="inl"><button class="btn" id="dCopy">Kopier som tekst</button><button class="btn" data-confirm="savedclear">Slett alle</button></div></div>
      <div class="opt"><div><b>Hent alt på nytt</b><p>Sletter alle innhentede saker og henter dem på nytt fra kildene.</p></div><button class="btn" data-confirm="newsclear">Hent på nytt</button></div>
      <div class="opt"><div><b>Tilbakestill visningen</b><p>Filtre, kartvalg og paneler går tilbake til standard. Følger-listen, kilder og nøkkel beholdes.</p></div><button class="btn" data-confirm="uireset">Tilbakestill</button></div>
+     <div class="opt col"><div><b>Sikkerhetskopi</b><p>Innstillinger, portefølje, lagrede saker, lesekø og kildelister i én fil. Nøkler og passord tas ikke med.</p></div><div class="inl"><button class="btn" id="bkSave">Lagre sikkerhetskopi</button><label class="btn" for="bkFile">Hent inn sikkerhetskopi</label><input type="file" id="bkFile" accept=".json,application/json" hidden></div><p class="meta" id="bkMsg"></p></div>
+     <div class="opt col"><div><b>Feilrapport</b><p>Samler versjon, status for kildene og de siste feilmeldingene, så det blir lettere å finne ut hva som er galt. Hjemsted og portefølje tas ikke med.</p></div><div class="inl"><button class="btn" id="dgCopy">Kopier feilrapport</button><button class="btn nk-only" id="dgSave">Lagre som fil</button></div><p class="meta" id="dgMsg"></p></div>
      <div class="opt nk-only"><div><b>Datamappen</b><p id="dDir">Innstillinger og saker lagres lokalt på PC-en.</p></div><button class="btn" id="dOpen">Åpne mappen</button></div>
      <p class="meta">Appen samler ikke inn noe om deg. Den henter bare nyheter, kart og farevarsler fra kildene nedenfor under «Om», og eventuelt oversettelser fra DeepL hvis du legger inn en nøkkel.</p>
     </section>
@@ -405,5 +427,6 @@
 <script src="/js/features.js"></script>
 <script src="/js/settings.js"></script>
 <script src="/js/tools.js"></script>
+<script src="/js/world.js"></script>
 </body>
 </html>

@@ -2,37 +2,54 @@
 // ---------- kart ----------
 const LOCAL_STYLE={version:8,projection:{type:'globe'},glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',sources:{},
   layers:[{id:'background',type:'background',paint:{'background-color':'#0d2238'}}]};
+
 let FONT=['Noto Sans Regular'],FONT_B=['Noto Sans Bold'],usingLocal=false,fontFound=false;
 async function loadStyle(){
   try{const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),7000);
     const st=await (await fetch('https://tiles.openfreemap.org/styles/dark',{signal:ctrl.signal})).json();clearTimeout(t);
     if(!st.layers)throw 0;tuneStyle(st);return st}
   catch(e){usingLocal=true;return LOCAL_STYLE}}
+// fargepaletter for kartet: mørk og lys (følger temaet i appen)
+const MAPPAL={
+  dark:{fill:{background:'#162231',water:'#0a1828',landcover_ice_shelf:'#1d2a39',landcover_glacier:'#1d2a39',landuse_residential:'#1b2635',landcover_wood:'#15202d',landuse_park:'#15202d',building:'#1e2a38','aeroway-area':'#1b2735',road_area_pier:'#162231',land:'#1c2836'},
+    line:{waterway:'#0a1828',highway_path:'#1f2c3b',highway_minor:'#223042',highway_major_casing:'#0d1520',highway_major_inner:'#2b3c52',highway_major_subtle:'#273649',highway_motorway_casing:'#0d1520',highway_motorway_inner:'#3a5170',highway_motorway_subtle:'#2a3b51',railway:'#2b3646',railway_minor:'#26313f',railway_transit:'#26313f',boundary_state:'#2f4157','boundary_country_z0-4':'#5d728b','boundary_country_z5-':'#5d728b','aeroway-runway':'#26344a','aeroway-taxiway':'#1e2a3a'},
+    halo:'rgba(6,11,19,.92)',country:'#b9c9db',city:'#dbe5f0',place:'#94a7bc',waterName:'#4d6f93',label:'#7f93a9',relief:{'raster-brightness-max':.42,'raster-hue-rotate':200,'raster-saturation':-.75},night:['#00040c',.21,.13,.06]},
+  light:{fill:{background:'#eef1ec',water:'#a9cbe6',landcover_ice_shelf:'#f7f9fb',landcover_glacier:'#f7f9fb',landuse_residential:'#e6e9e4',landcover_wood:'#d3e3cc',landuse_park:'#d3e3cc',building:'#dadcd8','aeroway-area':'#e2e5e1',road_area_pier:'#eef1ec',land:'#eef1ec'},
+    line:{waterway:'#a9cbe6',highway_path:'#d5d9d3',highway_minor:'#ffffff',highway_major_casing:'#c9ced3',highway_major_inner:'#ffffff',highway_major_subtle:'#e8ebe6',highway_motorway_casing:'#d8b56f',highway_motorway_inner:'#f8dd9a',highway_motorway_subtle:'#f1e2bb',railway:'#bfc5cb',railway_minor:'#cdd2d7',railway_transit:'#cdd2d7',boundary_state:'#b7a9c4','boundary_country_z0-4':'#8c7fa0','boundary_country_z5-':'#8c7fa0','aeroway-runway':'#d3d7db','aeroway-taxiway':'#dde1e4'},
+    halo:'rgba(255,255,255,.95)',country:'#3d4a5c',city:'#1b2633',place:'#4a5a6c',waterName:'#3f6f9b',label:'#5f6f80',relief:{'raster-brightness-max':1,'raster-hue-rotate':0,'raster-saturation':-.55},night:['#1a2b4a',.12,.08,.04]}};
+const mapPal=()=>MAPPAL[document.documentElement.dataset.theme==='light'?'light':'dark'];
+const labelColor=(id,P)=>/^place_country/.test(id)?P.country:/^place_city/.test(id)?P.city:/^place/.test(id)?P.place:id==='water_name'?P.waterName:P.label;
+const BASE_LABELS=new Set();
 function tuneStyle(st){
-  st.projection={type:'globe'};
+  st.projection={type:'globe'};const P=mapPal();
   const name=['coalesce',['get','name:nb'],['get','name:no'],['get','name:latin'],['get','name']];
-  const fill={background:'#162231',water:'#0a1828',landcover_ice_shelf:'#1d2a39',landcover_glacier:'#1d2a39',landuse_residential:'#1b2635',landcover_wood:'#15202d',landuse_park:'#15202d',building:'#1e2a38','aeroway-area':'#1b2735',road_area_pier:'#162231'};
-  const line={waterway:'#0a1828',highway_path:'#1f2c3b',highway_minor:'#223042',highway_major_casing:'#0d1520',highway_major_inner:'#2b3c52',highway_major_subtle:'#273649',highway_motorway_casing:'#0d1520',highway_motorway_inner:'#3a5170',highway_motorway_subtle:'#2a3b51',railway:'#2b3646',railway_minor:'#26313f',railway_transit:'#26313f',boundary_state:'#2f4157','boundary_country_z0-4':'#5d728b','boundary_country_z5-':'#5d728b','aeroway-runway':'#26344a','aeroway-taxiway':'#1e2a3a'};
   for(const l of st.layers){const p=l.paint||(l.paint={}),lay=l.layout||(l.layout={});
-    if(l.type==='background')p['background-color']=fill.background;
-    else if(l.type==='fill'&&fill[l.id])p['fill-color']=fill[l.id];
-    else if(l.type==='line'&&line[l.id])p['line-color']=line[l.id];
+    if(l.type==='background')p['background-color']=P.fill.background;
+    else if(l.type==='fill'&&P.fill[l.id])p['fill-color']=P.fill[l.id];
+    else if(l.type==='line'&&P.line[l.id])p['line-color']=P.line[l.id];
     if(/^boundary_country/.test(l.id))p['line-width']=['interpolate',['linear'],['zoom'],1,.6,5,1.2,10,2];
-    if(l.type==='symbol'&&lay['text-field']&&/name/.test(JSON.stringify(lay['text-field']))){lay['text-field']=name;p['text-halo-color']='rgba(6,11,19,.92)';p['text-halo-width']=1.3;
-      if(/^place_country/.test(l.id))p['text-color']='#b9c9db';else if(/^place_city/.test(l.id))p['text-color']='#dbe5f0';else if(/^place/.test(l.id))p['text-color']='#94a7bc';
-      else if(l.id==='water_name')p['text-color']='#4d6f93';else p['text-color']='#7f93a9'}
+    if(l.type==='symbol'&&lay['text-field']&&/name/.test(JSON.stringify(lay['text-field']))){lay['text-field']=name;p['text-halo-color']=P.halo;p['text-halo-width']=1.3;p['text-color']=labelColor(l.id,P);BASE_LABELS.add(l.id)}
     if(lay['text-font']&&!fontFound){FONT=lay['text-font'];fontFound=true}}
   if(st.sources.ne2_shaded){const i=st.layers.findIndex(l=>l.id==='water');
-    st.layers.splice(i<0?1:i,0,{id:'relief',type:'raster',source:'ne2_shaded',maxzoom:7,paint:{'raster-opacity':['interpolate',['linear'],['zoom'],0,.55,5,.35,7,0],'raster-saturation':-.75,'raster-brightness-max':.42,'raster-contrast':.15,'raster-hue-rotate':200}})}
+    st.layers.splice(i<0?1:i,0,{id:'relief',type:'raster',source:'ne2_shaded',maxzoom:7,paint:{'raster-opacity':['interpolate',['linear'],['zoom'],0,.55,5,.35,7,0],'raster-contrast':.15,...P.relief}})}
   if(FONT[0]&&/Regular/.test(FONT[0]))FONT_B=[FONT[0].replace('Regular','Bold')];
 }
+// bytt farger på kartet uten å laste det på nytt
+function mapTheme(){if(!map||!ready)return;const P=mapPal();
+  for(const l of map.getStyle().layers){try{
+    if(l.type==='background')map.setPaintProperty(l.id,'background-color',P.fill.background);
+    else if(l.type==='fill'&&P.fill[l.id])map.setPaintProperty(l.id,'fill-color',P.fill[l.id]);
+    else if(l.type==='line'&&P.line[l.id])map.setPaintProperty(l.id,'line-color',P.line[l.id]);
+    else if(BASE_LABELS.has(l.id)){map.setPaintProperty(l.id,'text-color',labelColor(l.id,P));map.setPaintProperty(l.id,'text-halo-color',P.halo)}}catch(e){}}
+  if(map.getLayer('relief'))for(const[k,v]of Object.entries(P.relief))map.setPaintProperty('relief',k,v);
+  if(map.getLayer('night')){map.setPaintProperty('night','fill-color',P.night[0]);map.setPaintProperty('night','fill-opacity',['interpolate',['linear'],['zoom'],2,P.night[1],6,P.night[2],10,P.night[3]])}}
 let map,beforeLabels;
 async function initMap(){
   const style=await loadStyle();
   try{const c=document.createElement('canvas');if(!(c.getContext('webgl2')||c.getContext('webgl')))throw 0}catch(e){$('boot').textContent='Kartet trenger WebGL. Slå på maskinvareakselerasjon eller oppdater skjermkortdriveren.';return}
   const view=store.get('nk-view2',{center:[12,40],zoom:1.9});
   map=new maplibregl.Map({container:'map',style,center:view.center,zoom:view.zoom,minZoom:.6,maxZoom:18,attributionControl:{compact:true},
-    renderWorldCopies:false,fadeDuration:150,dragRotate:false,pitchWithRotate:false,touchPitch:false});
+    renderWorldCopies:false,fadeDuration:150,pixelRatio:Math.min(devicePixelRatio||1,2),dragRotate:false,pitchWithRotate:false,touchPitch:false});
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
   map.addControl(new Tools(),'top-right');
@@ -56,7 +73,7 @@ let lastTouch=Date.now();
 ['mousedown','touchstart','wheel'].forEach(ev=>$('map').addEventListener(ev,()=>{lastTouch=Date.now();if(spin){spin=false;const b=$('bSpin');if(b)b.setAttribute('aria-pressed','false')}},{passive:true}));
 document.addEventListener('keydown',()=>{lastTouch=Date.now()},true);
 // kloden snurrer sakte av seg selv når ingen har rørt den på et minutt og hele kloden vises
-setInterval(()=>{if(!ready||spin||F.spin===false||reduced||document.hidden||playing||S.sel||Date.now()-lastTouch<60e3||map.getZoom()>3||map.isMoving())return;
+setInterval(()=>{if(!ready||spin||F.spin===false||SAVER()||reduced||document.hidden||playing||S.sel||Date.now()-lastTouch<60e3||map.getZoom()>3||map.isMoving())return;
   spin=true;const b=$('bSpin');if(b)b.setAttribute('aria-pressed','true');spinStep()},5e3);
 
 function iconImage(cat,kind){const r=kind==='x'?17:kind==='t'?13:10,pad=kind==='x'?9:3,s=(r+pad)*2,pr=2,c=document.createElement('canvas');c.width=c.height=s*pr;const x=c.getContext('2d');x.scale(pr,pr);
@@ -77,7 +94,7 @@ function onLoad(){
   map.on('error',e=>{if(!(e&&e.sourceId))console.warn(e&&e.error)});
   const firstLine=(map.getStyle().layers.find(l=>l.type==='line')||{}).id;
   if(usingLocal){map.addSource('land',{type:'geojson',data:COUNTRIES||EMPTY});
-    map.addLayer({id:'land',type:'fill',source:'land',paint:{'fill-color':'#1c2836'}});
+    map.addLayer({id:'land',type:'fill',source:'land',paint:{'fill-color':mapPal().fill.land}});
     map.addLayer({id:'land-line',type:'line',source:'land',paint:{'line-color':'#3d5168','line-width':.6}})}
   map.addLayer({id:'sat',type:'raster',source:'sat',paint:{'raster-saturation':0,'raster-brightness-max':1,'raster-contrast':.08,'raster-fade-duration':200}},usingLocal?'land-line':firstLine);
   DETAIL=map.getStyle().layers.filter(l=>/^(transportation|transportation_name|building|aeroway|landuse|landcover)$/.test(l['source-layer']||'')).map(l=>({id:l.id,min:l.minzoom||0,max:l.maxzoom||24,
@@ -126,7 +143,7 @@ function onLoad(){
     const a2=countryAt(e.lngLat.lng,e.lngLat.lat);setCountry(a2&&a2!==S.cc?a2:null)});
   let hov=null;map.on('mousemove',e=>{if(!COUNTRIES)return;const a2=countryAt(e.lngLat.lng,e.lngLat.lat);if(a2===hov)return;
     if(hov)map.setFeatureState({source:'countries',id:hov},{hover:false});hov=a2;if(a2)map.setFeatureState({source:'countries',id:a2},{hover:true})});
-  ready=true;applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();areaDraw();
+  ready=true;mapTheme();applyLayers();applyBase();applyUI();refresh();animate();extraEvents();setMarketLayer();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();areaDraw();worldLayers();
 }
 let DETAIL=[];
 function applyBase(){if(!map||!map.getLayer('sat'))return;const sat=S.base==='sat';
@@ -146,17 +163,27 @@ $('layers').addEventListener('change',e=>{const i=e.target;if(i.dataset.f){setFe
 
 const DASH=[[0,4,3],[.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,.5],[3,4,0],[0,.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,.5]];
 let t0=performance.now(),dashStep=-1;const flash=new Map();
-function animate(){if(!ready)return;const t=(performance.now()-t0)/1000;
-  if(!reduced&&UI.anim){const k=(t%2)/2;map.setPaintProperty('pulse','circle-radius',11+k*16);map.setPaintProperty('pulse','circle-stroke-opacity',.85*(1-k));
-    const ds=Math.floor(t*12)%DASH.length;if(ds!==dashStep&&S.layers.arcs){dashStep=ds;map.setPaintProperty('arcs','line-dasharray',DASH[ds])}}
+// Animasjonene (puls på nye saker, buer mellom land, blink) tegner kartet på nytt hver gang.
+// For å spare skjermkortet går de med ca. 20 bilder i sekundet, sjeldnere når vinduet ikke er i fokus,
+// og stopper helt når det ikke er noe å animere eller appen er skjult.
+let animT=null;
+function animate(){clearTimeout(animT);if(!ready)return;
+  if(document.hidden){animT=setTimeout(animate,1000);return}
+  const t=(performance.now()-t0)/1000,saver=SAVER(),focus=document.hasFocus();
+  const pulse=!reduced&&UI.anim&&!saver&&(updateMap.recent||0)>0,arcs=!reduced&&UI.anim&&!saver&&S.layers.arcs&&(updateMap.arcs||0)>0;
+  if(pulse){const k=(t%2)/2;map.setPaintProperty('pulse','circle-radius',11+k*16);map.setPaintProperty('pulse','circle-stroke-opacity',.85*(1-k))}
+  if(arcs){const ds=Math.floor(t*12)%DASH.length;if(ds!==dashStep){dashStep=ds;map.setPaintProperty('arcs','line-dasharray',DASH[ds])}}
   const now=performance.now();for(const[a2,st]of flash){const k=1-(now-st)/9000;if(k<=0){flash.delete(a2);map.setFeatureState({source:'countries',id:a2},{f:0})}else map.setFeatureState({source:'countries',id:a2},{f:Math.abs(Math.sin(k*Math.PI*4))*k})}
-  requestAnimationFrame(animate)}
+  const busy=pulse||arcs||flash.size;
+  animT=setTimeout(animate,!busy?1000:!focus?250:50)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)animate()});
+window.addEventListener('focus',()=>animate());
 
 let prevHeat=new Set(),prevSel=null;
 function heatMap(){const h=new Map();for(const e of (S.tab==='top'?view():base())){if(!catOn(e.cat))continue;const cc=ccOf(e);if(!cc)continue;h.set(cc,(h.get(cc)||0)+1+e.score/5)}return h}
 // ringer som vokser og blekner der en ny sak dukker opp
 let POPS=[],popRaf=null;
-function popAdd(evs){if(!ready||reduced||UI.anim===false)return;const t0=performance.now();for(const e of evs)if(e.lat!=null)POPS.push({t0,lon:e.lon,lat:e.lat,col:CATS[e.cat].c,big:e.score>=3.5});
+function popAdd(evs){if(!ready||reduced||UI.anim===false||SAVER())return;const t0=performance.now();for(const e of evs)if(e.lat!=null)POPS.push({t0,lon:e.lon,lat:e.lat,col:CATS[e.cat].c,big:e.score>=3.5});
   if(POPS.length>60)POPS=POPS.slice(-60);if(!popRaf)popRaf=requestAnimationFrame(popTick)}
 function popTick(now){POPS=POPS.filter(p=>now-p.t0<1100);
   map.getSource('pop').setData({type:'FeatureCollection',features:POPS.map(p=>{const k=(now-p.t0)/1100;return{type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:{r:6+k*(p.big?34:24),o:1-k,col:p.col}}})});
@@ -164,10 +191,11 @@ function popTick(now){POPS=POPS.filter(p=>now-p.t0<1100);
 function updateMap(){
   if(!ready)return;
   const ev=view(),feats=[];
-  for(const e of ev){if(e.lat==null)continue;
+  const hideC=new Set(SET.mapHideCats||[]);
+  for(const e of ev){if(e.lat==null||hideC.has(e.cat))continue;
     feats.push({type:'Feature',geometry:{type:'Point',coordinates:[e.lon,e.lat]},properties:{id:e.id,cat:e.cat,size:size(e),top:e.top?1:0,recent:fresh(e)?1:0,score:e.score,nsrc:e.srcs.length,col:CATS[e.cat].c,sort:e.score*1e13+ms(e.last)/1e3}})}
   map.getSource('news').setData({type:'FeatureCollection',features:feats});
-  map.getSource('arcs').setData(S.layers.arcs?arcs(ev):EMPTY);
+  const arcD=S.layers.arcs?arcs(ev):EMPTY;map.getSource('arcs').setData(arcD);updateMap.arcs=arcD.features?arcD.features.length:0;updateMap.recent=feats.filter(f=>f.properties.recent).length;
   if(map.getSource('quakes'))map.getSource('quakes').setData(F.quakes?{type:'FeatureCollection',features:base().filter(e=>e.mag>=4&&e.lat!=null).map(e=>({type:'Feature',geometry:{type:'Point',coordinates:[e.lon,e.lat]},properties:{mag:Math.round(e.mag*10)/10,id:e.id}}))}:EMPTY);
   map.setFilter('pt-sel',['==',['get','id'],S.sel||'']);
   const h=heatMap(),max=Math.max(4,...h.values());

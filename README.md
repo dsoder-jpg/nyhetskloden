@@ -25,6 +25,9 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Kloden snurrer sakte når du ikke bruker den.
 - Velg et område på kartet og se bare saker derfra.
 - «På vei opp» viser land og temaer der omtalen øker raskt.
+- Varmekart over hvor det har skjedd mest de siste 7, 30 eller 90 dagene.
+- Skogbranner fra satellitt (NASA FIRMS), nordlysovalen (NOAA) og hvor kraftig det ristet etter store jordskjelv (USGS ShakeMap).
+- Velg hvilke kategorier som vises på kartet, uten at de forsvinner fra lista.
 - Klikk på et land for fakta: hovedstad, folketall, klokka og været der.
 - Tidsreise: se hvordan kloden så ut en tidligere dag fra arkivet.
 - Strømpris i de fem norske prisområdene, og veitrafikk fra Statens vegvesen (krever gratis DATEX-tilgang).
@@ -36,6 +39,8 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Bilde fra kilden i saken, når kilden har et.
 - Lesemodus: les hele saken i appen uten reklame, og få den lest høyt.
 - Appen sier fra når kildene oppgir ulike tall, for eksempel for antall drepte.
+- Tidslinje for en sak: alle artikler om den de siste ukene, i rekkefølge.
+- Bakgrunn fra Wikipedia om stedet saken handler om.
 - Lokalavisa nær hjemstedet ditt legges til som kilde automatisk.
 - Del en sak med lenke eller QR-kode til mobilen.
 - Norske titler på utenlandske saker med en gratis DeepL-nøkkel (valgfritt).
@@ -55,8 +60,10 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Søk etter aksjer, fond og indekser, og se graf, nøkkeltall og nyheter om selskapet for hver enkelt.
 - Sammenlign to aksjer eller indekser i samme graf.
 - Valutakalkulator.
+- Styringsrenten fra Norges Bank og en kalkulator for hva boliglånet koster i måneden.
+- Strømprisen i morgen, med varsel når den blir billig eller dyr der du bor.
 - Dagens største vinnere og tapere på Oslo Børs.
-- Egen liste over aksjer du vil følge, og en portefølje med kjøp og salg som viser verdi, gevinst og utvikling over tid i kroner.
+- Egen liste over aksjer du vil følge, og en portefølje med kjøp og salg som viser verdi, gevinst, utbytte og utvikling over tid i kroner.
 - Varsel når en aksje du eier eller følger går mye opp eller ned i løpet av en dag.
 
 **Vær og varsler**
@@ -71,7 +78,10 @@ Appen holder seg oppdatert selv. Du trenger ikke laste ned nye versjoner manuelt
 - Lagre et bilde av kloden eller dagens saker som PDF.
 - Flytrafikk på kloden, og skipstrafikk langs norskekysten (krever gratis BarentsWatch-konto). Velg om du vil se for eksempel bare helikoptre eller bare passasjerskip.
 - Mobilvisning: åpne kloden på mobilen når den er på samme nettverk som PC-en.
-- Mørkt, lyst og høykontrast tema, større tekst og hurtigtaster (trykk ? i appen).
+- Mørkt, lyst og høykontrast tema som kan følge Windows, større tekst og hurtigtaster (trykk ? i appen).
+- Global hurtigtast (Ctrl+Shift+N) som viser appen fra hvor som helst.
+- Strømsparing som skrur ned bruken av skjermkortet, også automatisk på batteri.
+- Sikkerhetskopi av innstillinger, portefølje og lagrede saker, og feilrapport med ett klikk.
 - Virker uten nett: viser lagrede saker og sier fra når nettet er borte.
 
 Alt kan slås av og på under **Innstillinger**.

@@ -610,3 +610,70 @@ dialog.reader[open]{display:flex}
 .mhold>table,.mhold>.mnote,.mhold>.trf{flex-basis:100%}
 .rhead .x{position:static;margin-left:4px}
 .trf input[type=date]{min-width:132px}
+
+/* 3.9: lyst tema */
+html[data-theme=light] .stage{background:radial-gradient(60% 70% at 50% 50%,#e7edf3 0%,#d3dce6 60%,#c3cfdb 100%)}
+html[data-theme=light] .legend,html[data-theme=light] .tl,html[data-theme=light] .layers,html[data-theme=light] .areabar{background:rgba(255,255,255,.94);border-color:#d5dee8;box-shadow:0 6px 24px rgba(20,40,70,.12)}
+html[data-theme=light] .card{border-color:#d5dee8}
+html[data-theme=light] .card .cdis{background:#fff4e0;border-left-color:#e08a00;color:#4a3410}
+html[data-theme=light] .btn{background:#fff;border-color:#d5dee8;color:#122033}
+html[data-theme=light] .btn.primary{background:#e8590c;border-color:#e8590c;color:#fff}
+html[data-theme=light] .seg{background:#f3f6f9;border-color:#d5dee8}
+html[data-theme=light] .tl .liveb[aria-pressed=true]{background:#e6f6ec;border-color:#86cfa0;color:#14532d}
+html[data-theme=light] .digest.since>summary{color:#9a5b00}
+html[data-theme=light] .calist li.k-rente time{color:#1d4ed8}
+html[data-theme=light] .calist li.k-valg time{color:#9a5b00}
+html[data-theme=light] .uplist .upx{color:#c2410c}
+html[data-theme=light] .mcmp .btn[aria-pressed=true]{border-color:#e08a00;color:#7a4a00}
+html[data-theme=light] .btn.say[aria-pressed=true]{border-color:#1d4ed8;color:#1d4ed8}
+html[data-theme=light] .areabar{color:#122033}
+html[data-theme=light] .rbody img,html[data-theme=light] .card .cimg{background:#e4ebf2}
+html[data-theme=light] .mtip{background:#fff;color:#122033;border-color:#d5dee8}
+html[data-theme=light] .maplibregl-ctrl-group{background:#fff}
+html[data-theme=light] .rbody .rnote{background:#f3f6f9}
+html[data-theme=light] dialog{background:#fff;color:#122033}
+html[data-theme=light] dialog::backdrop{background:rgba(20,32,51,.35)}
+
+/* 3.9: tidslinje, bakgrunn, skjelv, kartvalg, utbytte, rente */
+ol.story{list-style:none;margin:0;padding:0}
+ol.story>li{margin:0 0 18px}
+ol.story h2{font-size:14px;margin:0 0 6px;color:var(--muted);font-weight:600}
+ol.story ul{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line);display:grid;gap:7px}
+ol.story ul li{display:grid;grid-template-columns:44px auto;gap:2px 8px;font-size:14.5px;line-height:1.4;max-width:none}
+ol.story time{color:var(--muted);font-size:12.5px;padding-top:2px;font-variant-numeric:tabular-nums}
+ol.story b{font-size:12.5px;color:var(--muted);font-weight:600;grid-column:2}
+ol.story a{grid-column:2;color:var(--ink);text-decoration:none}
+ol.story a:hover{text-decoration:underline}
+.rhead select{min-height:28px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit;font-size:12.5px}
+.card .cwiki{margin:8px 0 0;font-size:12.5px}
+.card .cwiki[hidden]{display:none}
+.card .cwiki summary{cursor:pointer;color:var(--muted);font-weight:600}
+.card .cwiki img{float:right;width:72px;height:72px;object-fit:cover;border-radius:6px;margin:4px 0 6px 10px}
+.card .cwiki p{margin:6px 0;line-height:1.5}
+.card .cwiki a{color:#7cc0ff}
+.card .cshake{margin:6px 0 0;font-size:12.5px;padding:6px 10px;border-left:3px solid #ff8a1e;background:rgba(255,138,30,.08);border-radius:0 6px 6px 0}
+.card .cshake[hidden]{display:none}
+.layers .lcats{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px}
+.layers .lcats p{margin:2px 0 6px;color:var(--muted);font-size:11.5px}
+.layers .lstat{margin:6px 0 0;font-size:11.5px;color:var(--muted)}
+.layers .lstat[hidden]{display:none}
+.pfdiv{margin-top:6px}
+.dbars{display:flex;gap:10px;align-items:flex-end;height:96px;padding:6px 0}
+.dbars div{display:grid;justify-items:center;gap:2px;font-size:11px;align-content:end}
+.dbars span{display:block;width:22px;background:linear-gradient(#7cf29a,#2fbf71);border-radius:3px 3px 0 0}
+.dbars small{color:var(--muted)}
+.dbars b{font-weight:500;font-variant-numeric:tabular-nums;font-size:10.5px;color:var(--muted)}
+.rate{display:grid;gap:8px}
+.rate .pfh .mnote{font-size:11px}
+.rate .rnext{font-size:14px}
+.rchart{width:100%;height:60px}
+.loan{display:flex;flex-wrap:wrap;gap:8px}
+.loan label{display:grid;gap:3px;color:var(--muted);font-size:12px;flex:1 1 110px}
+.loan input{min-height:30px;width:100%;font-variant-numeric:tabular-nums}
+.loanout{display:grid;gap:2px}
+.loanout b{font-size:17px;font-variant-numeric:tabular-nums}
+.loanout small{color:var(--muted);font-size:12px}
+.mpt{font-size:12.5px;margin:4px 0 8px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.mpt[hidden]{display:none}
+html[data-theme=light] .card .cwiki a{color:#1d4ed8}
+html[data-theme=light] .card .cshake{background:#fff1e3}

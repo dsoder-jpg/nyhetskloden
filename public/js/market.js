@@ -39,9 +39,9 @@ function renderMarket(){const box=$('mkt');box.hidden=!F.market;$('sideTabs').hi
   const kinds=[['fx','Valuta'],['cmd','Råvarer'],['crypto','Krypto']];
   for(const[k,l]of kinds){const a=(D.other||[]).filter(q=>q.kind===k);if(a.length)h+=`<div class="mh">${l}</div><div class="qg">${a.map(q=>qBtn(q)).join('')}</div>`}
   if(F.movers&&(D.up||[]).length)h+=`<div class="mh">Oslo Børs ${MRANGE_TXT[D.range||'1d']}</div><div class="mv"><div><div class="mnote">Best</div>${moverList(D.up)}</div><div><div class="mnote">Dårligst</div>${moverList(D.down)}</div></div>`;
-  h+=`<div id="mPower" hidden></div><div class="mnote">Endring ${MRANGE_TXT[D.range||'1d']}. Kurser fra Yahoo Finance, oppdatert ${tfmt.format(new Date(D.at))}. De kan være forsinket. Klikk på en kurs for graf og detaljer.</div>`;
+  h+=`<div id="mPower" hidden></div><div id="mPowerT" class="mpt" hidden></div><div id="mRate"></div><div class="mnote">Endring ${MRANGE_TXT[D.range||'1d']}. Kurser fra Yahoo Finance, oppdatert ${tfmt.format(new Date(D.at))}. De kan være forsinket. Klikk på en kurs for graf og detaljer.</div>`;
   h+=fxHtml();
-  $('mBody').innerHTML=h;if(typeof powerUI==='function')powerUI();fxWire();if(PF&&(PF.rows||[]).length)pfHist()}
+  $('mBody').innerHTML=h;if(typeof powerUI==='function')powerUI();fxWire();if(PF&&(PF.rows||[]).length){pfHist();divLoad()}rateLoad();powerTomorrow()}
 $('mBody').addEventListener('keydown',e=>{const r=e.target.closest('tr[data-s]');if(r&&e.key==='Enter')openDetail(r.dataset.s)});
 $('mBody').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(b)openDetail(b.dataset.s);const bk=e.target.closest('#mBack');if(bk){MDET=null;MDETD=null;renderMarket()}});
 // ---------- detaljer med graf ----------
@@ -130,7 +130,7 @@ function pfHtml(){if(!PF||!(PF.rows||[]).length)return'';
   return`<div class="mh">Min portefølje</div><div class="pf"><div class="pfh"><div><small>Verdi</small><b>${kr0(PF.value)}</b></div><div><small>I dag</small><b class="${pcls(PF.day)}">${krS(PF.day)}</b><span class="${pcls(PF.dayPct)}">${pctTxt(PF.dayPct)}</span></div>${PF.realized?`<div><small>Realisert</small><b class="${pcls(PF.realized)}">${krS(PF.realized)}</b></div>`:''}${PF.gain!=null?`<div><small>Siden kjøp</small><b class="${pcls(PF.gain)}">${krS(PF.gain)}</b><span class="${pcls(PF.gainPct)}">${pctTxt(PF.gainPct)}</span></div>`:''}</div>
     <table class="pft"><thead><tr><th>Aksje</th><th>Antall</th><th>Verdi</th><th>I dag</th><th>Siden kjøp</th></tr></thead><tbody>${PF.rows.map(r=>r.error?`<tr><td>${esc(r.sym)}</td><td colspan="4" class="mnote">Fant ikke kursen</td></tr>`:
       `<tr data-s="${esc(r.sym)}" tabindex="0"><td title="${esc(r.name)}">${esc(r.name)}</td><td>${nf2.format(r.qty).replace(/,00$/,'')}</td><td>${kr0(r.value)}</td><td class="${pcls(r.pct)}">${pctTxt(r.pct)}</td><td class="${pcls(r.gainPct)}">${r.gainPct==null?'–':pctTxt(r.gainPct)}</td></tr>`).join('')}</tbody></table>
-    <div class="pfg"><div class="seg" role="group" aria-label="Periode for porteføljen">${PFR.map(([k,l])=>`<button type="button" data-pr="${k}" aria-pressed="${k===PFRANGE}">${l}</button>`).join('')}</div><div id="pfChart" class="pfc"><div class="mnote">Regner ut historikken …</div></div></div>
+    <div class="pfg"><div class="seg" role="group" aria-label="Periode for porteføljen">${PFR.map(([k,l])=>`<button type="button" data-pr="${k}" aria-pressed="${k===PFRANGE}">${l}</button>`).join('')}</div><div id="pfChart" class="pfc"><div class="mnote">Regner ut historikken …</div></div></div><div id="pfDiv" class="pfdiv"></div>
     <div class="mnote">Regnet om til kroner med valutakursen hver dag. Legg inn kjøp og salg i detaljvisningen til hver aksje.</div></div>`}
 // porteføljens verdi over tid, med det du har betalt som stiplet linje
 const PFR=[['1mo','1 mnd'],['6mo','6 mnd'],['ytd','I år'],['1y','1 år'],['5y','5 år']];
@@ -187,3 +187,40 @@ function setMarketLayer(){if(!ready||!map.getSource('mkts'))return;const on=F.ma
   map.getSource('mkts').setData({type:'FeatureCollection',features:[...g.values()].map(a=>({type:'Feature',geometry:{type:'Point',coordinates:[a[0].lon,a[0].lat]},
     properties:{label:a.map(q=>q.name.replace('Oslo Børs (OSEBX)','OSEBX')+' '+pctTxt(q.pct)).join('\n'),col:a[0].pct>0?'#3ddc84':a[0].pct<0?'#ff6b6b':'#9fb0c4',pct:a[0].pct||0}}))});
   for(const id of ['mk-glow','mk-dot','mk-txt'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',on?'visible':'none')}
+// ---------- utbytte ----------
+let DIV=null;
+async function divLoad(){const box=$('pfDiv');if(!box)return;
+  if(!DIV||Date.now()-DIV.at>6*3600e3){try{DIV={at:Date.now(),d:await (await fetch('/api/dividends')).json()}}catch(e){DIV={at:Date.now(),d:{error:true}}}}
+  const d=DIV.d;if(!$('pfDiv'))return;if(d.error||!(d.rows||[]).length||(!d.total&&!d.next12)){$('pfDiv').innerHTML=d.error?'':'<div class="mnote">Ingen utbytte registrert for aksjene dine.</div>';return}
+  const yrs=(d.years||[]).slice(-6),mx=Math.max(...yrs.map(y=>y.kr),1);
+  $('pfDiv').innerHTML=`<div class="mh">Utbytte</div><div class="pfh"><div><small>Fått totalt</small><b>${kr0(d.total)}</b></div><div><small>Neste 12 mnd (anslag)</small><b>${kr0(d.next12)}</b></div></div>
+    ${yrs.length?`<div class="dbars" role="img" aria-label="Utbytte per år">${yrs.map(y=>`<div><span style="height:${Math.max(3,Math.round(y.kr/mx*52))}px"></span><small>${esc(y.year)}</small><b>${nf0.format(Math.round(y.kr/100)*100)}</b></div>`).join('')}</div>`:''}
+    <div class="mnote">Regnet ut fra hvor mange aksjer du eide på utbyttedagen. Anslaget bruker utbyttet de siste 12 månedene.</div>`}
+
+// ---------- rente og boliglån ----------
+let RATE=null,LOAN=store.get('nk-loan',{sum:3000000,years:25,add:1.6});
+async function rateLoad(){const box=$('mRate');if(!box)return;
+  if(!RATE||Date.now()-RATE.at>3*3600e3){try{RATE={at:Date.now(),d:await (await fetch('/api/rate')).json()}}catch(e){RATE={at:Date.now(),d:{error:true}}}}
+  if(!$('mRate'))return;const d=RATE.d;if(d.error||d.rate==null){$('mRate').innerHTML='';return}
+  const next=(typeof CALS!=='undefined'?CALS:[]).find(e=>/Norges Bank/.test(e.title)&&Date.parse(e.date+'T23:59')>=Date.now());
+  const df=new Intl.DateTimeFormat('nb-NO',{day:'numeric',month:'long',year:'numeric'}),f2=v=>String(v.toFixed(2)).replace('.',',');
+  const ch=(d.changes||[]).slice(-12),W=600,H=60,x0=Date.parse(ch[0][0]),x1=Date.now(),ys=ch.map(c=>c[1]),y0=Math.min(...ys),y1=Math.max(...ys);
+  const X=t=>4+(t-x0)/((x1-x0)||1)*(W-8),Y=v=>6+(1-(v-y0)/((y1-y0)||1))*(H-12);
+  let path='';ch.forEach((c,i)=>{const x=X(Date.parse(c[0]));path+=(i?`H${x.toFixed(1)}V`:`M${x.toFixed(1)} `)+Y(c[1]).toFixed(1)});path+=`H${W-4}`;
+  $('mRate').innerHTML=`<div class="mh">Rente og boliglån</div><div class="rate"><div class="pfh"><div><small>Styringsrenten</small><b>${f2(d.rate)} %</b>${d.since?`<span class="mnote">siden ${esc(df.format(new Date(d.since)))}</span>`:''}</div>${next?`<div><small>Neste rentemøte</small><b class="rnext">${esc(df.format(new Date(next.date+'T12:00:00')))}</b></div>`:''}</div>
+    <svg class="rchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Styringsrenten de siste årene"><path d="${path}" fill="none" stroke="#9fd3ff" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>
+    <form class="loan" id="loanF" onsubmit="return false"><label>Lån (kr)<input type="text" inputmode="numeric" id="lnSum" value="${nf0.format(LOAN.sum)}"></label><label>År<input type="number" id="lnYears" min="1" max="40" value="${LOAN.years}"></label><label title="Det banken legger på styringsrenten">Påslag (%)<input type="text" inputmode="decimal" id="lnAdd" value="${f2(LOAN.add)}"></label></form>
+    <div class="loanout" id="lnOut"></div><div class="mnote">Fra Norges Bank. Påslaget er det banken din legger på; sjekk lånet ditt for riktig tall.</div></div>`;
+  const calc=()=>{const n=v=>+String(v).replace(/\s/g,'').replace(/ /g,'').replace(',','.');LOAN={sum:n($('lnSum').value)||0,years:Math.max(1,Math.min(40,n($('lnYears').value)||25)),add:n($('lnAdd').value)||0};store.set('nk-loan',LOAN);
+    const pay=r=>{const i=r/100/12,k=LOAN.years*12;return i?LOAN.sum*i/(1-Math.pow(1+i,-k)):LOAN.sum/k},r=d.rate+LOAN.add,base=pay(r),up=pay(r+.25),dn=pay(Math.max(0,r-.25));
+    $('lnOut').innerHTML=`<b>${kr0(base)} i måneden</b><small>med ${f2(r)} % rente. Opp 0,25: ${krS(up-base)}. Ned 0,25: ${krS(dn-base)} i måneden.</small>`};
+  for(const i of $('loanF').querySelectorAll('input'))i.oninput=calc;calc()}
+
+// ---------- strømpris i morgen ----------
+let PTM=null;
+async function powerTomorrow(){const box=$('mPowerT');if(!box||!F.power)return;
+  const day=new Date(Date.now()+864e5).toLocaleDateString('sv-SE',{timeZone:'Europe/Oslo'});
+  if(!PTM||PTM.day!==day||(PTM.d.error&&Date.now()-PTM.at>30*60e3)){try{PTM={day,at:Date.now(),d:await (await fetch('/api/powerday?day='+day+(SET.powerZone?'&zone='+SET.powerZone:''))).json()}}catch(e){PTM={day,at:Date.now(),d:{error:'ingen kontakt'}}}}
+  if(!$('mPowerT'))return;const d=PTM.d,el=$('mPowerT');if(d.error||!d.sum){el.hidden=false;el.textContent=`I morgen (${d.name||d.zone||'ditt område'}): prisene kommer rundt kl. 13.`;return}
+  const t=x=>tfmt.format(new Date(x)),k=v=>String(v.toFixed(2)).replace('.',',')+' kr';
+  el.hidden=false;el.innerHTML=`<b>I morgen i ${esc(d.name)}</b> snitt ${k(d.sum.avg)}. Billigst kl. ${t(d.sum.cheap.from)}–${t(Date.parse(d.sum.cheap.from)+3*3600e3)} (${k(d.sum.cheap.avg)}), dyrest kl. ${t(d.sum.dear.t)} (${k(d.sum.dear.kr)}).`}

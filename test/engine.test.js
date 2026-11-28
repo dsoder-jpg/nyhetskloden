@@ -147,6 +147,18 @@ test('kalenderen er gyldig', () => {
   for (const ev of k.events) { assert.match(ev.date, /^\d{4}-\d\d-\d\d$/); assert.ok(ev.title); assert.ok(!ev.url || ev.url.startsWith('https://')); if (ev.time) assert.match(ev.time, /^\d\d:\d\d$/); }
 });
 
+test('prisområde for strøm og billigste timer', () => {
+  const M = require('../more');
+  assert.equal(M.zoneFor({ lat: 59.41, lon: 9.07 }), 'NO2'); // Bø
+  assert.equal(M.zoneFor({ lat: 59.91, lon: 10.75 }), 'NO1'); // Oslo
+  assert.equal(M.zoneFor({ lat: 60.39, lon: 5.32 }), 'NO5'); // Bergen
+  assert.equal(M.zoneFor({ lat: 63.43, lon: 10.39 }), 'NO3'); // Trondheim
+  assert.equal(M.zoneFor({ lat: 69.65, lon: 18.96 }), 'NO4'); // Tromsø
+  const h = [1.2, 1.1, 0.4, 0.2, 0.3, 0.9, 2.8, 1.5].map((kr, i) => ({ t: new Date(Date.UTC(2026, 0, 1, i)).toISOString(), kr }));
+  const s = M.powerSummary(h);
+  assert.equal(s.cheap.from, h[2].t); assert.ok(Math.abs(s.cheap.avg - 0.3) < 1e-9); assert.equal(s.dear.kr, 2.8);
+});
+
 test('http-lenker gjøres om til https', () => {
   const items = e.parseRss('<rss><channel><item><title>Flom</title><link>http://www.gdacs.org/report.aspx?x=1</link></item></channel></rss>');
   assert.equal(items.length, 1);

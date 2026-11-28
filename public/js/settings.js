@@ -24,7 +24,7 @@ $('dlgX').onclick=()=>$('dlg').close();
 $('dlg').addEventListener('click',e=>{if(e.target===$('dlg'))$('dlg').close()});
 // generelle felt koblet til motoren (data-k)
 function renderSettings(soft){
-  for(const el of document.querySelectorAll('#dlg [data-k]')){const v=SET[el.dataset.k];if(v==null)continue;if(el.type==='checkbox')el.checked=!!v;else el.value=String(v)}
+  for(const el of document.querySelectorAll('#dlg [data-k]')){const v=SET[el.dataset.k];if(v==null){if(el.dataset.null!=null)el.value='';continue}if(el.type==='checkbox')el.checked=!!v;else el.value=String(v)}
   const q=SET.quiet||{on:false,from:23,to:7};if(!$('qFrom').options.length)for(const s of [$('qFrom'),$('qTo')])for(let h=0;h<24;h++)s.add(new Option(String(h).padStart(2,'0')+':00',h));
   $('qOn').checked=q.on;$('qFrom').value=q.from;$('qTo').value=q.to;
   // følger
@@ -103,7 +103,7 @@ let PLACES=[];
 $('dlg').addEventListener('change',e=>{const el=e.target;
   if(el.dataset.f){setFeature(el.dataset.f,el.checked);return}
   if(el.id==='lTheme'||el.id==='lZoom'){LOOK.theme=$('lTheme').value;LOOK.zoom=+$('lZoom').value;store.set('nk-look',LOOK);applyLook();savedFlash();return}
-  if(el.dataset.k){let v=el.type==='checkbox'?el.checked:el.value;if(el.dataset.num!=null)v=+v;postSet({[el.dataset.k]:v});if(el.dataset.restart!=null&&IS_APP)setTimeout(()=>window.nk.restartTicker(),700);return}
+  if(el.dataset.k){let v=el.type==='checkbox'?el.checked:el.value;if(el.dataset.num!=null)v=+v;if(el.dataset.null!=null&&v==='')v=null;postSet({[el.dataset.k]:v});if(el.dataset.restart!=null&&IS_APP)setTimeout(()=>window.nk.restartTicker(),700);return}
   if(el.dataset.layer){S.layers[el.dataset.layer]=el.checked;store.set('nk-layers',S.layers);applyLayers();updateMap();savedFlash();return}
   if(el.dataset.ui){UI[el.dataset.ui]=el.checked;store.set('nk-ui',UI);applyUI();savedFlash();return}
   if(el.id==='mBase'){S.base=el.value;store.set('nk-base',S.base);applyBase();savedFlash();return}
@@ -182,8 +182,41 @@ if(IS_APP){window.nk.updateState().then(updUI);window.nk.onUpdate(updUI);
   $('tickerBtn').hidden=false;$('tickerBtn').onclick=()=>window.nk.toggleTicker();
   if(window.nk.onOpenSettings)window.nk.onOpenSettings(()=>openSettings());
   if(window.nk.onOpenTab)window.nk.onOpenTab(t=>{S.tab=t;S.cc=null;S.cats=new Set(KEYS);S.tl=null;S.period=t==='top'&&+S.period<24?'24':S.period;tlSync();refresh();if($('dlg').open)$('dlg').close()});
-  window.nk.onOpen(id=>{if(id==='nk:sources'){openSettings('sources');return}if(id==='nk:week'){setSide('news');SINCE=null;DIGW=true;store.set('nk-digw',true);$('digest').open=true;digest();return}if(id==='nk:cal'){setSide('news');loadCal();$('cal').open=true;$('cal').scrollIntoView({block:'nearest'});return}if(id.startsWith('nk:market:')){setSide('market');openDetail(id.slice(10));return}const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
+  window.nk.onOpen(id=>{if(id==='nk:sources'){openSettings('sources');return}if(id==='nk:power'){setSide('market');return}if(id==='nk:aurora'){$('layers').open=true;if(ready)map.easeTo({center:[HOME?HOME.lon:15,HOME?Math.max(HOME.lat,62):66],zoom:3,duration:reduced?0:1200});return}if(id==='nk:week'){setSide('news');SINCE=null;DIGW=true;store.set('nk-digw',true);$('digest').open=true;digest();return}if(id==='nk:cal'){setSide('news');loadCal();$('cal').open=true;$('cal').scrollIntoView({block:'nearest'});return}if(id.startsWith('nk:market:')){setSide('market');openDetail(id.slice(10));return}const n=NEWS.find(n=>n.id===id||n.eid===id);const e=n&&EVENTS.find(e=>e.items.includes(n));if(e){S.period='168';S.cats=new Set(KEYS);S.cc=null;S.tab='all';S.tl=null;tlSync();refresh();select(e.id,true)}})}
 else{$('updStatus').textContent='Oppdateringer styres av Windows-appen. Du kjører nå nyhetsmotoren i en vanlig nettleser.';$('updCheck').hidden=true;$('uVer').textContent='Nettleserversjon'}
 applyUI();
 tlSync();
 load().catch(err=>{$('liveTxt').textContent='Fant ikke nyhetsmotoren';console.error(err)});
+// ---------- sikkerhetskopi ----------
+const BK_SKIP=new Set(['builtinFeeds','version','hasDeeplKey','hasDatexPass','portfolio','localPaper','onboarded']);
+function backupData(){const settings={};for(const[k,v]of Object.entries(SET||{}))if(!BK_SKIP.has(k))settings[k]=v;
+  const local={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^nk-/.test(k))local[k]=localStorage.getItem(k)}
+  return{app:'Nyhetskloden',kind:'sikkerhetskopi',version:(SET&&SET.version)||'',at:new Date().toISOString(),settings,local}}
+$('bkSave').onclick=async()=>{const txt=JSON.stringify(backupData(),null,1),name='nyhetskloden-'+new Date().toISOString().slice(0,10)+'.json';
+  if(IS_APP&&window.nk.saveText){const r=await window.nk.saveText(txt,name,'json');$('bkMsg').textContent=r&&r.ok?'Lagret i '+r.path:'';return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);$('bkMsg').textContent='Lastet ned '+name};
+$('bkFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let d;
+  try{d=JSON.parse(await f.text())}catch(x){$('bkMsg').textContent='Fila er ikke en sikkerhetskopi fra Nyhetskloden.';return}
+  if(!d||d.app!=='Nyhetskloden'||!d.settings){$('bkMsg').textContent='Fila er ikke en sikkerhetskopi fra Nyhetskloden.';return}
+  if(!confirm('Hente inn sikkerhetskopien fra '+(d.at?dfmt.format(new Date(d.at)):'en tidligere dato')+'? Innstillingene du har nå blir erstattet.'))return;
+  try{const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d.settings,onboarded:true})});if(!r.ok)throw 0}catch(x){$('bkMsg').textContent='Fikk ikke lagret innstillingene.';return}
+  for(const[k,v]of Object.entries(d.local||{}))if(/^nk-/.test(k)&&typeof v==='string')localStorage.setItem(k,v);
+  $('bkMsg').textContent='Hentet inn. Appen lastes på nytt …';setTimeout(()=>location.reload(),900)};
+
+// ---------- feilrapport ----------
+const PAGE_ERR=[];
+window.addEventListener('error',e=>{PAGE_ERR.push(new Date().toISOString().slice(11,19)+' '+(e.message||'feil')+(e.filename?' ('+e.filename.split('/').pop()+':'+e.lineno+')':''));if(PAGE_ERR.length>50)PAGE_ERR.shift()});
+window.addEventListener('unhandledrejection',e=>{PAGE_ERR.push(new Date().toISOString().slice(11,19)+' ' +String(e.reason&&e.reason.message||e.reason).slice(0,200));if(PAGE_ERR.length>50)PAGE_ERR.shift()});
+function gpuName(){try{const c=document.createElement('canvas'),g=c.getContext('webgl2')||c.getContext('webgl'),x=g&&g.getExtension('WEBGL_debug_renderer_info');return x?g.getParameter(x.UNMASKED_RENDERER_WEBGL):'ukjent'}catch(e){return'ingen WebGL'}}
+async function bugReport(){let srv={},app={};try{srv=await (await fetch('/api/diag')).json()}catch(e){srv={error:'ingen kontakt med motoren'}}
+  try{if(IS_APP&&window.nk.diag)app=await window.nk.diag()}catch(e){}
+  const st={...(srv.settings||{})};for(const k of ['home','trades','portfolio','marketWatch','srcLists','followWords','followEids','builtinFeeds','customFeeds','datexUser'])if(k in st)st[k]=Array.isArray(st[k])?`(${st[k].length})`:st[k]?'(satt)':st[k];
+  const L=['Nyhetskloden feilrapport','Laget: '+new Date().toString(),'',
+    'App: '+(app.app||'nettleser')+(app.electron?', Electron '+app.electron+', Chrome '+app.chrome:''),'System: '+(app.os||navigator.userAgent),'Minne (motor): '+(app.mem||'–'),'Skjermkort: '+gpuName(),
+    'Skjerm: '+screen.width+'×'+screen.height+' @'+devicePixelRatio+', vindu '+innerWidth+'×'+innerHeight,'Strømsparing: '+(SAVER()?'på':'av')+', tema: '+document.documentElement.dataset.theme,'',
+    'Motor: '+JSON.stringify(srv.engine||srv.error||{}),'Kilder: '+(srv.feeds?srv.feeds.ok+' av '+srv.feeds.total+' virker, '+srv.feeds.paused.length+' på pause':'–'),
+    ...((srv.feeds&&srv.feeds.failing)||[]).map(f=>'  feiler: '+f.src+': '+f.err),'',
+    'Feil i siden:',...(PAGE_ERR.length?PAGE_ERR:['  ingen']),'','Logg fra motoren:',...((srv.log||[]).length?srv.log:['  ingen']),'','Innstillinger:',JSON.stringify(st,null,1)];
+  return L.join('\n')}
+$('dgCopy').onclick=async()=>{const t=await bugReport();try{if(IS_APP&&window.nk.copyText)await window.nk.copyText(t);else await navigator.clipboard.writeText(t);$('dgMsg').textContent='Kopiert. Lim den inn der du vil sende den.'}catch(e){$('dgMsg').textContent='Fikk ikke kopiert.'}};
+$('dgSave').onclick=async()=>{const t=await bugReport();const r=await window.nk.saveText(t,'nyhetskloden-feilrapport.txt','txt');$('dgMsg').textContent=r&&r.ok?'Lagret i '+r.path:''};

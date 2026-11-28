@@ -460,4 +460,23 @@ async function getPortfolioHistory(trades, range) {
   }
   return { range, points, at: new Date().toISOString() };
 }
-module.exports = { holdings, fxRate, getPortfolioHistory, getPortfolio, quoteCached, getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };
+// utbytte du har fått: antall du eide på utbyttedagen × utbytte per aksje, i kroner (dagens valutakurs)
+async function getDividends(trades) {
+  const MORE = require('./more');
+  const syms = [...new Set((trades || []).map(t => t.sym))].filter(s => !/^\^|=X$|-USD$|=F$/.test(s));
+  const per = await many(syms, async sym => {
+    const d = await MORE.getDivs(sym); const fx = await fxNok(d.cur) || 0, got = [];
+    for (const x of d.divs) {
+      const h = holdings((trades || []).filter(t => t.sym === sym && (!t.date || t.date < x.date)))[0];
+      if (h && h.qty > 0) got.push({ date: x.date, amount: x.amount, qty: h.qty, kr: h.qty * x.amount * fx });
+    }
+    const last = d.divs[d.divs.length - 1] || null, held = holdings((trades || []).filter(t => t.sym === sym))[0];
+    // siste 12 måneder × det du eier nå: et anslag for neste år
+    const yearAgo = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), ttm = d.divs.filter(x => x.date >= yearAgo).reduce((a, x) => a + x.amount, 0);
+    return { sym, name: d.name, cur: d.cur, got, total: got.reduce((a, x) => a + x.kr, 0), last, next12: held && held.qty ? held.qty * ttm * fx : 0 };
+  }, 4);
+  const rows = per.filter(Boolean), years = {};
+  for (const r of rows) for (const g of r.got) years[g.date.slice(0, 4)] = (years[g.date.slice(0, 4)] || 0) + g.kr;
+  return { rows: rows.map(({ got, ...r }) => ({ ...r, n: got.length })), years: Object.entries(years).sort().map(([year, kr]) => ({ year, kr })), total: rows.reduce((a, r) => a + r.total, 0), next12: rows.reduce((a, r) => a + r.next12, 0) };
+}
+module.exports = { getDividends, holdings, fxRate, getPortfolioHistory, getPortfolio, quoteCached, getDetail, searchTicker, quote, getCountry, getPower, getTraffic, getPodcasts, getStorms, getMarket, resetMarket, companyNames, getWeather, getWxMap, getRadar, getFlights, getShips, resetShips, distKm, topEvents, INDICES };

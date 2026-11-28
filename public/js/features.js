@@ -3,7 +3,7 @@
 let lastF='';
 function applyFeatures(){OFF=new Set(SET.catsOff||[]);HOME=SET.home||null;const prev=F;F=SET.features||{};
   const ms0=JSON.stringify([SET.muteWords,SET.hiddenSrc]);if(ms0!==applyFeatures.m){applyFeatures.m=ms0;muteSetup();if(NEWS.length)buildEvents()}
-  srcListSetup();if(typeof renderCal==='function')renderCal();localStatus();$('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
+  srcListSetup();if(typeof renderCal==='function')renderCal();applySaver();if(typeof worldLayers==='function')worldLayers();localStatus();$('tabNear').hidden=!(F.near&&HOME);if(S.tab==='near'&&$('tabNear').hidden)S.tab='all';
   for(const i of $('layers').querySelectorAll('[data-f]'))i.checked=!!F[i.dataset.f];
   const sig=JSON.stringify([F,SET.marketWatch,SET.portfolio,HOME,SET.nearKm,SET.shipsClient]);if(sig===lastF){refresh();return}lastF=sig;
   tkCache.clear();renderMarket();loadMarket();loadPortfolio();nightImgUpdate();loadWeather();loadFlights();setShipLayer();loadWxMap();loadRadar();loadStorms();loadLights();loadTraffic();loadPower();refresh()}
@@ -67,6 +67,6 @@ function wFinish(apply){const b={onboarded:true};
 // ---------- utseende ----------
 const LOOK=Object.assign({theme:'dark',zoom:1},store.get('nk-look',{}));
 const darkMQ=matchMedia('(prefers-color-scheme: dark)');
-function applyLook(){const t=LOOK.theme==='system'?(matchMedia('(forced-colors: active)').matches?'contrast':darkMQ.matches?'dark':'light'):LOOK.theme;document.documentElement.dataset.theme=t;
+function applyLook(){const t=LOOK.theme==='system'?(matchMedia('(forced-colors: active)').matches?'contrast':darkMQ.matches?'dark':'light'):LOOK.theme;const ch=document.documentElement.dataset.theme!==t;document.documentElement.dataset.theme=t;if(ch&&typeof mapTheme==='function')mapTheme();
   if(window.nk&&window.nk.setZoom)window.nk.setZoom(+LOOK.zoom||1)}
 darkMQ.addEventListener('change',applyLook);applyLook();

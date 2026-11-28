@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const X = require('./extras');
 const READER = require('./reader');
 const LOCAL = require('./local');
+const MORE = require('./more');
 
 const events = new EventEmitter();
 const POLL_MIN = +process.env.POLL_MIN || 5;
@@ -142,10 +143,10 @@ const DEFAULTS = { deeplKey: '', translate: true, watch: [], customFeeds: [], da
   notify: true, notifyMode: 'big', notifyWatch: true, sound: true, quiet: { on: false, from: 23, to: 7 },
   closeToTray: true, tickerAtStart: false, tickerPos: 'top', tickerSpeed: 1, autoInstall: true, channel: 'stable', onboarded: false, widget: false, widgetOnTop: false,
   catsOff: [], home: null, nearKm: 50, digest: true, digestTime: '07:00',
-  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true, localNews: true, calendar: true },
+  features: { market: true, movers: true, marketGlobe: true, tickersInNews: true, weather: true, near: true, flights: false, ships: false, wxmap: true, radar: false, quakes: true, storms: true, lights: true, power: true, traffic: false, images: true, nightImg: true, spin: true, localNews: true, calendar: true, powerSave: false, powerAuto: true, heatArchive: false, fires: false, aurora: false, shakemap: true },
   datex: { user: '', pass: '' },
   muteWords: [], hiddenSrc: [], notifyCats: null, notifyFollow: true, notifyGroup: true, followEids: [],
-  srcLists: [], portfolio: [], trades: [], localPaper: null, notifyWeekly: true, notifyCal: true, priceAlerts: true, priceAlertPct: 5, notifyDown: true,
+  srcLists: [], portfolio: [], trades: [], mapHideCats: [], powerAlerts: true, powerZone: null, powerCheap: 0.3, powerDear: 2.5, auroraAlerts: true, hotkey: 'CommandOrControl+Shift+N', localPaper: null, notifyWeekly: true, notifyCal: true, priceAlerts: true, priceAlertPct: 5, notifyDown: true,
   marketWatch: ['EQNR.OL', 'KOG.OL', 'NVDA'], ships: { clientId: '', clientSecret: '' }, lan: false, lanToken: '' };
 let settings = JSON.parse(JSON.stringify(DEFAULTS));
 function loadSettings() { try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); settings = { ...JSON.parse(JSON.stringify(DEFAULTS)), ...s, quiet: { ...DEFAULTS.quiet, ...(s.quiet || {}) }, features: { ...DEFAULTS.features, ...(s.features || {}) }, ships: { ...DEFAULTS.ships, ...(s.ships || {}) }, datex: { ...DEFAULTS.datex, ...(s.datex || {}) } }; } catch {} }
@@ -160,7 +161,7 @@ const publicSettings = () => {
 const clampNum = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 function applySettings(b) {
   if (typeof b.deeplKey === 'string') settings.deeplKey = b.deeplKey.trim().slice(0, 100);
-  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown', 'notifyWeekly', 'notifyCal']) if (typeof b[k] === 'boolean') settings[k] = b[k];
+  for (const k of ['translate', 'notify', 'notifyWatch', 'sound', 'closeToTray', 'tickerAtStart', 'autoInstall', 'onboarded', 'notifyFollow', 'notifyGroup', 'widget', 'widgetOnTop', 'priceAlerts', 'notifyDown', 'notifyWeekly', 'notifyCal', 'powerAlerts', 'auroraAlerts']) if (typeof b[k] === 'boolean') settings[k] = b[k];
   if (b.datex && typeof b.datex === 'object') {
     if (typeof b.datex.user === 'string') settings.datex.user = b.datex.user.trim().slice(0, 100);
     if (typeof b.datex.pass === 'string' && b.datex.pass) settings.datex.pass = b.datex.pass.slice(0, 200);
@@ -195,6 +196,11 @@ function applySettings(b) {
     id: String(t.id || 't' + Date.now().toString(36) + i).slice(0, 24), sym: String(t.sym).toUpperCase(), side: t.side === 'sell' ? 'sell' : 'buy',
     qty: clampNum(t.qty, 0, 1e9, 0), price: clampNum(t.price, 0, 1e9, 0), date: /^\d{4}-\d\d-\d\d$/.test(t.date || '') ? t.date : null }));
   if (Array.isArray(b.portfolio) || Array.isArray(b.trades)) settings.portfolio = derivePortfolio();
+  if (Array.isArray(b.mapHideCats)) settings.mapHideCats = b.mapHideCats.map(String).filter(k => /^[a-z]{2,20}$/.test(k)).slice(0, 20);
+  if (b.powerZone === null || /^NO[1-5]$/.test(b.powerZone || '')) settings.powerZone = b.powerZone || null;
+  if (b.powerCheap != null) settings.powerCheap = clampNum(b.powerCheap, 0, 10, 0.3);
+  if (b.powerDear != null) settings.powerDear = clampNum(b.powerDear, 0, 20, 2.5);
+  if (typeof b.hotkey === 'string' && (b.hotkey === '' || /^(CommandOrControl|Ctrl|Alt|Shift|Super)(\+(CommandOrControl|Ctrl|Alt|Shift|Super))*\+[A-Z0-9]$/.test(b.hotkey))) settings.hotkey = b.hotkey;
   if (b.priceAlertPct != null) settings.priceAlertPct = clampNum(b.priceAlertPct, 1, 50, 5);
   if (b.home === null) settings.home = null;
   else if (b.home && isFinite(b.home.lat) && isFinite(b.home.lon)) settings.home = { name: String(b.home.name || '').slice(0, 60), lat: +b.home.lat, lon: +b.home.lon };
@@ -551,6 +557,87 @@ function searchArchive(q, days = 90, limit = 200) {
   // (brukes også av innsikt med stor grense)
 }
 
+// ---------- logg til feilrapporten (de siste 200 advarslene) ----------
+const LOG = [];
+for (const k of ['warn', 'error']) { const orig = console[k].bind(console); console[k] = (...a) => { LOG.push(new Date().toISOString().slice(11, 19) + ' ' + k + ': ' + a.map(x => x instanceof Error ? x.message : typeof x === 'string' ? x : JSON.stringify(x)).join(' ').slice(0, 400)); if (LOG.length > 200) LOG.shift(); orig(...a); }; }
+
+// ---------- historien bak en sak ----------
+// Alle artikler i arkivet om samme hendelse (samme id, eller mange felles ord) de siste ukene.
+function archiveScan(days, fn) {
+  if (!ARCHIVE_DIR) return;
+  const from = new Date(Date.now() - days * 864e5).toISOString();
+  let files = []; try { files = fs.readdirSync(ARCHIVE_DIR).filter(f => f.endsWith('.jsonl')).sort().reverse(); } catch { return; }
+  for (const f of files) {
+    if (f.slice(0, 7) < from.slice(0, 7)) break;
+    for (const line of fs.readFileSync(path.join(ARCHIVE_DIR, f), 'utf8').split('\n')) { if (!line) continue; let n; try { n = JSON.parse(line); } catch { continue; } if (n.date >= from) fn(n); }
+  }
+}
+function story(title, eid, days = 21) {
+  const t = tokens(title), seen = new Set(), out = [];
+  const add = n => { if (seen.has(n.id)) return; const tb = tokens(n.title + ' ' + (n.titleNo || '')); let sh = 0; for (const w of t) if (tb.has(w)) sh++;
+    const jac = sh / (t.size + tb.size - sh || 1); if ((eid && n.eid === eid) || (sh >= 3 && jac >= 0.2) || jac >= 0.4) { seen.add(n.id); out.push({ id: n.id, eid: n.eid, title: n.title, titleNo: n.titleNo, url: n.url, date: n.date, src: n.src, place: n.place }); } };
+  archiveScan(days, add); for (const n of news) add(n);
+  return out.sort((a, b) => a.date.localeCompare(b.date)).slice(-300);
+}
+// varmekart: hvor det har skjedd mest, fra arkivet (ruter på 1 grad, én telling per hendelse)
+let HEAT = { key: '', at: 0, data: null };
+function heatGrid(days, hide) {
+  const key = days + '|' + hide.join(',');
+  if (HEAT.key === key && Date.now() - HEAT.at < 15 * 60e3) return HEAT.data;
+  const grid = new Map(), ev = new Set();
+  archiveScan(days, n => { if (n.lat == null || hide.includes(n.cat)) return; const k = n.eid || n.id; if (ev.has(k)) return; ev.add(k);
+    const lat = Math.round(n.lat), lon = Math.round(n.lon), g = lat + ',' + lon; grid.set(g, (grid.get(g) || 0) + 1); });
+  const data = { days, pts: [...grid].map(([k, v]) => { const [lat, lon] = k.split(',').map(Number); return [lon, lat, v]; }) };
+  HEAT = { key, at: Date.now(), data }; return data;
+}
+// bakgrunn fra Wikipedia (norsk først, ellers engelsk)
+const WIKI = new Map();
+async function wiki(q) {
+  q = String(q || '').trim().slice(0, 80); if (!q) throw new Error('mangler navn');
+  const hit = WIKI.get(q); if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.data;
+  let data = null;
+  for (const lang of ['no', 'en']) {
+    try {
+      const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q.replace(/ /g, '_'))}?redirect=true`, { headers: { 'User-Agent': UA + ' (https://github.com/dsoder-jpg/nyhetskloden)' }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue; const j = await r.json();
+      if (j.type === 'disambiguation' || !j.extract) continue;
+      data = { lang, title: j.title, extract: j.extract.length > 700 ? j.extract.slice(0, 700).replace(/\s\S*$/, '') + ' …' : j.extract, desc: j.description || '', url: (j.content_urls && j.content_urls.desktop && j.content_urls.desktop.page) || null, thumb: j.thumbnail && /^https:/.test(j.thumbnail.source) ? j.thumbnail.source : null };
+      break;
+    } catch {}
+  }
+  WIKI.set(q, { at: Date.now(), data }); if (WIKI.size > 200) WIKI.delete(WIKI.keys().next().value);
+  return data;
+}
+
+// ---------- strømvarsel og nordlysvarsel ----------
+const powerZone = () => settings.powerZone || MORE.zoneFor(settings.home);
+let powerSeen = '', auroraSeen = '', alertTimer = null;
+async function checkAlerts() {
+  clearTimeout(alertTimer); alertTimer = setTimeout(checkAlerts, 30 * 60e3); if (alertTimer.unref) alertTimer.unref();
+  const now = new Date(), oslo = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
+  // strøm: morgendagens priser kommer rundt kl. 13
+  const zone = powerZone();
+  if (settings.powerAlerts && zone && oslo.getHours() >= 14) {
+    const tm = new Date(now.getTime() + 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
+    if (powerSeen !== tm) {
+      try {
+        const sum = MORE.powerSummary(await MORE.getPowerDay(zone, tm)); powerSeen = tm;
+        const out = [];
+        if (sum && sum.cheap && sum.cheap.avg <= settings.powerCheap) out.push({ kind: 'cheap', from: sum.cheap.from, kr: sum.cheap.avg });
+        if (sum && sum.dear && sum.dear.kr >= settings.powerDear) out.push({ kind: 'dear', from: sum.dear.t, kr: sum.dear.kr });
+        if (out.length) events.emit('powerprice', { zone, name: MORE.POWER_ZONES[zone], day: tm, avg: sum.avg, list: out });
+      } catch {}
+    }
+  }
+  // nordlys: bare når det er mørkt der du bor
+  if (settings.auroraAlerts && settings.features.aurora && settings.home && (oslo.getHours() >= 17 || oslo.getHours() < 3)) {
+    const night = oslo.getHours() < 3 ? new Date(now.getTime() - 864e5).toDateString() : now.toDateString();
+    if (auroraSeen !== night) {
+      try { const a = await MORE.getAurora(settings.home); if (a.chance >= 20) { auroraSeen = night; events.emit('aurora', a); } } catch {}
+    }
+  }
+}
+
 // ---------- lokalavis ----------
 // Finner avisa nærmest hjemstedet og prøver adressene til RSS-strømmen til én virker.
 async function resolveLocal() {
@@ -707,7 +794,8 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
   FEEDSTATE_FILE = path.join(dataDir, 'feedstate.json'); ARCHIVE_DIR = path.join(dataDir, 'arkiv');
   try { FEEDSTATE = JSON.parse(fs.readFileSync(FEEDSTATE_FILE, 'utf8')) || {}; } catch { FEEDSTATE = {}; }
   PRICE_FILE = path.join(dataDir, 'kursvarsler.json'); try { PRICE_SEEN = JSON.parse(fs.readFileSync(PRICE_FILE, 'utf8')) || {}; } catch { PRICE_SEEN = {}; }
-  priceTimer = setTimeout(checkPrices, 90e3); if (priceTimer.unref) priceTimer.unref();
+  priceTimer = setTimeout(checkPrices, 90e3);
+  MORE.setUA(UA); alertTimer = setTimeout(checkAlerts, 120e3); if (alertTimer.unref) alertTimer.unref(); if (priceTimer.unref) priceTimer.unref();
   loadSettings();
   if (!(settings.trades || []).length && (settings.portfolio || []).length) settings.trades = settings.portfolio.map((h, i) => ({ id: 'm' + i, sym: h.sym, side: 'buy', qty: h.qty, price: h.price || 0, date: null }));
   try { news = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); for (const n of news) if (!n.eid) n.eid = n.id; } catch { news = []; }
@@ -807,6 +895,29 @@ function start({ port = +process.env.PORT || 3000, dataDir = path.join(__dirname
       if (!/^https:\/\//.test(u) || !news.some(n => n.url === u)) return json({ error: 'ukjent lenke' }, 400);
       try { return json(await READER.read(u, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' + UA)); } catch (e) { return json({ error: e.name === 'AbortError' ? 'siden svarer ikke' : e.message }, 502); }
     }
+    if (url.pathname === '/api/diag') {
+      if (lan) return json({ error: 'ikke tilgjengelig' }, 403);
+      const st = Object.values(status);
+      return json({ engine: { polled: lastPoll, next: nextPoll, news: news.length, archive: !!ARCHIVE_DIR, net: status.net || null },
+        feeds: { total: st.length, ok: st.filter(x => x.ok).length, failing: st.filter(x => !x.ok && !x.paused).map(x => ({ src: x.src, err: x.err, since: x.since })).slice(0, 60), paused: st.filter(x => x.paused).map(x => x.src) },
+        settings: publicSettings(), log: LOG.slice(-200) });
+    }
+    if (url.pathname === '/api/story') {
+      const t = url.searchParams.get('title') || ''; if (!t) return json([]);
+      return json(story(t, url.searchParams.get('eid') || null, Math.min(90, +url.searchParams.get('days') || 21)));
+    }
+    if (url.pathname === '/api/heat') return json(heatGrid(Math.min(90, Math.max(7, +url.searchParams.get('days') || 30)), settings.mapHideCats || []));
+    if (url.pathname === '/api/wiki') { try { return json(await wiki(url.searchParams.get('q'))); } catch (e) { return json({ error: e.message }, 502); } }
+    if (url.pathname === '/api/shakemap') { const l = url.searchParams.get('url') || ''; if (!news.some(n => n.url === l)) return json({ error: 'ukjent skjelv' }, 400); try { return json(await MORE.getShakemap(l)); } catch (e) { return json({ error: e.message }, 502); } }
+    if (url.pathname === '/api/fires') { try { return json(await MORE.getFires()); } catch (e) { return json({ error: e.message, pts: [] }, 502); } }
+    if (url.pathname === '/api/aurora') { try { return json(await MORE.getAurora(settings.home, url.searchParams.get('grid') === '1')); } catch (e) { return json({ error: e.message }, 502); } }
+    if (url.pathname === '/api/rate') { try { return json(await MORE.getPolicyRate()); } catch (e) { return json({ error: e.message }, 502); } }
+    if (url.pathname === '/api/powerday') {
+      const zone = /^NO[1-5]$/.test(url.searchParams.get('zone') || '') ? url.searchParams.get('zone') : powerZone(); if (!zone) return json({ error: 'mangler prisområde' }, 400);
+      const day = /^\d{4}-\d\d-\d\d$/.test(url.searchParams.get('day') || '') ? url.searchParams.get('day') : new Date(Date.now() + 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
+      try { const h = await MORE.getPowerDay(zone, day); return json({ zone, name: MORE.POWER_ZONES[zone], day, hours: h, sum: MORE.powerSummary(h) }); } catch (e) { return json({ zone, day, error: e.message.includes('404') ? 'ikke publisert ennå' : e.message }, 502); }
+    }
+    if (url.pathname === '/api/dividends') { if (lan) return json({ rows: [] }); try { return json(await X.getDividends(settings.trades)); } catch (e) { return json({ error: e.message, rows: [] }, 502); } }
     if (url.pathname === '/api/calendar') return json(await getCalendar());
     if (url.pathname === '/api/local') return json({ paper: settings.localPaper, near: LOCAL.nearest(settings.home) });
     if (url.pathname === '/api/fx') {
